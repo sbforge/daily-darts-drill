@@ -12,7 +12,6 @@
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import Board from "./lib/Board.svelte";
-  import CameraFeed from "./lib/CameraFeed.svelte";
   import Logo from "./lib/Logo.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
   import banner from "./assets/brand/adx-logo-tagline.webp";
@@ -661,11 +660,14 @@
       </div>
 
       <div class="views">
+        <div class="darts" aria-label="Darts this turn">
+          {#each [0, 1, 2] as i (i)}
+            {@const d = session.current[i]}
+            <div class="dart-box" class:filled={d}>{d ? dartLabel(d) : "–"}</div>
+          {/each}
+        </div>
         <div class="board">
           <Board turns={session.turns} current={session.current} />
-        </div>
-        <div class="camera">
-          <CameraFeed />
         </div>
       </div>
     </section>
@@ -907,7 +909,20 @@
   .badge.live { color: var(--dart); border-color: var(--dart); }
 
   .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
-  .board, .camera { max-width: 400px; width: 100%; }
+  .board, .darts { max-width: 400px; width: 100%; }
+  .darts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .dart-box {
+    padding: 0.6rem 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--dim);
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .dart-box.filled { color: var(--dart); border-color: var(--dart); }
 
   @media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { :global(*) { transition: none !important; animation: none !important; } }
