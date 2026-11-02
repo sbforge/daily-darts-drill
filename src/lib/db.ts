@@ -27,6 +27,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS routines (
      id TEXT PRIMARY KEY,
      name TEXT NOT NULL,
+     description TEXT NOT NULL DEFAULT '',
      position INTEGER NOT NULL,
      items_json TEXT NOT NULL,
      updated_at TEXT NOT NULL)`,
@@ -77,6 +78,11 @@ export async function openDb(): Promise<void> {
   if (!cols.some((c) => c.name === "status")) {
     await db.execute("ALTER TABLE sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'");
   }
+  // ...and no description column on routines.
+  const routineCols = await db.select<{ name: string }[]>("SELECT name FROM pragma_table_info('routines')");
+  if (!routineCols.some((c) => c.name === "description")) {
+    await db.execute("ALTER TABLE routines ADD COLUMN description TEXT NOT NULL DEFAULT ''");
+  }
 
   // A routine that was still running when the app closed counts as aborted: no scores kept.
   const stale = await db.select<{ id: string }[]>("SELECT id FROM sessions WHERE status = 'running'");
@@ -124,8 +130,8 @@ export async function saveConfig(config: Config): Promise<void> {
 // ------------------------------------------------------------- routines
 
 export async function loadRoutines(): Promise<Routine[]> {
-  const rows = await conn().select<{ id: string; name: string; items_json: string }[]>(
-    "SELECT id, name, items_json FROM routines ORDER BY position",
+  const rows = await conn().select<{ id: string; name: string; description: string; items_json: string }[]>(
+    "SELECT id, name, description, items_json FROM routines ORDER BY position",
   );
   const list: Routine[] = rows.map((r) => {
     let items = [];
@@ -134,7 +140,7 @@ export async function loadRoutines(): Promise<Routine[]> {
     } catch {
       /* a broken row becomes an empty routine instead of blocking the app */
     }
-    return { id: r.id, name: r.name, items: cleanItems(items) };
+    return { id: r.id, name: r.name, description: r.description ?? "", items: cleanItems(items) };
   });
   if (list.length) return list;
 
@@ -150,10 +156,11 @@ export function saveRoutines(routines: Routine[]): Promise<void> {
     for (let i = 0; i < routines.length; i++) {
       const r = routines[i];
       await d.execute(
-        `INSERT INTO routines (id, name, position, items_json, updated_at) VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name, position = excluded.position,
-           items_json = excluded.items_json, updated_at = excluded.updated_at`,
-        [r.id, r.name, i, JSON.stringify(r.items), now],
+        `INSERT INTO routines (id, name, description, position, items_json, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description,
+           position = excluded.position, items_json = excluded.items_json, updated_at = excluded.updated_at`,
+        [r.id, r.name, r.description, i, JSON.stringify(r.items), now],
       );
     }
     if (routines.length) {
@@ -287,6 +294,15 @@ export function deleteSession(sessionId: string): Promise<void> {
     await d.execute("DELETE FROM game_results WHERE session_id = $1", [sessionId]);
     await d.execute("DELETE FROM sessions WHERE id = $1", [sessionId]);
   });
+}
+
+/** When each routine was last started, keyed by routine id. Runs still in progress don't count. */
+export async function loadLastPlayed(): Promise<Record<string, string>> {
+  const rows = await conn().select<{ routine_id: string; last: string }[]>(
+    `SELECT routine_id, MAX(started_at) AS last FROM sessions
+     WHERE routine_id IS NOT NULL AND status != 'running' GROUP BY routine_id`,
+  );
+  return Object.fromEntries(rows.map((r) => [r.routine_id, r.last]));
 }
 
 export interface HistoryRow {

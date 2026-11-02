@@ -15,6 +15,8 @@ export interface RoutineItem {
 export interface Routine {
   id: string;
   name: string;
+  /** Short text shown on the routine card. */
+  description: string;
   items: RoutineItem[];
 }
 
@@ -25,12 +27,12 @@ export function newItem(gameId: string): RoutineItem {
   return { gameId: g.id, minutes: g.defaultMinutes, settings: { ...g.defaultSettings } };
 }
 
-export function newRoutine(name = "New routine"): Routine {
-  return { id: crypto.randomUUID(), name, items: [] };
+export function newRoutine(name = "New routine", description = ""): Routine {
+  return { id: crypto.randomUUID(), name, description, items: [] };
 }
 
 export function starterRoutine(): Routine {
-  const r = newRoutine("Everyday session");
+  const r = newRoutine("Everyday session", "A bit of everything: each training game once.");
   r.items = GAMES.map((g) => newItem(g.id));
   return r;
 }
