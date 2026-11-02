@@ -3,7 +3,7 @@
   // its neighbours turn away to the sides. It wraps around, so you can keep rotating.
   import { gameById } from "./games";
   import { getLocale, t } from "./i18n/index.svelte";
-  import type { Routine } from "./store";
+  import { totalSeconds, type Routine } from "./store";
 
   let {
     routines,
@@ -67,8 +67,9 @@
     dialog.showModal();
   }
 
+  /** Game time plus the breaks between games, rounded up to whole minutes. */
   function minutes(r: Routine): number {
-    return r.items.reduce((sum, i) => sum + (Number(i.minutes) || 0), 0);
+    return Math.ceil(totalSeconds(r) / 60);
   }
 
   // Swipe with mouse, pen or finger.

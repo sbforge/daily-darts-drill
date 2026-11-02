@@ -3,7 +3,7 @@
 import Database from "@tauri-apps/plugin-sql";
 import type { Dart } from "./autodarts";
 import type { Settings } from "./games";
-import { cleanItems, DEFAULT_CONFIG, starterRoutine, type Config, type Routine } from "./store";
+import { cleanItems, DEFAULT_CONFIG, pauseSeconds, starterRoutine, type Config, type Routine } from "./store";
 
 let db: Database | null = null;
 
@@ -28,6 +28,7 @@ const SCHEMA = [
      id TEXT PRIMARY KEY,
      name TEXT NOT NULL,
      description TEXT NOT NULL DEFAULT '',
+     pause_seconds INTEGER NOT NULL DEFAULT 0,
      position INTEGER NOT NULL,
      items_json TEXT NOT NULL,
      updated_at TEXT NOT NULL)`,
@@ -83,6 +84,10 @@ export async function openDb(): Promise<void> {
   if (!routineCols.some((c) => c.name === "description")) {
     await db.execute("ALTER TABLE routines ADD COLUMN description TEXT NOT NULL DEFAULT ''");
   }
+  // ...and no pause between games, so those routines keep going straight on.
+  if (!routineCols.some((c) => c.name === "pause_seconds")) {
+    await db.execute("ALTER TABLE routines ADD COLUMN pause_seconds INTEGER NOT NULL DEFAULT 0");
+  }
 
   // A routine that was still running when the app closed counts as aborted: no scores kept.
   const stale = await db.select<{ id: string }[]>("SELECT id FROM sessions WHERE status = 'running'");
@@ -130,9 +135,9 @@ export async function saveConfig(config: Config): Promise<void> {
 // ------------------------------------------------------------- routines
 
 export async function loadRoutines(): Promise<Routine[]> {
-  const rows = await conn().select<{ id: string; name: string; description: string; items_json: string }[]>(
-    "SELECT id, name, description, items_json FROM routines ORDER BY position",
-  );
+  const rows = await conn().select<
+    { id: string; name: string; description: string; pause_seconds: number; items_json: string }[]
+  >("SELECT id, name, description, pause_seconds, items_json FROM routines ORDER BY position");
   const list: Routine[] = rows.map((r) => {
     let items = [];
     try {
@@ -140,7 +145,13 @@ export async function loadRoutines(): Promise<Routine[]> {
     } catch {
       /* a broken row becomes an empty routine instead of blocking the app */
     }
-    return { id: r.id, name: r.name, description: r.description ?? "", items: cleanItems(items) };
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description ?? "",
+      pauseSeconds: r.pause_seconds ?? 0,
+      items: cleanItems(items),
+    };
   });
   if (list.length) return list;
 
@@ -156,11 +167,12 @@ export function saveRoutines(routines: Routine[]): Promise<void> {
     for (let i = 0; i < routines.length; i++) {
       const r = routines[i];
       await d.execute(
-        `INSERT INTO routines (id, name, description, position, items_json, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO routines (id, name, description, pause_seconds, position, items_json, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description,
-           position = excluded.position, items_json = excluded.items_json, updated_at = excluded.updated_at`,
-        [r.id, r.name, r.description, i, JSON.stringify(r.items), now],
+           pause_seconds = excluded.pause_seconds, position = excluded.position,
+           items_json = excluded.items_json, updated_at = excluded.updated_at`,
+        [r.id, r.name, r.description, pauseSeconds(r), i, JSON.stringify(r.items), now],
       );
     }
     if (routines.length) {
