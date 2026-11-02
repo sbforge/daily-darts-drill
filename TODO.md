@@ -32,6 +32,8 @@
   * Routine Selection
     * Show Routine with scrollable cards ✅ done
     * Routine Description ✅ done
+    * Edit button on the card, "New routine" in the Train header, no separate Routines tab ✅ done
+    * Carousel fills the free space and scales its cards ✅ done
   * Routine Definition ✅ done
     * Collapsible games (name & time cap always visible) ✅ done
     * Drag & drop to reorder games ✅ done

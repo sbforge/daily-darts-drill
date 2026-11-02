@@ -10,12 +10,18 @@
     selectedId = $bindable(),
     lastPlayed,
     onstart,
+    onedit,
   }: {
     routines: Routine[];
     selectedId: string;
     lastPlayed: Record<string, string>;
     onstart: () => void;
+    onedit: () => void;
   } = $props();
+
+  // The room the carousel gets, which the card size and spacing follow (see the CSS).
+  let boxW = $state(0);
+  let boxH = $state(0);
 
   const n = $derived(routines.length);
   const active = $derived(Math.max(0, routines.findIndex((r) => r.id === selectedId)));
@@ -171,6 +177,10 @@
   {onpointerup}
   onpointercancel={() => (dragX = null)}
   {onwheel}
+  bind:clientWidth={boxW}
+  bind:clientHeight={boxH}
+  style:--cw="{boxW}px"
+  style:--ch="{boxH}px"
 >
   <div class="stage">
     {#each cards as { r, o, jump } (r.id)}
@@ -217,6 +227,23 @@
             />
           </svg>
         </button>
+        <button
+          class="info edit"
+          aria-label={t("carousel.edit", { name: r.name || t("common.untitled") })}
+          title={t("carousel.editTitle")}
+          tabindex={isFront ? 0 : -1}
+          onclick={(e) => {
+            e.stopPropagation();
+            onedit();
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25ZM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"
+            />
+          </svg>
+        </button>
         <div class="body">
           <h3>{r.name || t("common.untitled")}</h3>
           <p class="desc" class:auto={!r.description?.trim()}>{r.description?.trim() || fallbackDescription(r)}</p>
@@ -232,15 +259,15 @@
           <button
             class="start"
             tabindex={isFront ? 0 : -1}
-            disabled={r.items.length === 0}
-            title={r.items.length === 0 ? t("carousel.addGamesFirst") : undefined}
+            class:empty={r.items.length === 0}
             onclick={(e) => {
               e.stopPropagation();
-              if (isFront) onstart();
-              else selectedId = r.id;
+              if (!isFront) selectedId = r.id;
+              else if (r.items.length === 0) onedit();
+              else onstart();
             }}
           >
-            {r.items.length === 0 ? t("carousel.noGames") : t("train.start")}
+            {r.items.length === 0 ? t("carousel.addGames") : t("train.start")}
           </button>
         </div>
       </div>
@@ -313,30 +340,40 @@
 </dialog>
 
 <style>
+  /* Fills whatever height the Train view gives it; the cards scale with it. */
   .carousel {
     position: relative;
-    margin: 0.5rem 0 1.5rem;
+    flex: 1;
+    min-height: 26rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     border-radius: 12px;
     touch-action: pan-y;
     user-select: none;
+    --h: clamp(20rem, calc(var(--ch) - 4.5rem), 36rem);
+    --w: min(calc(var(--h) * 0.68), calc(var(--cw) * 0.7));
+    --card-h: min(var(--h), calc(var(--w) / 0.68));
+    /* How far each neighbour sits from the front card; wider screens spread them out. */
+    --step: clamp(calc(var(--w) * 0.62), calc(var(--cw) * 0.22), calc(var(--w) * 1.05));
   }
   .carousel:focus-visible { outline-offset: 6px; }
 
   .stage {
     position: relative;
-    height: 24rem;
+    height: calc(var(--card-h) + 2rem);
     perspective: 1100px;
     overflow: hidden;
   }
 
   .card {
-    --w: 15rem;
     position: absolute;
     top: 1rem;
     left: calc(50% - var(--w) / 2);
     width: var(--w);
-    height: 22rem;
+    height: var(--card-h);
     padding: 0;
+    container-type: size;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -349,7 +386,7 @@
     overflow: hidden;
     cursor: pointer;
     transform:
-      translateX(calc(var(--o) * 11.5rem))
+      translateX(calc(var(--o) * var(--step)))
       translateZ(calc(var(--abs) * -9rem))
       rotateY(calc(var(--o) * -38deg));
     opacity: calc(1 - var(--abs) * 0.3);
@@ -373,17 +410,17 @@
   .art {
     position: relative;
     width: 100%;
-    height: 8.5rem;
+    height: 39cqh;
     flex: none;
     overflow: hidden;
   }
   /* A dartboard peeking in from the corner, coloured per routine. */
   .board {
     position: absolute;
-    width: 13rem;
-    height: 13rem;
-    right: -3.5rem;
-    top: -2.5rem;
+    width: 60cqh;
+    height: 60cqh;
+    right: -16cqh;
+    top: -11.5cqh;
     opacity: 0.9;
     transform: rotate(var(--spin));
     transition: transform 600ms ease-out;
@@ -440,6 +477,7 @@
     cursor: pointer;
   }
   .info:hover { color: var(--accent); border-color: var(--accent); }
+  .info.edit { left: auto; right: 0.6rem; }
 
   .start {
     margin-top: 0.4rem;
@@ -453,8 +491,10 @@
     color: var(--on-accent, #04161c);
     cursor: pointer;
   }
-  .start:hover:not(:disabled) { background: var(--accent-hi, #67e8f9); }
-  .start:disabled { background: var(--line); color: var(--dim); cursor: not-allowed; }
+  .start:hover { background: var(--accent-hi, #67e8f9); }
+  /* An empty routine can't start yet; its button leads to the editor instead. */
+  .start.empty { background: none; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .start.empty:hover { background: rgb(34 211 238 / 0.1); }
 
   .arrow {
     position: absolute;
@@ -530,7 +570,4 @@
 
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
 
-  @media (max-width: 640px) {
-    .card { --w: 13rem; transform: translateX(calc(var(--o) * 8.5rem)) translateZ(calc(var(--abs) * -9rem)) rotateY(calc(var(--o) * -38deg)); }
-  }
 </style>
