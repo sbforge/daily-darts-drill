@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Dart } from "./autodarts";
   import { dartLabel } from "./autodarts";
+  import { t } from "./i18n/index.svelte";
 
   let { turns, current }: { turns: Dart[][]; current: Dart[] } = $props();
 
@@ -46,7 +47,7 @@
   const past = $derived(turns.flat());
 </script>
 
-<svg viewBox="-1.2 -1.2 2.4 2.4" role="img" aria-label="Dartboard with the darts you have thrown">
+<svg viewBox="-1.2 -1.2 2.4 2.4" role="img" aria-label={t("board.aria")}>
   {#each wedges as w (w.n)}
     <path d={w.inner} class={w.dark ? "single dark" : "single light"} />
     <path d={w.outer} class={w.dark ? "single dark" : "single light"} />

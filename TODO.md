@@ -35,13 +35,13 @@
 
 * Settings
   * Autodarts auto discovery ip & port
-  * language selection
+  * language selection ✅ done (English, German)
 
 * History Graph per Training Game
   * Track Result progress ( per game )
 * Show Heatmap per Training Game
 * Single Training Game
-* i18n
+* i18n ✅ done
 * Heatmap per Game / Configurable per Training game... Random checkout i.e. does not need a heatmap
 * Artwork ✅ done
 

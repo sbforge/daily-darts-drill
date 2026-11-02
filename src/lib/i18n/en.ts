@@ -62,13 +62,29 @@ export const en = {
   "routines.duplicate": "Duplicate routine",
   "routines.delete": "Delete routine",
 
-  // train
-  "train.bannerAlt": "ADX, the Autodarts training experience. Train. Play. Improve.",
+  "routines.description": "Short description",
+  "routines.descriptionPlaceholder": "What this routine is for, shown on its card",
+  "routines.starterDescription": "A bit of everything: each training game once.",
+
+  // train: routine carousel
   "train.title": "Start a routine",
-  "train.routine": "Routine",
   "train.total": "{n} minutes in total at most. Games with darts start their clock on your first dart.",
   "train.noGames": "This routine has no games yet. Add some under Routines.",
   "train.start": "Start routine",
+  "carousel.games": "{n} games",
+  "carousel.game": "1 game",
+  "carousel.gamesIn": "Games in {name}",
+  "carousel.showGames": "Show games",
+  "carousel.noGames": "No games yet",
+  "carousel.noGamesDesc": "No games yet.",
+  "carousel.addGamesFirst": "Add games under Routines first",
+  "carousel.previous": "Previous routine",
+  "carousel.next": "Next routine",
+  "carousel.close": "Close",
+  "carousel.neverPlayed": "Never played",
+  "carousel.today": "Today, {time}",
+  "carousel.yesterday": "Yesterday",
+  "carousel.daysAgo": "{n} days ago",
 
   // running a routine
   "run.progress": "Game {n} of {total}",

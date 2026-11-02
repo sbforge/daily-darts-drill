@@ -1,4 +1,5 @@
 import type { Dart } from "./autodarts";
+import { num, t } from "./i18n/index.svelte";
 
 export type Settings = Record<string, string | number>;
 
@@ -38,6 +39,8 @@ export interface ComputeContext {
  * A game is a pure function from the turns thrown so far (plus its settings)
  * to its state and stats. It replays all darts every time, so corrections
  * in Autodarts are handled for free and results can always be recomputed.
+ *
+ * Texts (name, blurb, field labels) are getters, so they follow the selected language.
  */
 export interface GameDef {
   id: string;
@@ -56,25 +59,34 @@ export interface GameDef {
 
 const pct = (hits: number, total: number) => (total ? (hits / total) * 100 : 0);
 const sum = (darts: Dart[]) => darts.reduce((s, d) => s + d.score, 0);
-const opt = (value: string | number, label: string) => ({ value, label });
+const opt = (value: string | number, label: () => string) => ({
+  value,
+  get label() {
+    return label();
+  },
+});
 
 // ---------------------------------------------------------------- Warm up
 
 export const warmUp: GameDef = {
   id: "warm-up",
-  name: "Warm up",
-  blurb: "Throw freely. No result, the clock just keeps the routine on schedule.",
+  get name() {
+    return t("warmUp.name");
+  },
+  get blurb() {
+    return t("warmUp.blurb");
+  },
   needsDarts: false,
   hasResult: false,
   defaultMinutes: 5,
   defaultSettings: {},
   fields: [],
-  describe: () => "No result",
-  summary: () => "No result",
+  describe: () => t("game.noResult"),
+  summary: () => t("game.noResult"),
   compute: () => ({
     values: {},
     lines: [],
-    focus: { label: "Warm up", value: "Throw freely" },
+    focus: { label: t("warmUp.name"), value: t("warmUp.focus") },
     done: false,
   }),
 };
@@ -83,12 +95,13 @@ export const warmUp: GameDef = {
 
 const CLOCKWISE = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20];
 const COUNTER = [1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10, 6, 13, 4, 18];
-const ZONES: Record<string, string> = {
-  outerSingle: "outer single",
-  innerSingle: "inner single",
-  triple: "treble",
-  double: "double",
-};
+const ZONES = ["outerSingle", "innerSingle", "triple", "double"] as const;
+type Zone = (typeof ZONES)[number];
+
+/** The zone's name as it reads inside a sentence. */
+function zoneInText(zone: string): string {
+  return ZONES.includes(zone as Zone) ? t(`atc.inText.${zone as Zone}`) : "";
+}
 
 function hitsZone(d: Dart, n: number, zone: string): boolean {
   if (d.number !== n) return false;
@@ -106,8 +119,12 @@ function hitsZone(d: Dart, n: number, zone: string): boolean {
 
 export const aroundTheClock: GameDef = {
   id: "around-the-clock",
-  name: "Around the clock",
-  blurb: "Hit every number in board order, then finish on the bull. Only hits move you on.",
+  get name() {
+    return t("atc.name");
+  },
+  get blurb() {
+    return t("atc.blurb");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
@@ -115,33 +132,36 @@ export const aroundTheClock: GameDef = {
   fields: [
     {
       key: "direction",
-      label: "Direction",
+      get label() {
+        return t("atc.direction");
+      },
       kind: "select",
-      options: [opt("cw", "Clockwise"), opt("ccw", "Counter-clockwise")],
+      options: [opt("cw", () => t("atc.cw")), opt("ccw", () => t("atc.ccw"))],
     },
     {
       key: "zone",
-      label: "Segment to hit",
+      get label() {
+        return t("atc.zone");
+      },
       kind: "select",
-      options: [
-        opt("outerSingle", "Outer single"),
-        opt("innerSingle", "Inner single"),
-        opt("triple", "Treble"),
-        opt("double", "Double"),
-      ],
+      options: ZONES.map((z) => opt(z, () => t(`atc.${z}`))),
     },
     {
       key: "finish",
-      label: "Finish on",
+      get label() {
+        return t("atc.finish");
+      },
       kind: "select",
-      options: [opt("bull", "Bull"), opt("singleBull", "Single bull")],
+      options: [opt("bull", () => t("dart.bull")), opt("singleBull", () => t("dart.singleBull"))],
     },
   ],
   describe: (s) =>
-    `${s.direction === "ccw" ? "Counter-clockwise" : "Clockwise"}, ${ZONES[String(s.zone)] ?? ""}, finish on ${
-      s.finish === "singleBull" ? "single bull" : "bull"
-    }`,
-  summary: (v) => `${v.accuracy.toFixed(1)}% accuracy, ${v.progress} of 21 reached`,
+    t("atc.describe", {
+      direction: t(s.direction === "ccw" ? "atc.ccw" : "atc.cw"),
+      zone: zoneInText(String(s.zone)),
+      finish: t(s.finish === "singleBull" ? "atc.inText.singleBull" : "atc.inText.bull"),
+    }),
+  summary: (v) => t("atc.summary", { accuracy: num(v.accuracy, 1), progress: v.progress }),
   compute(turns, s) {
     const order = s.direction === "ccw" ? COUNTER : CLOCKWISE;
     const zone = String(s.zone);
@@ -163,19 +183,23 @@ export const aroundTheClock: GameDef = {
 
     const done = step >= total;
     const accuracy = pct(hits, attempts);
-    const next = step < order.length ? String(order[step]) : s.finish === "singleBull" ? "Single bull" : "Bull";
+    const next =
+      step < order.length ? String(order[step]) : t(s.finish === "singleBull" ? "dart.singleBull" : "dart.bull");
 
     return {
       values: { accuracy, darts: attempts, hits, progress: step },
       lines: [
-        { key: "accuracy", label: "Accuracy", value: `${accuracy.toFixed(1)}%`, hero: true },
-        { key: "progress", label: "Progress", value: `${step} of ${total}` },
-        { key: "darts", label: "Darts thrown", value: String(attempts) },
-        { key: "hits", label: "Hits", value: String(hits) },
+        { key: "accuracy", label: t("game.accuracy"), value: `${num(accuracy, 1)}%`, hero: true },
+        { key: "progress", label: t("atc.progress"), value: t("game.xOfY", { n: step, total }) },
+        { key: "darts", label: t("game.dartsThrown"), value: String(attempts) },
+        { key: "hits", label: t("game.hits"), value: String(hits) },
       ],
       focus: done
-        ? { label: "Complete", value: `${total} of ${total}` }
-        : { label: step < order.length ? `Next target, ${ZONES[zone]}` : "Next target", value: next },
+        ? { label: t("atc.complete"), value: t("game.xOfY", { n: total, total }) }
+        : {
+            label: step < order.length ? t("atc.nextTargetZone", { zone: zoneInText(zone) }) : t("atc.nextTarget"),
+            value: next,
+          },
       done,
     };
   },
@@ -184,21 +208,34 @@ export const aroundTheClock: GameDef = {
 // --------------------------------------------------------- Simple doubles
 
 const doubleOptions = [
-  ...Array.from({ length: 20 }, (_, i) => opt(i + 1, `D${i + 1}`)),
-  opt(25, "Bull"),
+  ...Array.from({ length: 20 }, (_, i) => opt(i + 1, () => `D${i + 1}`)),
+  opt(25, () => t("dart.bull")),
 ];
 
 export const simpleDoubles: GameDef = {
   id: "simple-doubles",
-  name: "Simple doubles",
-  blurb: "Throw at one double. Only that double counts as a hit.",
+  get name() {
+    return t("simpleDoubles.name");
+  },
+  get blurb() {
+    return t("simpleDoubles.blurb");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
   defaultSettings: { double: 20 },
-  fields: [{ key: "double", label: "Double", kind: "select", options: doubleOptions }],
-  describe: (s) => (Number(s.double) === 25 ? "Bull" : `D${s.double}`),
-  summary: (v) => `${v.accuracy.toFixed(1)}% accuracy (${v.hits} of ${v.darts} darts)`,
+  fields: [
+    {
+      key: "double",
+      get label() {
+        return t("game.double");
+      },
+      kind: "select",
+      options: doubleOptions,
+    },
+  ],
+  describe: (s) => (Number(s.double) === 25 ? t("dart.bull") : `D${s.double}`),
+  summary: (v) => t("simpleDoubles.summary", { accuracy: num(v.accuracy, 1), hits: v.hits, darts: v.darts }),
   compute(turns, s) {
     const target = Number(s.double);
     const darts = turns.flat();
@@ -207,11 +244,11 @@ export const simpleDoubles: GameDef = {
     return {
       values: { accuracy, darts: darts.length, hits },
       lines: [
-        { key: "accuracy", label: "Accuracy", value: `${accuracy.toFixed(1)}%`, hero: true },
-        { key: "darts", label: "Darts thrown", value: String(darts.length) },
-        { key: "hits", label: "Hits", value: String(hits) },
+        { key: "accuracy", label: t("game.accuracy"), value: `${num(accuracy, 1)}%`, hero: true },
+        { key: "darts", label: t("game.dartsThrown"), value: String(darts.length) },
+        { key: "hits", label: t("game.hits"), value: String(hits) },
       ],
-      focus: { label: "Target", value: target === 25 ? "Bull" : `D${target}` },
+      focus: { label: t("game.target"), value: target === 25 ? t("dart.bull") : `D${target}` },
       done: false,
     };
   },
@@ -252,9 +289,12 @@ function evalRound(turn: Dart[], target: number): Round {
 
 export const complexDoubles: GameDef = {
   id: "complex-doubles",
-  name: "Complex doubles",
-  blurb:
-    "Check out the double over three darts. Single hits are subtracted and the next target follows from what is left. With an odd leave after dart 2, the bull is the target.",
+  get name() {
+    return t("complexDoubles.name");
+  },
+  get blurb() {
+    return t("complexDoubles.blurb");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
@@ -262,13 +302,16 @@ export const complexDoubles: GameDef = {
   fields: [
     {
       key: "double",
-      label: "Double",
+      get label() {
+        return t("game.double");
+      },
       kind: "select",
       options: doubleOptions.filter((o) => o.value !== 25),
     },
   ],
-  describe: (s) => `Target D${s.double}`,
-  summary: (v) => `${v.successRate.toFixed(1)}% success (${v.successes} of ${v.rounds} rounds)`,
+  describe: (s) => t("complexDoubles.describe", { n: s.double }),
+  summary: (v) =>
+    t("complexDoubles.summary", { rate: num(v.successRate, 1), successes: v.successes, rounds: v.rounds }),
   compute(turns, s, ctx) {
     const target = Number(s.double);
     let rounds = 0;
@@ -287,28 +330,28 @@ export const complexDoubles: GameDef = {
       }
     });
 
-    let focus = { label: "Target", value: `D${target}` };
+    let focus = { label: t("game.target"), value: `D${target}` };
     if (ctx.open && turns.length) {
       const last = turns[turns.length - 1];
       const r = evalRound(last, target);
-      if (r.outcome === "success") focus = { label: "This round", value: "Success" };
-      else if (r.outcome === "fail") focus = { label: "This round", value: "Missed" };
-      else if (r.remaining % 2 === 0 && r.remaining >= 2)
-        focus = { label: `Remaining ${r.remaining}`, value: `D${r.remaining / 2}` };
-      else if (last.length === 1) focus = { label: `Remaining ${r.remaining}`, value: "Set up" };
-      else focus = { label: `Remaining ${r.remaining}`, value: "Bull" };
+      const left = t("complexDoubles.remaining", { n: r.remaining });
+      if (r.outcome === "success") focus = { label: t("complexDoubles.thisRound"), value: t("complexDoubles.success") };
+      else if (r.outcome === "fail") focus = { label: t("complexDoubles.thisRound"), value: t("complexDoubles.missed") };
+      else if (r.remaining % 2 === 0 && r.remaining >= 2) focus = { label: left, value: `D${r.remaining / 2}` };
+      else if (last.length === 1) focus = { label: left, value: t("complexDoubles.setUp") };
+      else focus = { label: left, value: t("dart.bull") };
     }
 
     const rate = pct(successes, rounds);
     return {
       values: { successRate: rate, rounds, successes, firstDart: by[0], secondDart: by[1], thirdDart: by[2] },
       lines: [
-        { key: "rate", label: "Success rate", value: `${rate.toFixed(1)}%`, hero: true },
-        { key: "rounds", label: "Rounds", value: String(rounds) },
-        { key: "successes", label: "Successful rounds", value: String(successes) },
-        { key: "d1", label: "Won with dart 1", value: String(by[0]) },
-        { key: "d2", label: "Won with dart 2", value: String(by[1]) },
-        { key: "d3", label: "Won with dart 3", value: String(by[2]) },
+        { key: "rate", label: t("game.successRate"), value: `${num(rate, 1)}%`, hero: true },
+        { key: "rounds", label: t("complexDoubles.rounds"), value: String(rounds) },
+        { key: "successes", label: t("complexDoubles.successes"), value: String(successes) },
+        { key: "d1", label: t("complexDoubles.wonWith", { n: 1 }), value: String(by[0]) },
+        { key: "d2", label: t("complexDoubles.wonWith", { n: 2 }), value: String(by[1]) },
+        { key: "d3", label: t("complexDoubles.wonWith", { n: 3 }), value: String(by[2]) },
       ],
       focus,
       done: false,
@@ -320,15 +363,19 @@ export const complexDoubles: GameDef = {
 
 export const scoring: GameDef = {
   id: "scoring",
-  name: "Scoring",
-  blurb: "Score as many points as you can. Your score per three darts is the number that counts.",
+  get name() {
+    return t("scoring.name");
+  },
+  get blurb() {
+    return t("scoring.blurb");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
   defaultSettings: {},
   fields: [],
-  describe: () => "3-dart average",
-  summary: (v) => `${v.average.toFixed(1)} three-dart average`,
+  describe: () => t("scoring.average"),
+  summary: (v) => t("scoring.summary", { average: num(v.average, 1) }),
   compute(turns) {
     const darts = turns.flat();
     const total = sum(darts);
@@ -350,14 +397,14 @@ export const scoring: GameDef = {
         misses: count("miss"),
       },
       lines: [
-        { key: "average", label: "3-dart average", value: average.toFixed(1), hero: true },
-        { key: "darts", label: "Darts thrown", value: String(darts.length) },
-        { key: "total", label: "Total score", value: String(total) },
-        { key: "bestTurn", label: "Best turn", value: String(bestTurn) },
-        { key: "tonPlus", label: "Turns of 100+", value: String(tonPlus) },
-        { key: "triples", label: "Triples", value: String(count("triple")) },
-        { key: "bulls", label: "Bulls", value: String(count("bull")) },
-        { key: "misses", label: "Misses", value: String(count("miss")) },
+        { key: "average", label: t("scoring.average"), value: num(average, 1), hero: true },
+        { key: "darts", label: t("game.dartsThrown"), value: String(darts.length) },
+        { key: "total", label: t("scoring.total"), value: String(total) },
+        { key: "bestTurn", label: t("scoring.bestTurn"), value: String(bestTurn) },
+        { key: "tonPlus", label: t("scoring.tonPlus"), value: String(tonPlus) },
+        { key: "triples", label: t("scoring.triples"), value: String(count("triple")) },
+        { key: "bulls", label: t("scoring.bulls"), value: String(count("bull")) },
+        { key: "misses", label: t("scoring.misses"), value: String(count("miss")) },
       ],
       focus: null,
       done: false,
@@ -372,16 +419,27 @@ const DARTS_PER_ATTEMPT = 9;
 export const oneTwentyOne: GameDef = {
   id: "121",
   name: "121",
-  blurb:
-    "Check out within 9 darts. Checking out with darts 1-3 raises the next checkout by 3, with darts 4-6 by 2, with darts 7-9 by 1. Missing it lowers it by 1.",
+  get blurb() {
+    return t("121.blurb");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
   defaultSettings: { start: 121 },
-  fields: [{ key: "start", label: "Starting checkout", kind: "number", min: 2, max: 170 }],
-  describe: (s) => `Start at ${s.start}, 9 darts per checkout`,
+  fields: [
+    {
+      key: "start",
+      get label() {
+        return t("121.start");
+      },
+      kind: "number",
+      min: 2,
+      max: 170,
+    },
+  ],
+  describe: (s) => t("121.describe", { n: s.start }),
   summary: (v) =>
-    `Highest checkout ${v.highestCheckout || "none"}, ${v.checkouts} made, ${v.fails} failed`,
+    t("121.summary", { best: v.highestCheckout || t("game.none"), checkouts: v.checkouts, fails: v.fails }),
   compute(turns, s, ctx) {
     const start = Math.min(170, Math.max(2, Number(s.start) || 121));
     let target = start;
@@ -439,14 +497,14 @@ export const oneTwentyOne: GameDef = {
     return {
       values: { highestCheckout: best, checkouts, fails, nextCheckout: target, successRate: rate },
       lines: [
-        { key: "remaining", label: "Remaining", value: String(remaining) },
-        { key: "dartsLeft", label: "Darts left", value: String(dartsLeft) },
-        { key: "checkouts", label: "Checkouts made", value: String(checkouts) },
-        { key: "fails", label: "Failed", value: String(fails) },
-        { key: "best", label: "Highest checkout", value: best ? String(best) : "none yet" },
-        { key: "rate", label: "Success rate", value: attempts ? `${rate.toFixed(0)}%` : "none yet" },
+        { key: "remaining", label: t("121.remaining"), value: String(remaining) },
+        { key: "dartsLeft", label: t("121.dartsLeft"), value: String(dartsLeft) },
+        { key: "checkouts", label: t("121.checkouts"), value: String(checkouts) },
+        { key: "fails", label: t("121.fails"), value: String(fails) },
+        { key: "best", label: t("121.best"), value: best ? String(best) : t("game.noneYet") },
+        { key: "rate", label: t("game.successRate"), value: attempts ? `${num(rate)}%` : t("game.noneYet") },
       ],
-      focus: { label: "Checkout", value: String(target) },
+      focus: { label: t("121.checkout"), value: String(target) },
       done: false,
     };
   },

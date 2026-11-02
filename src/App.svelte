@@ -15,9 +15,10 @@
   import Logo from "./lib/Logo.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
+  import { LOCALES, dateTime, getLocale, isLocale, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
-    name: string;
+    gameId: string;
     minutes: number;
     early: boolean;
     hasResult: boolean;
@@ -68,7 +69,7 @@
   let client: AutodartsClient;
 
   const connLabel = $derived(
-    conn === "connected" ? "Autodarts connected" : conn === "connecting" ? "Connecting…" : "Not connected",
+    t(conn === "connected" ? "conn.connected" : conn === "connecting" ? "conn.connecting" : "conn.disconnected"),
   );
   const item = $derived(run && phase !== "summary" && phase !== "idle" ? (run.routine.items[run.index] ?? null) : null);
   const def = $derived(item ? gameById(item.gameId) : null);
@@ -86,7 +87,7 @@
   }
 
   function failed(e: unknown) {
-    saveError = `Could not save to the database: ${e instanceof Error ? e.message : String(e)}`;
+    saveError = t("error.save", { msg: e instanceof Error ? e.message : String(e) });
   }
 
   function refreshHistory() {
@@ -98,7 +99,7 @@
 
   function onEvent(e: DartEvent) {
     if (e.kind === "dart") recent = [dartLabel(e.dart), ...recent].slice(0, 9);
-    if (e.kind === "correction") recent = ["(corrected)", ...recent].slice(0, 9);
+    if (e.kind === "correction") recent = [t("run.corrected"), ...recent].slice(0, 9);
 
     if (phase !== "running" || !session) return;
     // While paused, throws are ignored. Turn ends still apply so the turn tracking stays in step.
@@ -148,7 +149,7 @@
     paused = false;
     endedEarly = early;
     run.results.push({
-      name: def.name,
+      gameId: def.id,
       minutes: item.minutes,
       early,
       hasResult: def.hasResult,
@@ -266,7 +267,7 @@
   function duplicateRoutine(r: Routine) {
     const copy = structuredClone($state.snapshot(r));
     copy.id = crypto.randomUUID();
-    copy.name = `${r.name} copy`;
+    copy.name = t("routines.copyName", { name: r.name });
     routines.push(copy);
     selectedId = copy.id;
   }
@@ -279,7 +280,7 @@
     pendingDelete = null;
     if (routines.length <= 1) {
       routines[0].items = [];
-      routines[0].name = "New routine";
+      routines[0].name = t("routines.new");
       routines[0].description = "";
       return;
     }
@@ -314,9 +315,9 @@
     ev.preventDefault();
     const host = draft.host.trim();
     const port = Number(draft.port);
-    if (!host) return (formError = "Enter the host name or IP address of your Autodarts client.");
+    if (!host) return (formError = t("settings.hostRequired"));
     if (!Number.isInteger(port) || port < 1 || port > 65535)
-      return (formError = "Port must be a whole number between 1 and 65535.");
+      return (formError = t("settings.portInvalid"));
     formError = "";
     config = { host, port };
     draft = { ...config };
@@ -328,11 +329,19 @@
     draft = { ...DEFAULT_CONFIG };
   }
 
+  function changeLanguage(l: Locale) {
+    setLocale(l);
+    db.setSetting("language", l).catch(failed);
+  }
+
   onMount(() => {
     client = new AutodartsClient({ onState: (s) => (conn = s), onEvent });
     (async () => {
       try {
         await db.openDb();
+        // Before the routines load, so a first start names its starter routine in this language.
+        const lang = await db.getSetting("language");
+        setLocale(isLocale(lang) ? lang : getLocale());
         config = await db.loadConfig();
         draft = { ...config };
         routines = await db.loadRoutines();
@@ -352,21 +361,21 @@
 
 <header>
   <h1><Logo height={26} /></h1>
-  <nav aria-label="Main">
+  <nav aria-label={t("nav.main")}>
     <button class="tab" aria-current={view === "train" ? "page" : undefined} onclick={() => (view = "train")}>
-      Train
+      {t("nav.train")}
     </button>
     <button class="tab" aria-current={view === "routines" ? "page" : undefined} onclick={() => (view = "routines")}>
-      Routines
+      {t("nav.routines")}
     </button>
     <button class="tab" aria-current={view === "history" ? "page" : undefined} onclick={() => (view = "history")}>
-      History
+      {t("nav.history")}
     </button>
   </nav>
   <button
     class="icon"
-    aria-label="Settings"
-    title="Settings"
+    aria-label={t("nav.settings")}
+    title={t("nav.settings")}
     aria-current={view === "settings" ? "page" : undefined}
     onclick={() => (view = "settings")}
   >
@@ -386,69 +395,77 @@
 <main>
   {#if dbError}
     <section class="narrow">
-      <h2>Can’t open the database</h2>
+      <h2>{t("db.title")}</h2>
       <p class="error" role="alert">{dbError}</p>
       <p class="hint">
-        ADX keeps all settings, routines and results in a local SQLite database. Start the app with
-        <code>npm run tauri dev</code> or use the installed app. Opening the page in a normal browser does not work.
+        {t("db.hintBefore")} <code>npm run tauri dev</code> {t("db.hintAfter")}
       </p>
     </section>
   {:else if !ready}
-    <p class="hint">Opening your data…</p>
+    <p class="hint">{t("db.loading")}</p>
   {:else if view === "settings"}
     <section class="narrow">
-      <h2>Autodarts connection</h2>
-      <p class="lede">ADX listens to the live event stream of your Autodarts client.</p>
+      <h2>{t("settings.connTitle")}</h2>
+      <p class="lede">{t("settings.connLede")}</p>
       <form onsubmit={saveSettings}>
         <label>
-          Host
+          {t("settings.host")}
           <input type="text" bind:value={draft.host} autocomplete="off" spellcheck="false" />
         </label>
         <label>
-          Port
+          {t("settings.port")}
           <input type="number" min="1" max="65535" bind:value={draft.port} />
         </label>
         <p class="url">{autodartsUrl(draft.host.trim() || "…", draft.port || 0)}</p>
         {#if formError}<p class="error" role="alert">{formError}</p>{/if}
         {#if conn !== "connected" && !formError}
           <p class="hint">
-            Can’t reach Autodarts yet. Check that it is running and that host and port match your setup. Retrying
-            automatically.
+            {t("settings.unreachable")}
           </p>
         {/if}
         <div class="row">
-          <button type="submit" class="primary">Save and connect</button>
-          <button type="button" class="ghost" onclick={useDefaults}>Reset to localhost:3180</button>
+          <button type="submit" class="primary">{t("settings.save")}</button>
+          <button type="button" class="ghost" onclick={useDefaults}>{t("settings.reset")}</button>
         </div>
       </form>
 
-      <h3>Last throws seen</h3>
+      <h3>{t("settings.recentTitle")}</h3>
       {#if recent.length}
         <p class="recent">{recent.join("  ")}</p>
       {:else}
-        <p class="hint">Throw a dart. It shows up here, so you know the connection works.</p>
+        <p class="hint">{t("settings.recentEmpty")}</p>
       {/if}
+
+      <h3>{t("settings.languageTitle")}</h3>
+      <label>
+        {t("settings.language")}
+        <select value={getLocale()} onchange={(e) => changeLanguage(e.currentTarget.value as Locale)}>
+          {#each LOCALES as l (l.id)}
+            <option value={l.id}>{l.name}</option>
+          {/each}
+        </select>
+      </label>
     </section>
   {:else if view === "history"}
     <section class="history">
-      <h2>History</h2>
+      <h2>{t("history.title")}</h2>
       {#if history.length === 0}
-        <p class="hint">No results yet. Finish a game in a routine and it shows up here.</p>
+        <p class="hint">{t("history.empty")}</p>
       {/if}
       {#each history as s (s.id)}
         <div class="session">
           <div class="session-head">
             <div>
               <strong>{s.routineName}</strong>
-              <span class="plan-meta">{new Date(s.startedAt).toLocaleString()}</span>
+              <span class="plan-meta">{dateTime(s.startedAt)}</span>
               {#if s.status === "aborted"}
-                <span class="badge">Aborted</span>
+                <span class="badge">{t("history.aborted")}</span>
               {:else if s.status === "running"}
-                <span class="badge live">In progress</span>
+                <span class="badge live">{t("history.running")}</span>
               {/if}
             </div>
             <button class="ghost small danger" onclick={() => deleteSession(s.id)}>
-              {pendingSessionDelete === s.id ? "Click again to delete" : "Delete"}
+              {pendingSessionDelete === s.id ? t("common.confirmDelete") : t("common.delete")}
             </button>
           </div>
           {#if s.status !== "aborted"}
@@ -456,8 +473,9 @@
               {#each s.rows as r (r.id)}
                 {@const g = gameById(r.gameId)}
                 <li>
-                  <span class="plan-name">{r.gameName}</span>
-                  <span class="plan-meta">{r.minutes} min{r.endedEarly ? ", ended early" : ""}</span>
+                  <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
+                  <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
+                  <span class="plan-meta">{t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes })}</span>
                   <span class="plan-desc">{g.describe(r.settings)}</span>
                   <span class="plan-desc strong">{g.summary(r.values)}</span>
                 </li>
@@ -469,31 +487,31 @@
     </section>
   {:else if view === "routines"}
     <section class="routines">
-      <h2>Routines</h2>
+      <h2>{t("routines.title")}</h2>
       <div class="chips">
         {#each routines as r (r.id)}
           <button class="tab" aria-current={r.id === selectedId ? "page" : undefined} onclick={() => (selectedId = r.id)}>
-            {r.name || "Untitled"}
+            {r.name || t("common.untitled")}
           </button>
         {/each}
-        <button class="ghost small" onclick={addRoutine}>New routine</button>
+        <button class="ghost small" onclick={addRoutine}>{t("routines.new")}</button>
       </div>
 
       {#each routines as r (r.id)}
         {#if r.id === selectedId}
           <div class="editor">
             <label>
-              Routine name
+              {t("routines.name")}
               <input type="text" bind:value={r.name} />
             </label>
             <label>
-              Short description
-              <textarea rows="2" maxlength="160" bind:value={r.description} placeholder="What this routine is for, shown on its card"
+              {t("routines.description")}
+              <textarea rows="2" maxlength="160" bind:value={r.description} placeholder={t("routines.descriptionPlaceholder")}
               ></textarea>
             </label>
 
             {#if r.items.length === 0}
-              <p class="hint">No games yet. Add the first one below.</p>
+              <p class="hint">{t("routines.empty")}</p>
             {/if}
 
             {#each r.items as it, i (it)}
@@ -502,23 +520,23 @@
                 <div class="item-head">
                   <strong>{g.name}</strong>
                   <div class="row tight">
-                    <button class="ghost small" onclick={() => move(r, i, -1)} disabled={i === 0} aria-label="Move up">
-                      Up
+                    <button class="ghost small" onclick={() => move(r, i, -1)} disabled={i === 0} aria-label={t("routines.moveUp")}>
+                      {t("routines.up")}
                     </button>
                     <button
                       class="ghost small"
                       onclick={() => move(r, i, 1)}
                       disabled={i === r.items.length - 1}
-                      aria-label="Move down"
+                      aria-label={t("routines.moveDown")}
                     >
-                      Down
+                      {t("routines.down")}
                     </button>
-                    <button class="ghost small" onclick={() => r.items.splice(i, 1)}>Remove</button>
+                    <button class="ghost small" onclick={() => r.items.splice(i, 1)}>{t("routines.remove")}</button>
                   </div>
                 </div>
                 <div class="fields">
                   <label>
-                    Time cap (minutes)
+                    {t("routines.timeCap")}
                     <input type="number" min="1" max="120" bind:value={it.minutes} />
                   </label>
                   {#each g.fields as f (f.key)}
@@ -540,18 +558,18 @@
             {/each}
 
             <div class="row">
-              <select bind:value={addGameId} aria-label="Game to add">
+              <select bind:value={addGameId} aria-label={t("routines.gameToAdd")}>
                 {#each GAMES as g (g.id)}
                   <option value={g.id}>{g.name}</option>
                 {/each}
               </select>
-              <button class="primary" onclick={() => addGame(r)}>Add game</button>
+              <button class="primary" onclick={() => addGame(r)}>{t("routines.addGame")}</button>
             </div>
 
             <div class="row">
-              <button class="ghost" onclick={() => duplicateRoutine(r)}>Duplicate routine</button>
+              <button class="ghost" onclick={() => duplicateRoutine(r)}>{t("routines.duplicate")}</button>
               <button class="ghost danger" onclick={() => deleteRoutine(r.id)}>
-                {pendingDelete === r.id ? "Click again to delete" : "Delete routine"}
+                {pendingDelete === r.id ? t("common.confirmDelete") : t("routines.delete")}
               </button>
             </div>
           </div>
@@ -560,40 +578,40 @@
     </section>
   {:else if phase === "idle"}
     <section class="pick">
-      <h2>Start a routine</h2>
+      <h2>{t("train.title")}</h2>
       <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} />
     </section>
   {:else if phase === "ready" && run && item && def}
     <section class="narrow">
-      <p class="progress">Game {run.index + 1} of {run.routine.items.length}</p>
+      <p class="progress">{t("run.progress", { n: run.index + 1, total: run.routine.items.length })}</p>
       <h2>{def.name}</h2>
       <p class="lede">{def.blurb}</p>
-      <p class="settings-line">{def.describe(item.settings)}, {item.minutes} min</p>
+      <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
       {#if def.needsDarts}
-        <p class="hint">The clock starts with your first dart.</p>
+        <p class="hint">{t("run.clockHint")}</p>
       {/if}
       <div class="row">
-        <button class="primary" onclick={startGame} disabled={!canStart}>Start game</button>
-        <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? "Click again to abort" : "Abort routine"}</button>
+        <button class="primary" onclick={startGame} disabled={!canStart}>{t("run.startGame")}</button>
+        <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
       </div>
       {#if !canStart}
-        <p class="hint">Connect to Autodarts in Settings first.</p>
+        <p class="hint">{t("run.connectFirst")}</p>
       {/if}
     </section>
   {:else if (phase === "running" || phase === "gameDone") && session && result && run && def}
     <section class="stage">
       <div class="panel">
-        <p class="progress">Game {run.index + 1} of {run.routine.items.length}: {def.name}</p>
+        <p class="progress">{t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}</p>
         <div class="clock" class:waiting={endsAt === null} class:paused class:over={phase === "gameDone"}>{fmt(remaining)}</div>
         <p class="note">
           {#if phase === "gameDone"}
-            {#if result.done}Completed.{:else if endedEarly}Ended early.{:else}Time is up.{/if}
+            {t(result.done ? "run.completed" : endedEarly ? "run.endedEarly" : "run.timeUp")}
           {:else if paused}
-            Paused. Throws are not counted.
+            {t("run.paused")}
           {:else if endsAt === null}
-            Waiting for your first dart.
+            {t("run.waiting")}
           {:else}
-            Keep throwing.
+            {t("run.keepThrowing")}
           {/if}
         </p>
 
@@ -621,20 +639,20 @@
 
         <div class="row">
           {#if phase === "running"}
-            <button class="primary" onclick={paused ? resume : pause}>{paused ? "Resume" : "Pause"}</button>
-            <button class="ghost" onclick={() => finish(true)}>{def.hasResult ? "End game" : "Skip warm up"}</button>
+            <button class="primary" onclick={paused ? resume : pause}>{paused ? t("run.resume") : t("run.pause")}</button>
+            <button class="ghost" onclick={() => finish(true)}>{def.hasResult ? t("run.endGame") : t("run.skipWarmUp")}</button>
           {:else}
-            <button class="primary" onclick={nextGame}>{isLast ? "Finish routine" : "Next game"}</button>
+            <button class="primary" onclick={nextGame}>{isLast ? t("run.finishRoutine") : t("run.nextGame")}</button>
           {/if}
-          <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? "Click again to abort" : "Abort routine"}</button>
+          <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
         </div>
         {#if phase === "gameDone" && def.hasResult}
-          <p class="hint">Result saved. See it under History.</p>
+          <p class="hint">{t("run.resultSaved")}</p>
         {/if}
       </div>
 
       <div class="views">
-        <div class="darts" aria-label="Darts this turn">
+        <div class="darts" aria-label={t("run.dartsAria")}>
           {#each [0, 1, 2] as i (i)}
             {@const d = session.current[i]}
             <div class="dart-box" class:filled={d}>{d ? dartLabel(d) : "–"}</div>
@@ -647,11 +665,11 @@
     </section>
   {:else if phase === "summary" && run}
     <section class="narrow">
-      <h2>Routine finished</h2>
+      <h2>{t("summary.title")}</h2>
       <p class="lede">{run.routine.name}</p>
       {#each run.results as r, i (i)}
         <div class="result">
-          <h3>{r.name}</h3>
+          <h3>{gameById(r.gameId).name}</h3>
           {#if r.hasResult}
             <dl class="stats">
               {#each r.lines as l (l.key)}
@@ -659,13 +677,13 @@
               {/each}
             </dl>
           {:else}
-            <p class="hint">No result for this game.</p>
+            <p class="hint">{t("summary.noResult")}</p>
           {/if}
         </div>
       {/each}
-      <p class="hint">Results are saved. See them under History.</p>
+      <p class="hint">{t("summary.saved")}</p>
       <div class="row">
-        <button class="primary" onclick={closeRun}>Done</button>
+        <button class="primary" onclick={closeRun}>{t("summary.done")}</button>
       </div>
     </section>
   {/if}
@@ -675,7 +693,7 @@
   <div class="meta">
     <span>ADX v{__APP_VERSION__}</span>
     <a href={GITHUB_URL} onclick={(e) => openExternal(e, GITHUB_URL)}>GitHub</a>
-    <a href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>Buy me a coffee</a>
+    <a href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>{t("footer.coffee")}</a>
   </div>
   <div class="conn" data-state={conn} role="status">
     <span class="dot"></span>{connLabel}

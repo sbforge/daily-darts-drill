@@ -1,5 +1,6 @@
 // Turns raw Autodarts websocket messages into clean dart events.
 // Only "state" messages matter; "vantage" (camera debug) and "stats" are ignored.
+import { t } from "./i18n/index.svelte";
 
 export type DartKind = "single" | "double" | "triple" | "outerBull" | "bull" | "miss";
 
@@ -68,9 +69,9 @@ export function dartLabel(d: Dart): string {
     case "outerBull":
       return "25";
     case "bull":
-      return "Bull";
+      return t("dart.bull");
     default:
-      return "Miss";
+      return t("dart.miss");
   }
 }
 
