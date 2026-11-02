@@ -16,8 +16,7 @@
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
-  import RoutineMenu from "./lib/RoutineMenu.svelte";
-  import Select from "./lib/Select.svelte";
+    import Select from "./lib/Select.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
 
@@ -34,7 +33,8 @@
   let ready = $state(false);
   let dbError = $state("");
   let saveError = $state("");
-  let view = $state<"train" | "routines" | "history" | "settings">("train");
+  type View = "train" | "routines" | "history" | "settings";
+  let view = $state<View>("train");
 
   // connection settings
   let config = $state<Config>({ ...DEFAULT_CONFIG });
@@ -317,11 +317,52 @@
   });
 
   // ---- routine editing
+  // Routines are picked in the Train carousel; "routines" is the editor for the selected one.
+
+  // A routine made with "New routine" counts as a draft until it has games or the user keeps it empty.
+  let draftId = $state<string | null>(null);
+  let selectedBeforeDraft = "";
+  let emptyDialog = $state<HTMLDialogElement>();
+  let leaveTo = $state<View>("train");
+  let pendingRoutineDelete = $state(false);
+  const editing = $derived(routines.find((r) => r.id === selectedId));
+
+  /** Every way out of a view goes through here, so leaving an empty draft can ask first. */
+  function go(next: View) {
+    if (view === "routines" && next !== "routines") {
+      const draft = routines.find((r) => r.id === draftId);
+      if (draft && !draft.items.length) {
+        leaveTo = next;
+        emptyDialog?.showModal();
+        return;
+      }
+      draftId = null;
+    }
+    pendingRoutineDelete = false;
+    view = next;
+  }
+
+  function keepEmptyDraft() {
+    draftId = null;
+    emptyDialog?.close();
+    go(leaveTo);
+  }
+
+  function discardEmptyDraft() {
+    routines = routines.filter((r) => r.id !== draftId);
+    selectedId = routines.find((r) => r.id === selectedBeforeDraft)?.id ?? routines[0].id;
+    draftId = null;
+    emptyDialog?.close();
+    go(leaveTo);
+  }
 
   function addRoutine() {
     const r = newRoutine();
     routines.push(r);
+    selectedBeforeDraft = selectedId;
     selectedId = r.id;
+    draftId = r.id;
+    go("routines");
   }
 
   function duplicateRoutine(r: Routine) {
@@ -330,18 +371,27 @@
     copy.name = t("routines.copyName", { name: r.name });
     routines.push(copy);
     selectedId = copy.id;
+    // Duplicating a draft keeps it, so only the copy is new now.
+    draftId = null;
+    pendingRoutineDelete = false;
   }
 
-  /** The menu has already asked for confirmation. */
+  /** The first click asks, the second deletes. */
   function deleteRoutine(id: string) {
+    if (!pendingRoutineDelete) {
+      pendingRoutineDelete = true;
+      return;
+    }
+    if (draftId === id) draftId = null;
     if (routines.length <= 1) {
       routines[0].items = [];
       routines[0].name = t("routines.new");
       routines[0].description = "";
-      return;
+    } else {
+      routines = routines.filter((r) => r.id !== id);
+      selectedId = routines[0].id;
     }
-    routines = routines.filter((r) => r.id !== id);
-    selectedId = routines[0].id;
+    go("train");
   }
 
   // ---- history
@@ -408,13 +458,10 @@
 <header>
   <h1><Logo height={26} /></h1>
   <nav aria-label={t("nav.main")}>
-    <button class="tab" aria-current={view === "train" ? "page" : undefined} onclick={() => (view = "train")}>
+    <button class="tab" aria-current={view === "train" || view === "routines" ? "page" : undefined} onclick={() => go("train")}>
       {t("nav.train")}
     </button>
-    <button class="tab" aria-current={view === "routines" ? "page" : undefined} onclick={() => (view = "routines")}>
-      {t("nav.routines")}
-    </button>
-    <button class="tab" aria-current={view === "history" ? "page" : undefined} onclick={() => (view = "history")}>
+    <button class="tab" aria-current={view === "history" ? "page" : undefined} onclick={() => go("history")}>
       {t("nav.history")}
     </button>
   </nav>
@@ -465,7 +512,7 @@
     aria-label={t("nav.settings")}
     title={t("nav.settings")}
     aria-current={view === "settings" ? "page" : undefined}
-    onclick={() => (view = "settings")}
+    onclick={() => go("settings")}
   >
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path
@@ -578,26 +625,49 @@
     </section>
   {:else if view === "routines"}
     <section class="routines">
-      <h2>{t("routines.title")}</h2>
-      <div class="chips">
-        {#each routines as r (r.id)}
-          <button class="tab" aria-current={r.id === selectedId ? "page" : undefined} onclick={() => (selectedId = r.id)}>
-            {r.name || t("common.untitled")}
+      <button class="back" onclick={() => go("train")}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z" /></svg>
+        {t("routines.back")}
+      </button>
+      <div class="edit-head">
+        <h2>{t("routines.editTitle")}</h2>
+        {#if editing}
+          {@const r = editing}
+          <button class="icon" aria-label={t("routines.duplicate")} title={t("routines.duplicate")} onclick={() => duplicateRoutine(r)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"
+              />
+            </svg>
           </button>
-        {/each}
-        <button class="ghost small" onclick={addRoutine}>{t("routines.new")}</button>
+          <span class="delete-wrap">
+            <button
+              class="icon delete"
+              class:armed={pendingRoutineDelete}
+              aria-label={pendingRoutineDelete ? t("common.confirmDelete") : t("routines.delete")}
+              title={pendingRoutineDelete ? undefined : t("routines.delete")}
+              onclick={() => deleteRoutine(r.id)}
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="currentColor" d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9Zm-2 3h10v13H7V6Zm2 2v9h2V8H9Zm4 0v9h2V8h-2Z" />
+              </svg>
+            </button>
+            <!-- The icon can't change its text, so the second click is asked for right next to it. -->
+            {#if pendingRoutineDelete}
+              <span class="confirm-bubble" role="status">{t("common.confirmDelete")}</span>
+            {/if}
+          </span>
+        {/if}
       </div>
 
       {#each routines as r (r.id)}
         {#if r.id === selectedId}
           <div class="editor">
-            <div class="name-row">
-              <label>
-                {t("routines.name")}
-                <input type="text" bind:value={r.name} />
-              </label>
-              <RoutineMenu onduplicate={() => duplicateRoutine(r)} ondelete={() => deleteRoutine(r.id)} />
-            </div>
+            <label>
+              {t("routines.name")}
+              <input type="text" bind:value={r.name} />
+            </label>
             <label>
               {t("routines.description")}
               <textarea rows="2" maxlength="160" bind:value={r.description} placeholder={t("routines.descriptionPlaceholder")}
@@ -616,8 +686,14 @@
     </section>
   {:else if phase === "idle"}
     <section class="pick">
-      <h2>{t("train.title")}</h2>
-      <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} />
+      <div class="pick-head">
+        <h2>{t("train.title")}</h2>
+        <button class="ghost small new" onclick={addRoutine}>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
+          {t("routines.new")}
+        </button>
+      </div>
+      <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} onedit={() => go("routines")} />
     </section>
   {:else if phase === "countdown" && run && item && def}
     <section class="countdown">
@@ -755,6 +831,26 @@
     </section>
   {/if}
 </main>
+
+<!-- Asked when leaving the editor of a new routine that still has no games. Escape or the backdrop stays. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm"
+  bind:this={emptyDialog}
+  aria-labelledby="empty-title"
+  onclick={(e) => {
+    if (e.target === emptyDialog) emptyDialog.close();
+  }}
+>
+  <h3 id="empty-title">{t("routines.emptyTitle")}</h3>
+  <p class="lede">
+    {t("routines.emptyBody", { name: routines.find((r) => r.id === draftId)?.name || t("common.untitled") })}
+  </p>
+  <div class="foot">
+    <button class="ghost" onclick={discardEmptyDraft}>{t("routines.discard")}</button>
+    <button class="primary" onclick={keepEmptyDraft}>{t("routines.keep")}</button>
+  </div>
+</dialog>
 
 <footer>
   <div class="meta">
@@ -959,8 +1055,17 @@
   .card .lede { margin-bottom: 0.75rem; }
   .last-hero { margin: 0 0 1rem; color: var(--dim); }
   .last-hero strong { color: var(--dart); font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-right: 0.25rem; }
-  .pick { max-width: 52rem; margin: 0 auto; }
-  .pick h2 { text-align: center; }
+  /* At least the full height of main, so the carousel can take all the room below the title. */
+  .pick { min-height: 100%; display: flex; flex-direction: column; }
+  /* The title stays centred over the carousel; "New routine" sits at the right edge. */
+  .pick-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+  .pick-head h2 { grid-column: 2; margin: 0; text-align: center; }
+  .pick-head .new { grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 0.35rem; }
+  @media (max-width: 640px) {
+    .pick-head { grid-template-columns: 1fr auto; }
+    .pick-head h2 { grid-column: 1; text-align: left; }
+    .pick-head .new { grid-column: 2; }
+  }
   /* Shared form controls and buttons, also used by components in lib/. */
   :global {
     .hint { color: var(--dim); font-size: 0.9rem; max-width: 56ch; line-height: 1.45; }
@@ -994,11 +1099,39 @@
   .url { font-family: ui-monospace, Consolas, monospace; color: var(--dim); font-size: 0.9rem; margin: 0 0 1rem; word-break: break-all; }
   .recent { font-size: 1.2rem; letter-spacing: 0.04em; }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 1rem 0 1.5rem; }
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 1rem -0.5rem;
+    padding: 0.35rem 0.5rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--dim);
+    font: inherit;
+    cursor: pointer;
+  }
+  .back:hover { color: var(--chalk); background: var(--panel); }
   .editor { max-width: 44rem; }
-  .name-row { display: flex; align-items: flex-end; gap: 0.5rem; }
-  .name-row label { flex: 1; }
-  .name-row :global(.menu) { margin-bottom: 1rem; }
+  .edit-head { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 1.25rem; }
+  .edit-head h2 { margin: 0 0.5rem 0 0; }
+  .delete-wrap { position: relative; }
+  button.icon.delete:hover, button.icon.armed { color: #ff9b8f; }
+  button.icon.armed { background: rgb(255 155 143 / 0.15); }
+
+  .confirm {
+    width: min(26rem, calc(100vw - 2rem));
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    color: var(--chalk);
+    box-shadow: 0 20px 60px rgb(0 0 0 / 0.55);
+  }
+  .confirm::backdrop { background: rgb(2 6 9 / 0.7); }
+  .confirm h3 { margin: 0 0 0.5rem; }
+  .confirm .foot { display: flex; justify-content: flex-end; gap: 0.75rem; }
 
   .plan { padding: 0; margin: 0 0 1rem; list-style: none; border-top: 1px solid var(--line); }
   .plan li {
