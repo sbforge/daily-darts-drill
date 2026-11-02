@@ -1,5 +1,6 @@
 // Data shapes and defaults. Everything is persisted in SQLite, see db.ts.
 import { GAMES, gameById, type Settings } from "./games";
+import { t } from "./i18n/index.svelte";
 
 export interface Config {
   host: string;
@@ -27,12 +28,13 @@ export function newItem(gameId: string): RoutineItem {
   return { gameId: g.id, minutes: g.defaultMinutes, settings: { ...g.defaultSettings } };
 }
 
-export function newRoutine(name = "New routine", description = ""): Routine {
+/** Default names are filled in in the language selected when the routine is made. */
+export function newRoutine(name = t("routines.new"), description = ""): Routine {
   return { id: crypto.randomUUID(), name, description, items: [] };
 }
 
 export function starterRoutine(): Routine {
-  const r = newRoutine("Everyday session", "A bit of everything: each training game once.");
+  const r = newRoutine(t("routines.starter"), t("routines.starterDescription"));
   r.items = GAMES.map((g) => newItem(g.id));
   return r;
 }

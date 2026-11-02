@@ -2,6 +2,7 @@
   // Cover-flow style picker for the Train view. The selected routine sits in front,
   // its neighbours turn away to the sides. It wraps around, so you can keep rotating.
   import { gameById } from "./games";
+  import { getLocale, t } from "./i18n/index.svelte";
   import type { Routine } from "./store";
 
   let {
@@ -93,18 +94,19 @@
   }
 
   function fallbackDescription(r: Routine): string {
-    if (!r.items.length) return "No games yet.";
+    if (!r.items.length) return t("carousel.noGamesDesc");
     return r.items.map((it) => gameById(it.gameId).name).join(" · ");
   }
 
   function playedLabel(iso: string | undefined): string {
-    if (!iso) return "Never played";
+    if (!iso) return t("carousel.neverPlayed");
     const then = new Date(iso);
     const days = Math.round((startOfDay(new Date()) - startOfDay(then)) / 86_400_000);
-    if (days <= 0) return `Today, ${then.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-    if (days === 1) return "Yesterday";
-    if (days < 7) return `${days} days ago`;
-    return then.toLocaleDateString();
+    if (days <= 0)
+      return t("carousel.today", { time: then.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" }) });
+    if (days === 1) return t("carousel.yesterday");
+    if (days < 7) return t("carousel.daysAgo", { n: days });
+    return then.toLocaleDateString(getLocale());
   }
 
   function startOfDay(d: Date): number {
@@ -161,7 +163,7 @@
   class="carousel"
   role="region"
   aria-roledescription="carousel"
-  aria-label="Routines"
+  aria-label={t("nav.routines")}
   tabindex="0"
   {onkeydown}
   {onpointerdown}
@@ -195,12 +197,12 @@
             <circle r="3.7" fill="var(--board-red)" />
             <circle r="100" fill="none" stroke="#8c9c96" stroke-opacity="0.35" stroke-width="0.6" />
           </svg>
-          <span class="count">{r.items.length} {r.items.length === 1 ? "game" : "games"}</span>
+          <span class="count">{r.items.length === 1 ? t("carousel.game") : t("carousel.games", { n: r.items.length })}</span>
         </div>
         <button
           class="info"
-          aria-label={`Games in ${r.name || "Untitled"}`}
-          title="Show games"
+          aria-label={t("carousel.gamesIn", { name: r.name || t("common.untitled") })}
+          title={t("carousel.showGames")}
           tabindex={isFront ? 0 : -1}
           onclick={(e) => {
             e.stopPropagation();
@@ -215,7 +217,7 @@
           </svg>
         </button>
         <div class="body">
-          <h3>{r.name || "Untitled"}</h3>
+          <h3>{r.name || t("common.untitled")}</h3>
           <p class="desc" class:auto={!r.description?.trim()}>{r.description?.trim() || fallbackDescription(r)}</p>
           <p class="played" class:never={!lastPlayed[r.id]}>
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -230,26 +232,26 @@
             class="start"
             tabindex={isFront ? 0 : -1}
             disabled={r.items.length === 0}
-            title={r.items.length === 0 ? "Add games under Routines first" : undefined}
+            title={r.items.length === 0 ? t("carousel.addGamesFirst") : undefined}
             onclick={(e) => {
               e.stopPropagation();
               if (isFront) onstart();
               else selectedId = r.id;
             }}
           >
-            {r.items.length === 0 ? "No games yet" : "Start routine"}
+            {r.items.length === 0 ? t("carousel.noGames") : t("train.start")}
           </button>
         </div>
       </div>
     {/each}
 
     {#if n > 1}
-      <button class="arrow left" aria-label="Previous routine" onclick={() => rotate(-1)} disabled={n < 3 && active === 0}>
+      <button class="arrow left" aria-label={t("carousel.previous")} onclick={() => rotate(-1)} disabled={n < 3 && active === 0}>
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M15.4 5.4 14 4l-8 8 8 8 1.4-1.4L8.8 12z" /></svg>
       </button>
       <button
         class="arrow right"
-        aria-label="Next routine"
+        aria-label={t("carousel.next")}
         onclick={() => rotate(1)}
         disabled={n < 3 && active === n - 1}
       >
@@ -261,7 +263,7 @@
   {#if n > 1}
     <div class="dots" aria-hidden="true">
       {#each routines as r, i (r.id)}
-        <button class="dot" class:on={i === active} tabindex="-1" aria-label={r.name || "Untitled"} onclick={() => (selectedId = r.id)}></button>
+        <button class="dot" class:on={i === active} tabindex="-1" aria-label={r.name || t("common.untitled")} onclick={() => (selectedId = r.id)}></button>
       {/each}
     </div>
   {/if}
@@ -281,8 +283,8 @@
   {#if info}
     <div class="sheet">
       <div class="sheet-head">
-        <h3>{info.name || "Untitled"}</h3>
-        <button class="close" aria-label="Close" onclick={() => dialog.close()}>
+        <h3>{info.name || t("common.untitled")}</h3>
+        <button class="close" aria-label={t("carousel.close")} onclick={() => dialog.close()}>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path fill="currentColor" d="M18.3 5.7 16.9 4.3 12 9.2 7.1 4.3 5.7 5.7 10.6 12l-4.9 4.9 1.4 1.4 4.9-4.9 4.9 4.9 1.4-1.4-4.9-4.9z" />
           </svg>
@@ -294,16 +296,16 @@
             {@const g = gameById(it.gameId)}
             <li>
               <span class="g-name">{g.name}</span>
-              <span class="g-min">{it.minutes} min</span>
+              <span class="g-min">{t("common.minutes", { n: it.minutes })}</span>
               <span class="g-desc">{g.describe(it.settings)}</span>
             </li>
           {/each}
         </ol>
         <p class="note">
-          {minutes(info)} minutes in total at most. Games with darts start their clock on your first dart.
+          {t("train.total", { n: minutes(info) })}
         </p>
       {:else}
-        <p class="note">This routine has no games yet. Add some under Routines.</p>
+        <p class="note">{t("train.noGames")}</p>
       {/if}
     </div>
   {/if}
