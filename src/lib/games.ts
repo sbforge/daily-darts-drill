@@ -397,8 +397,9 @@ export const oneTwentyOne: GameDef = {
       let ended: "none" | "bust" | "out" = "none";
       let outSlot = 0;
 
-      turn.forEach((d, i) => {
-        if (ended !== "none") return; // darts after a bust or checkout don't count
+      // A plain loop (not forEach) so TS sees the assignments to `ended`.
+      for (let i = 0; i < turn.length; i++) {
+        const d = turn[i];
         const rem = remaining - d.score;
         if (rem === 0 && (d.kind === "double" || d.kind === "bull")) {
           ended = "out";
@@ -408,8 +409,10 @@ export const oneTwentyOne: GameDef = {
           remaining = turnStart;
         } else {
           remaining = rem;
+          continue;
         }
-      });
+        break; // darts after a bust or checkout don't count
+      }
 
       if (ended === "out") {
         checkouts++;

@@ -1,9 +1,9 @@
 # Todos
 
 ## Next
-* add Boxes for Dart Score above the dartboard
+* add Boxes for Dart Score above the dartboard ✅ done
     * manual score correction
-* remove camera feed placeholder
+* remove camera feed placeholder ✅ done
 * reset & calibrate button ( need to debug autodarts command for that )
 * Autodarts client status ( pause, offline, ... )
   * Auto Reconnect
