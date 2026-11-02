@@ -13,6 +13,9 @@
   import { Session } from "./lib/session.svelte";
   import Board from "./lib/Board.svelte";
   import CameraFeed from "./lib/CameraFeed.svelte";
+  import Logo from "./lib/Logo.svelte";
+  import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
+  import banner from "./assets/brand/adx-logo-tagline.webp";
 
   interface RunResult {
     name: string;
@@ -352,7 +355,7 @@
 </script>
 
 <header>
-  <h1>Dart Trainer</h1>
+  <h1><Logo height={26} /></h1>
   <nav aria-label="Main">
     <button class="tab" aria-current={view === "train" ? "page" : undefined} onclick={() => (view = "train")}>
       Train
@@ -363,13 +366,21 @@
     <button class="tab" aria-current={view === "history" ? "page" : undefined} onclick={() => (view = "history")}>
       History
     </button>
-    <button class="tab" aria-current={view === "settings" ? "page" : undefined} onclick={() => (view = "settings")}>
-      Settings
-    </button>
   </nav>
-  <div class="conn" data-state={conn} role="status">
-    <span class="dot"></span>{connLabel}
-  </div>
+  <button
+    class="icon"
+    aria-label="Settings"
+    title="Settings"
+    aria-current={view === "settings" ? "page" : undefined}
+    onclick={() => (view = "settings")}
+  >
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"
+      />
+    </svg>
+  </button>
 </header>
 
 {#if saveError}
@@ -382,7 +393,7 @@
       <h2>Can’t open the database</h2>
       <p class="error" role="alert">{dbError}</p>
       <p class="hint">
-        Dart Trainer keeps all settings, routines and results in a local SQLite database. Start the app with
+        ADX keeps all settings, routines and results in a local SQLite database. Start the app with
         <code>npm run tauri dev</code> or use the installed app. Opening the page in a normal browser does not work.
       </p>
     </section>
@@ -391,7 +402,7 @@
   {:else if view === "settings"}
     <section class="narrow">
       <h2>Autodarts connection</h2>
-      <p class="lede">Dart Trainer listens to the live event stream of your Autodarts client.</p>
+      <p class="lede">ADX listens to the live event stream of your Autodarts client.</p>
       <form onsubmit={saveSettings}>
         <label>
           Host
@@ -547,6 +558,7 @@
       {/each}
     </section>
   {:else if phase === "idle"}
+    <img class="banner-art" src={banner} alt="ADX, the Autodarts training experience. Train. Play. Improve." />
     <section class="narrow">
       <h2>Start a routine</h2>
       <label>
@@ -683,16 +695,28 @@
   {/if}
 </main>
 
+<footer>
+  <div class="meta">
+    <span>ADX v{__APP_VERSION__}</span>
+    <a href={GITHUB_URL} onclick={(e) => openExternal(e, GITHUB_URL)}>GitHub</a>
+    <a href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>Buy me a coffee</a>
+  </div>
+  <div class="conn" data-state={conn} role="status">
+    <span class="dot"></span>{connLabel}
+  </div>
+</footer>
+
 <style>
   :global(:root) {
-    --bg: #1b2825;
-    --panel: #243531;
-    --line: #38534c;
-    --chalk: #e9e6da;
-    --dim: #9bb0a9;
-    --accent: #b8372d;
-    --accent-hi: #cf4a3f;
-    --ok: #4fae78;
+    --bg: #060d12;
+    --panel: #0d1b23;
+    --line: #1d3440;
+    --chalk: #e6ecef;
+    --dim: #8aa1ab;
+    --accent: #22d3ee;
+    --accent-hi: #67e8f9;
+    --on-accent: #04161c;
+    --ok: #4ade80;
     --dart: #f2c14e;
     --board-dark: #141c1a;
     --board-light: #d8d2bf;
@@ -706,12 +730,18 @@
   :global(body) {
     margin: 0;
     min-height: 100vh;
+    background: radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed, var(--bg);
+  }
+  :global(#app) {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
   :global(*) {
     box-sizing: border-box;
   }
   :global(:focus-visible) {
-    outline: 2px solid var(--dart);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
@@ -719,10 +749,11 @@
     display: flex;
     align-items: center;
     gap: 2rem;
-    padding: 0.9rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     border-bottom: 1px solid var(--line);
+    background: rgb(6 13 18 / 0.85);
   }
-  h1 { font-size: 1.15rem; font-weight: 700; margin: 0; letter-spacing: 0.01em; }
+  h1 { margin: 0; line-height: 0; }
   nav { display: flex; gap: 0.25rem; flex: 1; }
   .tab {
     background: none;
@@ -733,14 +764,49 @@
     border-radius: 6px;
     cursor: pointer;
   }
-  .tab[aria-current="page"] { color: var(--chalk); background: var(--panel); }
+  .tab:hover { color: var(--chalk); }
+  .tab[aria-current="page"] { color: var(--chalk); background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
+  button.icon {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--dim);
+    cursor: pointer;
+  }
+  button.icon:hover { color: var(--chalk); background: var(--panel); }
+  button.icon[aria-current="page"] { color: var(--accent); background: var(--panel); }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--dim);
+  }
+  .meta { display: flex; gap: 1.25rem; align-items: center; }
+  .meta a { color: var(--dim); text-decoration: none; }
+  .meta a:hover { color: var(--accent); }
   .conn { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); font-size: 0.9rem; }
   .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--dim); }
   .conn[data-state="connected"] { color: var(--chalk); }
   .conn[data-state="connected"] .dot { background: var(--ok); }
   .conn[data-state="connecting"] .dot { background: var(--dart); }
 
-  main { padding: 2rem 1.5rem 3rem; max-width: 1100px; margin: 0 auto; }
+  main { padding: 2rem 1.5rem 3rem; max-width: 1100px; width: 100%; margin: 0 auto; flex: 1; }
+  .banner-art {
+    display: block;
+    width: 100%;
+    max-width: 34rem;
+    margin: -1rem 0 0.5rem;
+    mask-image: radial-gradient(ellipse at center, #000 45%, transparent 72%);
+  }
   h2 { font-size: 1.6rem; margin: 0 0 0.5rem; }
   h3 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
   .lede { color: var(--dim); max-width: 56ch; line-height: 1.5; margin: 0 0 1.25rem; }
@@ -773,7 +839,7 @@
     border: 1px solid transparent;
   }
   button.small { padding: 0.3rem 0.7rem; font-size: 0.9rem; }
-  button.primary { background: var(--accent); color: #fff; }
+  button.primary { background: var(--accent); color: var(--on-accent); }
   button.primary:hover:not(:disabled) { background: var(--accent-hi); }
   button:disabled { opacity: 0.45; cursor: not-allowed; }
   button.ghost { background: none; color: var(--chalk); border-color: var(--line); }

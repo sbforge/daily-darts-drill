@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Dart Trainer",
+  "productName": "ADX",
   "version": "0.1.0",
   "identifier": "dev.darttrainer.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Dart Trainer",
+        "title": "ADX – Autodarts Training Experience",
         "width": 1100,
         "height": 760,
         "minWidth": 880,
