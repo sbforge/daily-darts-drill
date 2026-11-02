@@ -1,0 +1,350 @@
+// All persistence lives here: one SQLite file managed by the Tauri SQL plugin.
+// Tables: settings, routines, sessions, game_results, darts.
+import Database from "@tauri-apps/plugin-sql";
+import type { Dart } from "./autodarts";
+import type { Settings } from "./games";
+import { cleanItems, DEFAULT_CONFIG, starterRoutine, type Config, type Routine } from "./store";
+
+let db: Database | null = null;
+
+// The plugin uses a connection pool, so we run our writes one after another.
+let chain: Promise<unknown> = Promise.resolve();
+function queue<T>(fn: () => Promise<T>): Promise<T> {
+  const next = chain.then(fn);
+  chain = next.catch(() => undefined);
+  return next;
+}
+
+function conn(): Database {
+  if (!db) throw new Error("The database is not open.");
+  return db;
+}
+
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS settings (
+     key TEXT PRIMARY KEY,
+     value TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS routines (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     position INTEGER NOT NULL,
+     items_json TEXT NOT NULL,
+     updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS sessions (
+     id TEXT PRIMARY KEY,
+     routine_id TEXT,
+     routine_name TEXT NOT NULL,
+     started_at TEXT NOT NULL,
+     finished_at TEXT,
+     status TEXT NOT NULL DEFAULT 'completed')`,
+  `CREATE TABLE IF NOT EXISTS game_results (
+     id TEXT PRIMARY KEY,
+     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+     position INTEGER NOT NULL,
+     game_id TEXT NOT NULL,
+     game_name TEXT NOT NULL,
+     settings_json TEXT NOT NULL,
+     minutes INTEGER NOT NULL,
+     ended_early INTEGER NOT NULL,
+     started_at TEXT NOT NULL,
+     finished_at TEXT NOT NULL,
+     values_json TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS darts (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     game_result_id TEXT NOT NULL REFERENCES game_results(id) ON DELETE CASCADE,
+     turn_index INTEGER NOT NULL,
+     dart_index INTEGER NOT NULL,
+     kind TEXT NOT NULL,
+     number INTEGER,
+     zone TEXT,
+     score INTEGER NOT NULL,
+     x REAL NOT NULL,
+     y REAL NOT NULL,
+     radius REAL NOT NULL,
+     bouncer INTEGER NOT NULL,
+     failed INTEGER NOT NULL,
+     method TEXT)`,
+  `CREATE INDEX IF NOT EXISTS idx_results_game ON game_results(game_id, started_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_darts_result ON darts(game_result_id)`,
+];
+
+export async function openDb(): Promise<void> {
+  db = await Database.load("sqlite:darttrainer.db");
+  for (const sql of SCHEMA) await db.execute(sql);
+
+  // Databases from earlier versions have no status column on sessions.
+  const cols = await db.select<{ name: string }[]>("SELECT name FROM pragma_table_info('sessions')");
+  if (!cols.some((c) => c.name === "status")) {
+    await db.execute("ALTER TABLE sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'");
+  }
+
+  // A routine that was still running when the app closed counts as aborted: no scores kept.
+  const stale = await db.select<{ id: string }[]>("SELECT id FROM sessions WHERE status = 'running'");
+  for (const { id } of stale) {
+    await db.execute(
+      `DELETE FROM darts WHERE game_result_id IN (SELECT id FROM game_results WHERE session_id = $1)`,
+      [id],
+    );
+    await db.execute("DELETE FROM game_results WHERE session_id = $1", [id]);
+    await db.execute("UPDATE sessions SET status = 'aborted', finished_at = $1 WHERE id = $2", [
+      new Date().toISOString(),
+      id,
+    ]);
+  }
+}
+
+// ------------------------------------------------------------- settings
+
+export async function getSetting(key: string): Promise<string | null> {
+  const rows = await conn().select<{ value: string }[]>("SELECT value FROM settings WHERE key = $1", [key]);
+  return rows.length ? rows[0].value : null;
+}
+
+export function setSetting(key: string, value: string): Promise<void> {
+  return queue(async () => {
+    await conn().execute(
+      `INSERT INTO settings (key, value) VALUES ($1, $2)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [key, value],
+    );
+  });
+}
+
+export async function loadConfig(): Promise<Config> {
+  const host = await getSetting("autodarts_host");
+  const port = Number(await getSetting("autodarts_port"));
+  return { host: host || DEFAULT_CONFIG.host, port: port || DEFAULT_CONFIG.port };
+}
+
+export async function saveConfig(config: Config): Promise<void> {
+  await setSetting("autodarts_host", config.host);
+  await setSetting("autodarts_port", String(config.port));
+}
+
+// ------------------------------------------------------------- routines
+
+export async function loadRoutines(): Promise<Routine[]> {
+  const rows = await conn().select<{ id: string; name: string; items_json: string }[]>(
+    "SELECT id, name, items_json FROM routines ORDER BY position",
+  );
+  const list: Routine[] = rows.map((r) => {
+    let items = [];
+    try {
+      items = JSON.parse(r.items_json);
+    } catch {
+      /* a broken row becomes an empty routine instead of blocking the app */
+    }
+    return { id: r.id, name: r.name, items: cleanItems(items) };
+  });
+  if (list.length) return list;
+
+  const starter = [starterRoutine()];
+  await saveRoutines(starter);
+  return starter;
+}
+
+export function saveRoutines(routines: Routine[]): Promise<void> {
+  return queue(async () => {
+    const d = conn();
+    const now = new Date().toISOString();
+    for (let i = 0; i < routines.length; i++) {
+      const r = routines[i];
+      await d.execute(
+        `INSERT INTO routines (id, name, position, items_json, updated_at) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name, position = excluded.position,
+           items_json = excluded.items_json, updated_at = excluded.updated_at`,
+        [r.id, r.name, i, JSON.stringify(r.items), now],
+      );
+    }
+    if (routines.length) {
+      const marks = routines.map((_, i) => `$${i + 1}`).join(",");
+      await d.execute(`DELETE FROM routines WHERE id NOT IN (${marks})`, routines.map((r) => r.id));
+    }
+  });
+}
+
+// -------------------------------------------------------------- results
+
+export interface GameResultInput {
+  sessionId: string;
+  routineId: string;
+  routineName: string;
+  sessionStartedAt: string;
+  position: number;
+  gameId: string;
+  gameName: string;
+  settings: Settings;
+  minutes: number;
+  endedEarly: boolean;
+  startedAt: string;
+  finishedAt: string;
+  values: Record<string, number>;
+  turns: Dart[][];
+}
+
+export function saveGameResult(p: GameResultInput): Promise<void> {
+  return queue(async () => {
+    const d = conn();
+    const resultId = crypto.randomUUID();
+
+    await d.execute(
+      `INSERT OR IGNORE INTO sessions (id, routine_id, routine_name, started_at, status)
+       VALUES ($1, $2, $3, $4, 'running')`,
+      [p.sessionId, p.routineId, p.routineName, p.sessionStartedAt],
+    );
+    await d.execute(
+      `INSERT INTO game_results (id, session_id, position, game_id, game_name, settings_json, minutes,
+         ended_early, started_at, finished_at, values_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        resultId,
+        p.sessionId,
+        p.position,
+        p.gameId,
+        p.gameName,
+        JSON.stringify(p.settings),
+        p.minutes,
+        p.endedEarly ? 1 : 0,
+        p.startedAt,
+        p.finishedAt,
+        JSON.stringify(p.values),
+      ],
+    );
+
+    // Raw darts, so stats can always be recomputed or extended later.
+    const rows: unknown[][] = [];
+    p.turns.forEach((turn, ti) =>
+      turn.forEach((dart, di) =>
+        rows.push([
+          resultId,
+          ti,
+          di,
+          dart.kind,
+          dart.number,
+          dart.zone,
+          dart.score,
+          dart.x,
+          dart.y,
+          dart.radius,
+          dart.bouncer ? 1 : 0,
+          dart.failed ? 1 : 0,
+          dart.method,
+        ]),
+      ),
+    );
+    const COLS = 13;
+    for (let i = 0; i < rows.length; i += 40) {
+      const chunk = rows.slice(i, i + 40);
+      const marks = chunk
+        .map((_, r) => `(${Array.from({ length: COLS }, (_, c) => `$${r * COLS + c + 1}`).join(",")})`)
+        .join(",");
+      await d.execute(
+        `INSERT INTO darts (game_result_id, turn_index, dart_index, kind, number, zone, score, x, y, radius,
+           bouncer, failed, method) VALUES ${marks}`,
+        chunk.flat(),
+      );
+    }
+  });
+}
+
+export interface SessionInfo {
+  sessionId: string;
+  routineId: string;
+  routineName: string;
+  startedAt: string;
+}
+
+/**
+ * Closes a routine run. An aborted run keeps no scores: the results and darts
+ * saved so far for that run are removed and only the "Aborted" entry remains.
+ */
+export function endSession(info: SessionInfo, status: "completed" | "aborted"): Promise<void> {
+  return queue(async () => {
+    const d = conn();
+    if (status === "aborted") {
+      await d.execute(
+        `DELETE FROM darts WHERE game_result_id IN (SELECT id FROM game_results WHERE session_id = $1)`,
+        [info.sessionId],
+      );
+      await d.execute("DELETE FROM game_results WHERE session_id = $1", [info.sessionId]);
+    }
+    await d.execute(
+      `INSERT INTO sessions (id, routine_id, routine_name, started_at, finished_at, status)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT(id) DO UPDATE SET finished_at = excluded.finished_at, status = excluded.status`,
+      [info.sessionId, info.routineId, info.routineName, info.startedAt, new Date().toISOString(), status],
+    );
+  });
+}
+
+export function deleteSession(sessionId: string): Promise<void> {
+  return queue(async () => {
+    const d = conn();
+    await d.execute(
+      `DELETE FROM darts WHERE game_result_id IN (SELECT id FROM game_results WHERE session_id = $1)`,
+      [sessionId],
+    );
+    await d.execute("DELETE FROM game_results WHERE session_id = $1", [sessionId]);
+    await d.execute("DELETE FROM sessions WHERE id = $1", [sessionId]);
+  });
+}
+
+export interface HistoryRow {
+  id: string;
+  position: number;
+  gameId: string;
+  gameName: string;
+  minutes: number;
+  endedEarly: boolean;
+  startedAt: string;
+  settings: Settings;
+  values: Record<string, number>;
+}
+
+export interface HistorySession {
+  id: string;
+  routineName: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: "completed" | "aborted" | "running";
+  rows: HistoryRow[];
+}
+
+export async function loadSessions(limit = 100): Promise<HistorySession[]> {
+  const d = conn();
+  const sessions = await d.select<any[]>(
+    `SELECT id, routine_name, started_at, finished_at, status FROM sessions
+     ORDER BY started_at DESC LIMIT $1`,
+    [limit],
+  );
+  if (!sessions.length) return [];
+
+  const marks = sessions.map((_, i) => `$${i + 1}`).join(",");
+  const results = await d.select<any[]>(
+    `SELECT id, session_id, position, game_id, game_name, minutes, ended_early, started_at,
+            settings_json, values_json
+     FROM game_results WHERE session_id IN (${marks}) ORDER BY position`,
+    sessions.map((r) => r.id),
+  );
+
+  return sessions.map((r) => ({
+    id: r.id,
+    routineName: r.routine_name,
+    startedAt: r.started_at,
+    finishedAt: r.finished_at,
+    status: r.status,
+    rows: results
+      .filter((g) => g.session_id === r.id)
+      .map((g) => ({
+        id: g.id,
+        position: g.position,
+        gameId: g.game_id,
+        gameName: g.game_name,
+        minutes: g.minutes,
+        endedEarly: !!g.ended_early,
+        startedAt: g.started_at,
+        settings: JSON.parse(g.settings_json),
+        values: JSON.parse(g.values_json),
+      })),
+  }));
+}
