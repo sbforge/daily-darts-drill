@@ -30,8 +30,8 @@
   * Add Logo / general artwork ✅ done
   * Add a decent icon ✅ done
   * Routine Selection
-    * Show Routine with scrollable cards
-    * Routine Description
+    * Show Routine with scrollable cards ✅ done
+    * Routine Description ✅ done
 
 * Settings
   * Autodarts auto discovery ip & port
