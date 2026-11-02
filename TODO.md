@@ -21,14 +21,14 @@
     * Show current Target
 
 * UI Overhaul
-  * Keep the top Navigation
-    * Move Settings to an icon to the right
-  * Footer
-    * Autodarts status bottom right
-    * Show version info
-    * link to public github repo
-  * Add Logo / general artwork
-  * Add a decent icon
+  * Keep the top Navigation ✅ done
+    * Move Settings to an icon to the right ✅ done
+  * Footer ✅ done
+    * Autodarts status bottom right ✅ done
+    * Show version info ✅ done
+    * link to public github repo ✅ done
+  * Add Logo / general artwork ✅ done
+  * Add a decent icon ✅ done
   * Routine Selection
     * Show Routine with scrollable cards
     * Routine Description
@@ -43,9 +43,9 @@
 * Single Training Game
 * i18n
 * Heatmap per Game / Configurable per Training game... Random checkout i.e. does not need a heatmap
-* Artwork
+* Artwork ✅ done
 
-* Buy me a coffee link
+* Buy me a coffee link ✅ done (placeholder URL, real link still to add)
 
 ## More Training Games
 * Segment Training
