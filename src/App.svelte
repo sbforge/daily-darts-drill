@@ -7,13 +7,16 @@
     type ConnState,
     type DartEvent,
   } from "./lib/autodarts";
-  import { DEFAULT_CONFIG, newRoutine, newItem, type Config, type Routine } from "./lib/store";
+  import { DEFAULT_CONFIG, MAX_PAUSE_SECONDS, newRoutine, pauseSeconds, totalSeconds, type Config, type Routine } from "./lib/store";
   import * as db from "./lib/db";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import Board from "./lib/Board.svelte";
   import Logo from "./lib/Logo.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
+  import RoutineItems from "./lib/RoutineItems.svelte";
+  import RoutineMenu from "./lib/RoutineMenu.svelte";
+  import Select from "./lib/Select.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
 
@@ -21,6 +24,8 @@
     gameId: string;
     minutes: number;
     early: boolean;
+    /** The game reached its own end, before the clock ran out. */
+    completed: boolean;
     hasResult: boolean;
     lines: StatLine[];
   }
@@ -40,8 +45,6 @@
   // routines
   let routines = $state<Routine[]>([]);
   let selectedId = $state("");
-  let addGameId = $state(GAMES[1].id);
-  let pendingDelete = $state<string | null>(null);
 
   // history
   let history = $state<db.HistorySession[]>([]);
@@ -56,15 +59,18 @@
     sessionId: string;
     startedAt: string;
   } | null>(null);
-  let phase = $state<"idle" | "ready" | "running" | "gameDone" | "summary">("idle");
+  let phase = $state<"idle" | "countdown" | "ready" | "break" | "running" | "summary">("idle");
   let session = $state<Session | null>(null);
   let gameStartedAt = "";
   let endsAt = $state<number | null>(null);
-  let endedEarly = $state(false);
   let now = $state(Date.now());
   let paused = $state(false);
   let pausedAt = $state(0);
   let pendingAbort = $state(false);
+  // The countdown before the first game and the break between two games share one clock;
+  // the game starts by itself when it runs out.
+  let breakEndsAt = $state(0);
+  const COUNTDOWN_SECONDS = 5;
 
   let client: AutodartsClient;
 
@@ -79,7 +85,8 @@
   const hero = $derived(result?.lines.find((l) => l.hero));
   const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
   const canStart = $derived(!!def && (conn === "connected" || !def.needsDarts));
-  const isLast = $derived(run ? run.index + 1 >= run.routine.items.length : false);
+  const breakLeft = $derived(Math.max(0, breakEndsAt - (paused ? pausedAt : now)));
+  const countdownLeft = $derived(Math.max(1, Math.ceil(breakLeft / 1000)));
 
   function fmt(ms: number): string {
     const s = Math.ceil(ms / 1000);
@@ -127,13 +134,14 @@
       sessionId: crypto.randomUUID(),
       startedAt: new Date().toISOString(),
     };
-    phase = "ready";
+    now = Date.now();
+    breakEndsAt = now + COUNTDOWN_SECONDS * 1000;
+    phase = "countdown";
   }
 
   function startGame() {
     if (!item || !def) return;
     session = new Session(def, { ...item.settings });
-    endedEarly = false;
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();
@@ -147,11 +155,11 @@
     const turns = $state.snapshot(session.allTurns);
     session.finish();
     paused = false;
-    endedEarly = early;
     run.results.push({
       gameId: def.id,
       minutes: item.minutes,
       early,
+      completed: res.done,
       hasResult: def.hasResult,
       lines: res.lines,
     });
@@ -173,13 +181,14 @@
         turns,
       }).then(refreshHistory, failed);
     }
-    phase = "gameDone";
+    nextGame();
   }
 
   function sessionInfo(r: NonNullable<typeof run>): db.SessionInfo {
     return { sessionId: r.sessionId, routineId: r.routine.id, routineName: r.routine.name, startedAt: r.startedAt };
   }
 
+  /** Straight on from a finished game: the break if the routine has one, else the next game. */
   function nextGame() {
     if (!run) return;
     session = null;
@@ -188,9 +197,23 @@
     if (run.index >= run.routine.items.length) {
       db.endSession(sessionInfo(run), "completed").then(refreshHistory, failed);
       phase = "summary";
+    } else if (pauseSeconds(run.routine) > 0) {
+      now = Date.now();
+      breakEndsAt = now + pauseSeconds(run.routine) * 1000;
+      phase = "break";
     } else {
-      phase = "ready";
+      startOrWait();
     }
+  }
+
+  /** Ends the break. Without a connection a game with darts can't start, so it waits on its start screen. */
+  function endBreak() {
+    if (phase === "break" || phase === "countdown") startOrWait();
+  }
+
+  function startOrWait() {
+    if (canStart) startGame();
+    else phase = "ready";
   }
 
   function closeRun() {
@@ -214,8 +237,9 @@
     closeRun();
   }
 
+  /** Pauses a game or the break between games. A paused break doesn't start the next game. */
   function pause() {
-    if (phase !== "running" || paused) return;
+    if ((phase !== "running" && phase !== "break") || paused) return;
     pausedAt = Date.now();
     paused = true;
   }
@@ -223,7 +247,8 @@
   function resume() {
     if (!paused) return;
     // Move the end of the clock by however long we were paused.
-    if (endsAt !== null) endsAt += Date.now() - pausedAt;
+    if (phase === "break") breakEndsAt += Date.now() - pausedAt;
+    else if (endsAt !== null) endsAt += Date.now() - pausedAt;
     paused = false;
     now = Date.now();
   }
@@ -240,6 +265,16 @@
 
   $effect(() => {
     if (phase === "running" && result?.done) finish(false);
+  });
+
+  $effect(() => {
+    if (phase !== "break" && phase !== "countdown") return;
+    const id = setInterval(() => {
+      if (paused) return;
+      now = Date.now();
+      if (now >= breakEndsAt) endBreak();
+    }, 200);
+    return () => clearInterval(id);
   });
 
   // ---- saving routines and the selected routine
@@ -272,12 +307,8 @@
     selectedId = copy.id;
   }
 
+  /** The menu has already asked for confirmation. */
   function deleteRoutine(id: string) {
-    if (pendingDelete !== id) {
-      pendingDelete = id;
-      return;
-    }
-    pendingDelete = null;
     if (routines.length <= 1) {
       routines[0].items = [];
       routines[0].name = t("routines.new");
@@ -286,16 +317,6 @@
     }
     routines = routines.filter((r) => r.id !== id);
     selectedId = routines[0].id;
-  }
-
-  function addGame(r: Routine) {
-    r.items.push(newItem(addGameId));
-  }
-
-  function move(r: Routine, i: number, dir: -1 | 1) {
-    const j = i + dir;
-    if (j < 0 || j >= r.items.length) return;
-    [r.items[i], r.items[j]] = [r.items[j], r.items[i]];
   }
 
   // ---- history
@@ -439,11 +460,11 @@
       <h3>{t("settings.languageTitle")}</h3>
       <label>
         {t("settings.language")}
-        <select value={getLocale()} onchange={(e) => changeLanguage(e.currentTarget.value as Locale)}>
-          {#each LOCALES as l (l.id)}
-            <option value={l.id}>{l.name}</option>
-          {/each}
-        </select>
+        <Select
+          value={getLocale()}
+          options={LOCALES.map((l) => ({ value: l.id, label: l.name }))}
+          onchange={(id) => changeLanguage(id)}
+        />
       </label>
     </section>
   {:else if view === "history"}
@@ -500,78 +521,25 @@
       {#each routines as r (r.id)}
         {#if r.id === selectedId}
           <div class="editor">
-            <label>
-              {t("routines.name")}
-              <input type="text" bind:value={r.name} />
-            </label>
+            <div class="name-row">
+              <label>
+                {t("routines.name")}
+                <input type="text" bind:value={r.name} />
+              </label>
+              <RoutineMenu onduplicate={() => duplicateRoutine(r)} ondelete={() => deleteRoutine(r.id)} />
+            </div>
             <label>
               {t("routines.description")}
               <textarea rows="2" maxlength="160" bind:value={r.description} placeholder={t("routines.descriptionPlaceholder")}
               ></textarea>
             </label>
+            <label class="pause-field">
+              {t("routines.pause")}
+              <input type="number" min="0" max={MAX_PAUSE_SECONDS} step="15" bind:value={r.pauseSeconds} />
+              <span class="hint">{t("routines.pauseHint")}</span>
+            </label>
 
-            {#if r.items.length === 0}
-              <p class="hint">{t("routines.empty")}</p>
-            {/if}
-
-            {#each r.items as it, i (it)}
-              {@const g = gameById(it.gameId)}
-              <div class="item">
-                <div class="item-head">
-                  <strong>{g.name}</strong>
-                  <div class="row tight">
-                    <button class="ghost small" onclick={() => move(r, i, -1)} disabled={i === 0} aria-label={t("routines.moveUp")}>
-                      {t("routines.up")}
-                    </button>
-                    <button
-                      class="ghost small"
-                      onclick={() => move(r, i, 1)}
-                      disabled={i === r.items.length - 1}
-                      aria-label={t("routines.moveDown")}
-                    >
-                      {t("routines.down")}
-                    </button>
-                    <button class="ghost small" onclick={() => r.items.splice(i, 1)}>{t("routines.remove")}</button>
-                  </div>
-                </div>
-                <div class="fields">
-                  <label>
-                    {t("routines.timeCap")}
-                    <input type="number" min="1" max="120" bind:value={it.minutes} />
-                  </label>
-                  {#each g.fields as f (f.key)}
-                    <label>
-                      {f.label}
-                      {#if f.kind === "select"}
-                        <select bind:value={it.settings[f.key]}>
-                          {#each f.options ?? [] as o (o.value)}
-                            <option value={o.value}>{o.label}</option>
-                          {/each}
-                        </select>
-                      {:else}
-                        <input type="number" min={f.min} max={f.max} bind:value={it.settings[f.key]} />
-                      {/if}
-                    </label>
-                  {/each}
-                </div>
-              </div>
-            {/each}
-
-            <div class="row">
-              <select bind:value={addGameId} aria-label={t("routines.gameToAdd")}>
-                {#each GAMES as g (g.id)}
-                  <option value={g.id}>{g.name}</option>
-                {/each}
-              </select>
-              <button class="primary" onclick={() => addGame(r)}>{t("routines.addGame")}</button>
-            </div>
-
-            <div class="row">
-              <button class="ghost" onclick={() => duplicateRoutine(r)}>{t("routines.duplicate")}</button>
-              <button class="ghost danger" onclick={() => deleteRoutine(r.id)}>
-                {pendingDelete === r.id ? t("common.confirmDelete") : t("routines.delete")}
-              </button>
-            </div>
+            <RoutineItems items={r.items} totalSeconds={totalSeconds(r)} />
           </div>
         {/if}
       {/each}
@@ -580,6 +548,57 @@
     <section class="pick">
       <h2>{t("train.title")}</h2>
       <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} />
+    </section>
+  {:else if phase === "countdown" && run && item && def}
+    <section class="countdown">
+      <p class="progress">{run.routine.name}</p>
+      {#key countdownLeft}
+        <div class="count" aria-live="assertive">{countdownLeft}</div>
+      {/key}
+      <p class="lede">{t("run.firstUp", { name: def.name })}</p>
+      {#if !canStart}
+        <p class="hint">{t("run.connectFirst")}</p>
+      {/if}
+      <div class="row">
+        <button class="primary" onclick={endBreak}>{canStart ? t("run.startNow") : t("run.skipBreak")}</button>
+        <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
+      </div>
+    </section>
+  {:else if phase === "break" && run && item && def}
+    {@const last = run.results.at(-1)}
+    {@const lastHero = last?.lines.find((l) => l.hero)}
+    <section class="narrow break">
+      {#if last}
+        <div class="last-game">
+          <p class="progress">
+            {t("run.lastGame", { name: gameById(last.gameId).name })} ·
+            {t(last.completed ? "run.completed" : last.early ? "run.endedEarly" : "run.timeUp")}
+          </p>
+          {#if last.hasResult && lastHero}
+            <p class="last-hero"><strong>{lastHero.value}</strong> {lastHero.label}</p>
+          {/if}
+        </div>
+      {/if}
+      <p class="progress">{t("run.breakTitle")}</p>
+      <div class="clock" class:paused>{fmt(breakLeft)}</div>
+      <p class="note">{t(paused ? "run.breakPaused" : "run.breakNote")}</p>
+      <div class="up-next">
+        <p class="progress">{t("run.upNext", { n: run.index + 1, total: run.routine.items.length })}</p>
+        <h2>{def.name}</h2>
+        <p class="lede">{def.blurb}</p>
+        <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
+        {#if def.needsDarts}
+          <p class="hint">{t("run.clockHint")}</p>
+        {/if}
+      </div>
+      <div class="row">
+        <button class="primary" onclick={endBreak}>{canStart ? t("run.startNow") : t("run.skipBreak")}</button>
+        <button class="ghost" onclick={paused ? resume : pause}>{paused ? t("run.resume") : t("run.pause")}</button>
+        <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
+      </div>
+      {#if !canStart}
+        <p class="hint">{t("run.connectFirst")}</p>
+      {/if}
     </section>
   {:else if phase === "ready" && run && item && def}
     <section class="narrow">
@@ -598,15 +617,13 @@
         <p class="hint">{t("run.connectFirst")}</p>
       {/if}
     </section>
-  {:else if (phase === "running" || phase === "gameDone") && session && result && run && def}
+  {:else if phase === "running" && session && result && run && def}
     <section class="stage">
       <div class="panel">
         <p class="progress">{t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}</p>
-        <div class="clock" class:waiting={endsAt === null} class:paused class:over={phase === "gameDone"}>{fmt(remaining)}</div>
+        <div class="clock" class:waiting={endsAt === null} class:paused>{fmt(remaining)}</div>
         <p class="note">
-          {#if phase === "gameDone"}
-            {t(result.done ? "run.completed" : endedEarly ? "run.endedEarly" : "run.timeUp")}
-          {:else if paused}
+          {#if paused}
             {t("run.paused")}
           {:else if endsAt === null}
             {t("run.waiting")}
@@ -638,17 +655,10 @@
         {/if}
 
         <div class="row">
-          {#if phase === "running"}
-            <button class="primary" onclick={paused ? resume : pause}>{paused ? t("run.resume") : t("run.pause")}</button>
-            <button class="ghost" onclick={() => finish(true)}>{def.hasResult ? t("run.endGame") : t("run.skipWarmUp")}</button>
-          {:else}
-            <button class="primary" onclick={nextGame}>{isLast ? t("run.finishRoutine") : t("run.nextGame")}</button>
-          {/if}
+          <button class="primary" onclick={paused ? resume : pause}>{paused ? t("run.resume") : t("run.pause")}</button>
+          <button class="ghost" onclick={() => finish(true)}>{def.hasResult ? t("run.endGame") : t("run.skipWarmUp")}</button>
           <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
         </div>
-        {#if phase === "gameDone" && def.hasResult}
-          <p class="hint">{t("run.resultSaved")}</p>
-        {/if}
       </div>
 
       <div class="views">
@@ -813,57 +823,85 @@
   h2 { font-size: 1.6rem; margin: 0 0 0.5rem; }
   h3 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
   .lede { color: var(--dim); max-width: 56ch; line-height: 1.5; margin: 0 0 1.25rem; }
-  .hint { color: var(--dim); font-size: 0.9rem; max-width: 56ch; line-height: 1.45; }
   .error { color: #ff9b8f; }
   .progress { color: var(--dim); margin: 0 0 0.35rem; font-size: 0.95rem; }
   .settings-line { margin: 0 0 1rem; }
 
   .narrow { max-width: 34rem; }
+  .pause-field { max-width: 22rem; }
+  .pause-field input { max-width: 8rem; }
+  .pause-field .hint { margin: 0; }
+  .countdown { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 3rem; }
+  .countdown .lede { margin: 0.5rem 0 0; }
+  .countdown .row { justify-content: center; }
+  .count {
+    font-size: 11rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    animation: count-in 1s ease-out both;
+  }
+  @keyframes count-in {
+    from { opacity: 0; transform: scale(1.35); }
+    25% { opacity: 1; transform: scale(1); }
+    to { opacity: 0.85; }
+  }
+  .last-game { margin: 0 0 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+  .last-game .progress { margin: 0; }
+  .last-hero { margin: 0.35rem 0 0; color: var(--dim); }
+  .last-hero strong { color: var(--dart); font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-right: 0.25rem; }
+  .break .clock { font-size: 5.5rem; margin: 0.25rem 0 0; }
+  .up-next {
+    margin: 1.75rem 0 0;
+    padding: 1rem 1.25rem 0.25rem;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    background: var(--panel);
+  }
+  .up-next h2 { margin-bottom: 0.35rem; }
+  .up-next .lede { margin-bottom: 0.75rem; }
   .pick { max-width: 52rem; margin: 0 auto; }
   .pick h2 { text-align: center; }
-  textarea { resize: vertical; line-height: 1.4; }
-  label { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.95rem; }
-  input, select, textarea {
-    font: inherit;
-    color: var(--chalk);
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 0.55rem 0.7rem;
+  /* Shared form controls and buttons, also used by components in lib/. */
+  :global {
+    .hint { color: var(--dim); font-size: 0.9rem; max-width: 56ch; line-height: 1.45; }
+    textarea { resize: vertical; line-height: 1.4; }
+    label { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.95rem; }
+    input, select, textarea {
+      font: inherit;
+      color: var(--chalk);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+    }
+    .row { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; align-items: center; }
+    button.primary, button.ghost {
+      font: inherit;
+      font-weight: 600;
+      border-radius: 6px;
+      padding: 0.65rem 1.2rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    button.small { padding: 0.3rem 0.7rem; font-size: 0.9rem; }
+    button.primary { background: var(--accent); color: var(--on-accent); }
+    button.primary:hover:not(:disabled) { background: var(--accent-hi); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.ghost { background: none; color: var(--chalk); border-color: var(--line); }
+    button.ghost:hover:not(:disabled) { background: var(--panel); }
+    button.danger { color: #ff9b8f; }
   }
   .url { font-family: ui-monospace, Consolas, monospace; color: var(--dim); font-size: 0.9rem; margin: 0 0 1rem; word-break: break-all; }
   .recent { font-size: 1.2rem; letter-spacing: 0.04em; }
 
-  .row { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; align-items: center; }
-  .row.tight { margin-top: 0; gap: 0.4rem; }
-  button.primary, button.ghost {
-    font: inherit;
-    font-weight: 600;
-    border-radius: 6px;
-    padding: 0.65rem 1.2rem;
-    cursor: pointer;
-    border: 1px solid transparent;
-  }
-  button.small { padding: 0.3rem 0.7rem; font-size: 0.9rem; }
-  button.primary { background: var(--accent); color: var(--on-accent); }
-  button.primary:hover:not(:disabled) { background: var(--accent-hi); }
-  button:disabled { opacity: 0.45; cursor: not-allowed; }
-  button.ghost { background: none; color: var(--chalk); border-color: var(--line); }
-  button.ghost:hover:not(:disabled) { background: var(--panel); }
-  button.danger { color: #ff9b8f; }
-
   .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 1rem 0 1.5rem; }
   .editor { max-width: 44rem; }
-  .item {
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 0.9rem 1rem 0.2rem;
-    margin-bottom: 0.9rem;
-    background: var(--panel);
-  }
-  .item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
-  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; }
-  .item input, .item select { background: var(--bg); }
+  .name-row { display: flex; align-items: flex-end; gap: 0.5rem; }
+  .name-row label { flex: 1; }
+  .name-row :global(.menu) { margin-bottom: 1rem; }
 
   .plan { padding: 0; margin: 0 0 1rem; list-style: none; border-top: 1px solid var(--line); }
   .plan li {
@@ -880,7 +918,6 @@
   .stage { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 2.5rem; align-items: start; }
   .clock { font-size: 4.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock.waiting { color: var(--dim); }
-  .clock.over { color: var(--dart); }
   .clock.paused { color: var(--dart); opacity: 0.75; }
   .note { color: var(--dim); margin: 0.5rem 0 1.5rem; }
   .focus { display: flex; flex-direction: column; margin-bottom: 1.25rem; }
