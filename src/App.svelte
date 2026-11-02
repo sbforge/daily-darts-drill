@@ -14,8 +14,8 @@
   import Board from "./lib/Board.svelte";
   import CameraFeed from "./lib/CameraFeed.svelte";
   import Logo from "./lib/Logo.svelte";
+  import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
-  import banner from "./assets/brand/adx-logo-tagline.webp";
 
   interface RunResult {
     name: string;
@@ -24,8 +24,6 @@
     hasResult: boolean;
     lines: StatLine[];
   }
-
-  const EMPTY_ROUTINE: Routine = { id: "", name: "", items: [] };
 
   let ready = $state(false);
   let dbError = $state("");
@@ -47,6 +45,7 @@
 
   // history
   let history = $state<db.HistorySession[]>([]);
+  let lastPlayed = $state<Record<string, string>>({});
   let pendingSessionDelete = $state<string | null>(null);
 
   // running a routine
@@ -72,7 +71,6 @@
   const connLabel = $derived(
     conn === "connected" ? "Autodarts connected" : conn === "connecting" ? "Connecting…" : "Not connected",
   );
-  const selected = $derived(routines.find((r) => r.id === selectedId) ?? routines[0] ?? EMPTY_ROUTINE);
   const item = $derived(run && phase !== "summary" && phase !== "idle" ? (run.routine.items[run.index] ?? null) : null);
   const def = $derived(item ? gameById(item.gameId) : null);
   const totalMs = $derived(item ? item.minutes * 60_000 : 0);
@@ -88,16 +86,13 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
-  function routineMinutes(r: Routine): number {
-    return r.items.reduce((sum, i) => sum + (Number(i.minutes) || 0), 0);
-  }
-
   function failed(e: unknown) {
     saveError = `Could not save to the database: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   function refreshHistory() {
     db.loadSessions().then((h) => (history = h), failed);
+    db.loadLastPlayed().then((l) => (lastPlayed = l), failed);
   }
 
   // ---- live events
@@ -286,6 +281,7 @@
     if (routines.length <= 1) {
       routines[0].items = [];
       routines[0].name = "New routine";
+      routines[0].description = "";
       return;
     }
     routines = routines.filter((r) => r.id !== id);
@@ -344,6 +340,7 @@
         const last = await db.getSetting("selected_routine");
         selectedId = routines.find((r) => r.id === last)?.id ?? routines[0].id;
         history = await db.loadSessions();
+        lastPlayed = await db.loadLastPlayed();
         ready = true;
         client.connect(config.host, config.port);
       } catch (e) {
@@ -490,6 +487,11 @@
               Routine name
               <input type="text" bind:value={r.name} />
             </label>
+            <label>
+              Short description
+              <textarea rows="2" maxlength="160" bind:value={r.description} placeholder="What this routine is for, shown on its card"
+              ></textarea>
+            </label>
 
             {#if r.items.length === 0}
               <p class="hint">No games yet. Add the first one below.</p>
@@ -558,37 +560,9 @@
       {/each}
     </section>
   {:else if phase === "idle"}
-    <img class="banner-art" src={banner} alt="ADX, the Autodarts training experience. Train. Play. Improve." />
-    <section class="narrow">
+    <section class="pick">
       <h2>Start a routine</h2>
-      <label>
-        Routine
-        <select bind:value={selectedId}>
-          {#each routines as r (r.id)}
-            <option value={r.id}>{r.name || "Untitled"}</option>
-          {/each}
-        </select>
-      </label>
-
-      {#if selected.items.length}
-        <ol class="plan">
-          {#each selected.items as it (it)}
-            {@const g = gameById(it.gameId)}
-            <li>
-              <span class="plan-name">{g.name}</span>
-              <span class="plan-meta">{it.minutes} min</span>
-              <span class="plan-desc">{g.describe(it.settings)}</span>
-            </li>
-          {/each}
-        </ol>
-        <p class="hint">{routineMinutes(selected)} minutes in total at most. Games with darts start their clock on your first dart.</p>
-      {:else}
-        <p class="hint">This routine has no games yet. Add some under Routines.</p>
-      {/if}
-
-      <div class="row">
-        <button class="primary" onclick={startRoutine} disabled={selected.items.length === 0}>Start routine</button>
-      </div>
+      <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} />
     </section>
   {:else if phase === "ready" && run && item && def}
     <section class="narrow">
@@ -730,12 +704,20 @@
   :global(body) {
     margin: 0;
     min-height: 100vh;
-    background: radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed, var(--bg);
+    /* The full logo artwork sits behind every view, dimmed so it never competes with the content. */
+    background:
+      radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed,
+      linear-gradient(rgb(6 13 18 / 0.78), rgb(6 13 18 / 0.78)) fixed,
+      url("./assets/brand/adx-logo-tagline.webp") center / cover no-repeat fixed,
+      var(--bg);
   }
+  /* Header and footer stay put; only the content between them scrolls. */
   :global(#app) {
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   :global(*) {
     box-sizing: border-box;
@@ -746,6 +728,7 @@
   }
 
   header {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 2rem;
@@ -781,6 +764,7 @@
   button.icon[aria-current="page"] { color: var(--accent); background: var(--panel); }
 
   footer {
+    flex: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -799,13 +783,12 @@
   .conn[data-state="connected"] .dot { background: var(--ok); }
   .conn[data-state="connecting"] .dot { background: var(--dart); }
 
-  main { padding: 2rem 1.5rem 3rem; max-width: 1100px; width: 100%; margin: 0 auto; flex: 1; }
-  .banner-art {
-    display: block;
-    width: 100%;
-    max-width: 34rem;
-    margin: -1rem 0 0.5rem;
-    mask-image: radial-gradient(ellipse at center, #000 45%, transparent 72%);
+  /* Full width so the scrollbar sits at the window edge; the padding centres a 1100px column. */
+  main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 2rem max(1.5rem, calc((100% - 1100px) / 2 + 1.5rem)) 3rem;
   }
   h2 { font-size: 1.6rem; margin: 0 0 0.5rem; }
   h3 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
@@ -816,8 +799,11 @@
   .settings-line { margin: 0 0 1rem; }
 
   .narrow { max-width: 34rem; }
+  .pick { max-width: 52rem; margin: 0 auto; }
+  .pick h2 { text-align: center; }
+  textarea { resize: vertical; line-height: 1.4; }
   label { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.95rem; }
-  input, select {
+  input, select, textarea {
     font: inherit;
     color: var(--chalk);
     background: var(--panel);
@@ -889,7 +875,7 @@
   dd.strong { color: var(--dart); }
   .result h3 { margin-top: 1.75rem; }
 
-  .banner { margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
+  .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
   .history { max-width: 44rem; }
   .session { margin-bottom: 2rem; }
