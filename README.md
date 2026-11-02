@@ -1,4 +1,4 @@
-# Dart Trainer
+# ADX – The Autodarts Training Experience
 
 Timed darts training on top of the Autodarts event stream (`ws://<host>:<port>/api/events/system`).
 Built with Tauri 2 + Svelte 5 + TypeScript. Runs on Windows, macOS and Linux.

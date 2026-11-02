@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Source for all app icons. Regenerate with: npx tauri icon src-tauri/icons/app-icon.svg -->
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#0d2630" />
+      <stop offset="1" stop-color="#050b0f" />
+    </radialGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f7f8" />
+      <stop offset="1" stop-color="#aeb9bf" />
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="200" fill="url(#bg)" />
+  <!-- dartboard ring -->
+  <circle cx="512" cy="512" r="340" fill="none" stroke="#22d3ee" stroke-opacity="0.35" stroke-width="14" />
+  <circle cx="512" cy="512" r="270" fill="none" stroke="#7fa3b0" stroke-opacity="0.18" stroke-width="56" stroke-dasharray="42 42" />
+  <!-- X: silver stroke -->
+  <polygon points="300,280 400,280 724,744 624,744" fill="url(#silver)" />
+  <!-- X: cyan stroke turning into a dart -->
+  <g fill="#22d3ee">
+    <polygon points="300,744 400,744 724,280 624,280" />
+    <polygon points="230,836 214,820 760,236 776,252" />
+    <polygon points="746,262 790,196 852,186 838,248 776,276" />
+  </g>
+</svg>
