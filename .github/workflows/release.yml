@@ -1,0 +1,120 @@
+name: Build Tauri Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            artifact: windows
+
+          - name: macOS
+            os: macos-latest
+            artifact: macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri application
+        run: npm run tauri build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release Assets
+
+    needs:
+      - build
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Show release artifacts
+        shell: bash
+        run: |
+          echo "Release assets:"
+
+          find artifacts -type f \( \
+            -name "*.msi" \
+            -o -name "*.dmg" \
+          \) -print
+
+      - name: Remove existing release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release view "$TAG" \
+            --json assets \
+            --jq '.assets[].name' |
+          while IFS= read -r asset; do
+            case "$asset" in
+              *.msi|*.dmg)
+                echo "Deleting existing asset: $asset"
+                gh release delete-asset "$TAG" "$asset" --yes
+                ;;
+              *)
+                echo "Keeping unrelated asset: $asset"
+                ;;
+            esac
+          done
+
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          find artifacts -type f \( \
+            -name "*.msi" \
+            -o -name "*.dmg" \
+          \) -print0 |
+          while IFS= read -r -d '' file; do
+            echo "Uploading: $file"
+            gh release upload "$TAG" "$file"
+          done
