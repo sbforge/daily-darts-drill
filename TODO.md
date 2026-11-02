@@ -32,6 +32,19 @@
   * Routine Selection
     * Show Routine with scrollable cards ✅ done
     * Routine Description ✅ done
+  * Routine Definition ✅ done
+    * Collapsible games (name & time cap always visible) ✅ done
+    * Drag & drop to reorder games ✅ done
+    * Add game dialog with initial settings ✅ done
+    * Duplicate / delete routine in a submenu ✅ done
+    * Total routine time next to the game count ✅ done
+  * Themed select boxes ✅ done
+
+* Routine flow
+  * Pause between games, defined per routine ✅ done
+  * Pause screen with timer, pause / resume and next game preview ✅ done
+  * Countdown from 5 before the first game ✅ done
+  * Games start automatically after the countdown and the pause ✅ done
 
 * Settings
   * Autodarts auto discovery ip & port
