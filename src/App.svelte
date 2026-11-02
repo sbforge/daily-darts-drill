@@ -13,6 +13,7 @@
   import { Session } from "./lib/session.svelte";
   import Board from "./lib/Board.svelte";
   import Logo from "./lib/Logo.svelte";
+  import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
   import RoutineMenu from "./lib/RoutineMenu.svelte";
@@ -237,6 +238,30 @@
     closeRun();
   }
 
+  /** While a routine runs, its controls sit in the header as icons, so the screen stays free for darts. */
+  const inRun = $derived(!!run && (phase === "countdown" || phase === "break" || phase === "ready" || phase === "running"));
+  const skipLabel = $derived(
+    phase === "running"
+      ? t(def?.hasResult ? "run.endGame" : "run.skipWarmUp")
+      : phase === "ready"
+        ? t("run.startGame")
+        : phase === "countdown" && canStart
+          ? t("run.startNow")
+          : t("run.skipBreak"),
+  );
+
+  /** Moves on: ends the game early, skips the countdown or break, or starts a waiting game. */
+  function skip() {
+    if (phase === "running") finish(true);
+    else if (phase === "ready") startGame();
+    else endBreak();
+  }
+
+  // A game waiting for the connection starts by itself once Autodarts is there.
+  $effect(() => {
+    if (phase === "ready" && canStart) startGame();
+  });
+
   /** Pauses a game or the break between games. A paused break doesn't start the next game. */
   function pause() {
     if ((phase !== "running" && phase !== "break") || paused) return;
@@ -393,6 +418,48 @@
       {t("nav.history")}
     </button>
   </nav>
+  {#if inRun}
+    <div class="run-controls" role="group" aria-label={t("run.controls")}>
+      <button
+        class="icon"
+        class:active={paused}
+        aria-label={paused ? t("run.resume") : t("run.pause")}
+        title={paused ? t("run.resume") : t("run.pause")}
+        onclick={paused ? resume : pause}
+        disabled={phase !== "running" && phase !== "break"}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          {#if paused}
+            <path fill="currentColor" d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.8-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z" />
+          {:else}
+            <path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
+          {/if}
+        </svg>
+      </button>
+      <button class="icon" aria-label={skipLabel} title={skipLabel} onclick={skip} disabled={phase === "ready" && !canStart}>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="currentColor" d="M5 6.07v11.86a1 1 0 0 0 1.55.83L15 13.1V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.9L6.55 5.24A1 1 0 0 0 5 6.07Z" />
+        </svg>
+      </button>
+      <span class="abort-wrap">
+        <button
+          class="icon abort"
+          class:armed={pendingAbort}
+          aria-label={pendingAbort ? t("run.confirmAbort") : t("run.abort")}
+          title={pendingAbort ? undefined : t("run.abort")}
+          onclick={abortRoutine}
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" />
+          </svg>
+        </button>
+        <!-- The icon can't change its text, so the second click is asked for right next to it. -->
+        {#if pendingAbort}
+          <span class="confirm-bubble" role="status">{t("run.confirmAbort")}</span>
+        {/if}
+      </span>
+    </div>
+  {/if}
   <button
     class="icon"
     aria-label={t("nav.settings")}
@@ -423,7 +490,10 @@
       </p>
     </section>
   {:else if !ready}
-    <p class="hint">{t("db.loading")}</p>
+    <section class="countdown">
+      <Quote />
+      <p class="hint">{t("db.loading")}</p>
+    </section>
   {:else if view === "settings"}
     <section class="narrow">
       <h2>{t("settings.connTitle")}</h2>
@@ -556,45 +626,39 @@
         <div class="count" aria-live="assertive">{countdownLeft}</div>
       {/key}
       <p class="lede">{t("run.firstUp", { name: def.name })}</p>
+      <Quote />
       {#if !canStart}
         <p class="hint">{t("run.connectFirst")}</p>
       {/if}
-      <div class="row">
-        <button class="primary" onclick={endBreak}>{canStart ? t("run.startNow") : t("run.skipBreak")}</button>
-        <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
-      </div>
     </section>
   {:else if phase === "break" && run && item && def}
     {@const last = run.results.at(-1)}
     {@const lastHero = last?.lines.find((l) => l.hero)}
-    <section class="narrow break">
-      {#if last}
-        <div class="last-game">
-          <p class="progress">
-            {t("run.lastGame", { name: gameById(last.gameId).name })} ·
-            {t(last.completed ? "run.completed" : last.early ? "run.endedEarly" : "run.timeUp")}
-          </p>
-          {#if last.hasResult && lastHero}
-            <p class="last-hero"><strong>{lastHero.value}</strong> {lastHero.label}</p>
-          {/if}
-        </div>
-      {/if}
+    <section class="break">
       <p class="progress">{t("run.breakTitle")}</p>
       <div class="clock" class:paused>{fmt(breakLeft)}</div>
       <p class="note">{t(paused ? "run.breakPaused" : "run.breakNote")}</p>
-      <div class="up-next">
-        <p class="progress">{t("run.upNext", { n: run.index + 1, total: run.routine.items.length })}</p>
-        <h2>{def.name}</h2>
-        <p class="lede">{def.blurb}</p>
-        <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
-        {#if def.needsDarts}
-          <p class="hint">{t("run.clockHint")}</p>
+      <Quote />
+      <div class="cards">
+        {#if last}
+          <div class="card">
+            <p class="progress">{t("run.finishedGame", { n: run.index, total: run.routine.items.length })}</p>
+            <h2>{gameById(last.gameId).name}</h2>
+            <p class="lede">{t(last.completed ? "run.completed" : last.early ? "run.endedEarly" : "run.timeUp")}</p>
+            {#if last.hasResult && lastHero}
+              <p class="last-hero"><strong>{lastHero.value}</strong> {lastHero.label}</p>
+            {/if}
+          </div>
         {/if}
-      </div>
-      <div class="row">
-        <button class="primary" onclick={endBreak}>{canStart ? t("run.startNow") : t("run.skipBreak")}</button>
-        <button class="ghost" onclick={paused ? resume : pause}>{paused ? t("run.resume") : t("run.pause")}</button>
-        <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
+        <div class="card">
+          <p class="progress">{t("run.upNext", { n: run.index + 1, total: run.routine.items.length })}</p>
+          <h2>{def.name}</h2>
+          <p class="lede">{def.blurb}</p>
+          <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
+          {#if def.needsDarts}
+            <p class="hint">{t("run.clockHint")}</p>
+          {/if}
+        </div>
       </div>
       {#if !canStart}
         <p class="hint">{t("run.connectFirst")}</p>
@@ -609,10 +673,6 @@
       {#if def.needsDarts}
         <p class="hint">{t("run.clockHint")}</p>
       {/if}
-      <div class="row">
-        <button class="primary" onclick={startGame} disabled={!canStart}>{t("run.startGame")}</button>
-        <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
-      </div>
       {#if !canStart}
         <p class="hint">{t("run.connectFirst")}</p>
       {/if}
@@ -631,6 +691,9 @@
             {t("run.keepThrowing")}
           {/if}
         </p>
+        {#if paused}
+          <Quote />
+        {/if}
 
         {#if result.focus}
           <div class="focus">
@@ -653,12 +716,6 @@
             {/each}
           </dl>
         {/if}
-
-        <div class="row">
-          <button class="primary" onclick={paused ? resume : pause}>{paused ? t("run.resume") : t("run.pause")}</button>
-          <button class="ghost" onclick={() => finish(true)}>{def.hasResult ? t("run.endGame") : t("run.skipWarmUp")}</button>
-          <button class="ghost danger" onclick={abortRoutine}>{pendingAbort ? t("run.confirmAbort") : t("run.abort")}</button>
-        </div>
       </div>
 
       <div class="views">
@@ -792,6 +849,39 @@
   }
   button.icon:hover { color: var(--chalk); background: var(--panel); }
   button.icon[aria-current="page"] { color: var(--accent); background: var(--panel); }
+  button.icon:disabled { opacity: 0.35; cursor: not-allowed; background: none; color: var(--dim); }
+  .run-controls { display: flex; gap: 0.25rem; padding-right: 0.75rem; margin-right: -1.25rem; border-right: 1px solid var(--line); }
+  .run-controls button.icon.active { color: var(--accent); background: var(--panel); }
+  .run-controls button.icon.abort:hover, .run-controls button.icon.armed { color: #ff9b8f; }
+  .run-controls button.icon.armed { background: rgb(255 155 143 / 0.15); }
+  .abort-wrap { position: relative; }
+  .confirm-bubble {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    right: -0.25rem;
+    z-index: 10;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #ff9b8f;
+    border-radius: 6px;
+    background: #3a1a17;
+    color: #ffd9d3;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+    animation: bubble-in 0.15s ease-out both;
+  }
+  .confirm-bubble::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    right: 0.95rem;
+    border: 6px solid transparent;
+    border-bottom-color: #ff9b8f;
+  }
+  @keyframes bubble-in {
+    from { opacity: 0; transform: translateY(-4px); }
+  }
 
   footer {
     flex: none;
@@ -833,7 +923,6 @@
   .pause-field .hint { margin: 0; }
   .countdown { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 3rem; }
   .countdown .lede { margin: 0.5rem 0 0; }
-  .countdown .row { justify-content: center; }
   .count {
     font-size: 11rem;
     font-weight: 700;
@@ -847,21 +936,29 @@
     25% { opacity: 1; transform: scale(1); }
     to { opacity: 0.85; }
   }
-  .last-game { margin: 0 0 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
-  .last-game .progress { margin: 0; }
-  .last-hero { margin: 0.35rem 0 0; color: var(--dim); }
-  .last-hero strong { color: var(--dart); font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-right: 0.25rem; }
-  .break .clock { font-size: 5.5rem; margin: 0.25rem 0 0; }
-  .up-next {
-    margin: 1.75rem 0 0;
+  .break { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 60rem; margin: 0 auto; }
+  .break .progress { margin: 0; }
+  .break .clock { font-size: 4rem; margin: 0.25rem 0 0; }
+  .break .note { margin-bottom: 0; }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .card {
     padding: 1rem 1.25rem 0.25rem;
     border: 1px solid var(--line);
     border-left: 3px solid var(--accent);
     border-radius: 8px;
     background: var(--panel);
+    text-align: left;
   }
-  .up-next h2 { margin-bottom: 0.35rem; }
-  .up-next .lede { margin-bottom: 0.75rem; }
+  .card h2 { margin-bottom: 0.35rem; }
+  .card .lede { margin-bottom: 0.75rem; }
+  .last-hero { margin: 0 0 1rem; color: var(--dim); }
+  .last-hero strong { color: var(--dart); font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-right: 0.25rem; }
   .pick { max-width: 52rem; margin: 0 auto; }
   .pick h2 { text-align: center; }
   /* Shared form controls and buttons, also used by components in lib/. */

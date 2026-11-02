@@ -45,6 +45,7 @@
   * Pause screen with timer, pause / resume and next game preview ✅ done
   * Countdown from 5 before the first game ✅ done
   * Games start automatically after the countdown and the pause ✅ done
+  * Random motivational quote on loading, countdown, break and paused game ✅ done
 
 * Settings
   * Autodarts auto discovery ip & port
