@@ -9,7 +9,9 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "version": "node scripts/sync-version.js && git add src-tauri/Cargo.toml src-tauri/Cargo.lock",
+    "check:version": "node scripts/sync-version.js --check"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
