@@ -183,10 +183,14 @@ export function throwPhase(state: any): ThrowPhase {
   return status === "throw" || status === "takeout" || status === "takeoutInProgress" ? status : null;
 }
 
+const WATCHDOG_INTERVAL_MS = 3000;
+const WATCHDOG_TIMEOUT_MS = 2500;
+
 export class AutodartsClient {
   private handlers: ClientHandlers;
   private ws: WebSocket | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private watchdog: ReturnType<typeof setInterval> | undefined;
   private attempt = 0;
   private active = false;
   private host = "";
@@ -213,6 +217,7 @@ export class AutodartsClient {
   disconnect() {
     this.active = false;
     clearTimeout(this.timer);
+    clearInterval(this.watchdog);
     const ws = this.ws;
     this.ws = null;
     if (ws) {
@@ -246,6 +251,7 @@ export class AutodartsClient {
       this.attempt = 0;
       this.handlers.onState("connected");
       this.fetchStatus(ws);
+      this.watch(ws);
     };
     ws.onmessage = (ev) => {
       let msg: any;
@@ -259,13 +265,37 @@ export class AutodartsClient {
       if (msg?.type === "state" || msg?.type === "board") this.updateStatus();
       for (const e of this.norm.handle(msg)) this.handlers.onEvent(e);
     };
-    ws.onclose = () => {
-      if (this.ws !== ws) return;
-      this.ws = null;
-      this.setStatus("unknown");
-      this.setPhase(null);
-      this.scheduleRetry();
-    };
+    ws.onclose = () => this.lost(ws);
+  }
+
+  private lost(ws: WebSocket) {
+    if (this.ws !== ws) return;
+    clearInterval(this.watchdog);
+    this.ws = null;
+    ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
+    ws.close();
+    this.setStatus("unknown");
+    this.setPhase(null);
+    this.scheduleRetry();
+  }
+
+  /**
+   * When the network drops or the Autodarts PC goes off, the websocket isn't closed for minutes
+   * and nothing arrives while the board is idle. So the client is asked over HTTP every few
+   * seconds; when it doesn't answer twice in a row, the connection counts as lost.
+   * Any answer, even an error status, means it is still there.
+   */
+  private watch(ws: WebSocket) {
+    clearInterval(this.watchdog);
+    let misses = 0;
+    this.watchdog = setInterval(async () => {
+      try {
+        await fetch(this.httpUrl("/api/state"), { signal: AbortSignal.timeout(WATCHDOG_TIMEOUT_MS) });
+        misses = 0;
+      } catch {
+        if (++misses >= 2) this.lost(ws);
+      }
+    }, WATCHDOG_INTERVAL_MS);
   }
 
   /** Start / stop the detection, reset the turn (takeout by hand), auto-calibrate the cameras. */

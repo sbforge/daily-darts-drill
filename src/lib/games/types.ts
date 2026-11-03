@@ -51,6 +51,8 @@ export interface GameResult {
 export interface ComputeContext {
   /** The last turn is still in progress (darts are on the board). */
   open: boolean;
+  /** The game has a time cap: a game completed before it starts over, its stats keep adding up. */
+  repeat?: boolean;
 }
 
 /**
