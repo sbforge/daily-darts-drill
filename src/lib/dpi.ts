@@ -197,6 +197,18 @@ export function performance(series: number[], config = DPI_CONFIG): Performance 
   return { current: now, count: current.length, trend };
 }
 
+/** How far a trend moved, for its feedback. Changes below `steady` percent read as steady; from `strong` on as a big move. */
+export const TREND_STEPS = { steady: 2, slight: 5, strong: 15 };
+
+export type TrendStep = "upStrong" | "up" | "upSlight" | "steady" | "downSlight" | "down" | "downStrong";
+
+export function trendStep(percent: number): TrendStep {
+  const a = Math.abs(percent);
+  if (a < TREND_STEPS.steady) return "steady";
+  const size = a < TREND_STEPS.slight ? "Slight" : a < TREND_STEPS.strong ? "" : "Strong";
+  return `${percent > 0 ? "up" : "down"}${size}` as TrendStep;
+}
+
 /** One point of a chart: the index of a session or result, and the current level (rolling average) at that point. */
 export interface DpiPoint {
   at: string;

@@ -20,7 +20,7 @@
     type RoutineItem,
   } from "./lib/store";
   import * as db from "./lib/db";
-  import { overview, type DpiOverview, type Performance, type Trend } from "./lib/dpi";
+  import { overview, trendStep, type DpiOverview, type Performance, type Trend } from "./lib/dpi";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
@@ -71,6 +71,7 @@
   let pendingSessionDelete = $state<string | null>(null);
   // The performance index, calculated from all stored results each time they change.
   let dpi = $state<DpiOverview | null>(null);
+  let dpiHelp = $state<HTMLDialogElement>();
   // Statistics shows either the overall index or the index of one game (the picked one, else the first).
   let statsView = $state<"overall" | "games">("overall");
   let statsGameId = $state("");
@@ -566,26 +567,22 @@
     return t("history.playedNoCap", { n: played });
   }
 
-  /** Changes below 2% read as steady. */
-  const STEADY = 2;
-
-  /** Encouraging feedback on the trend, also when it goes down. `games`: the trend of one game, not of the sessions. */
+  /** Encouraging feedback on the trend, whichever way it goes. `games`: the trend of one game, not of the sessions. */
   function trendText(tr: Trend, games = false): string {
     if (tr.kind === "notEnough") return tr.missing ? t("dpi.notEnough", { n: tr.missing }) : t("dpi.notEnoughYet");
-    const p = num(Math.abs(tr.percent), 1);
-    if (Math.abs(tr.percent) < STEADY) return t("dpi.trendSteady", { what: t(games ? "dpi.whatGames" : "dpi.whatSessions") });
     const what = t(games ? "dpi.whatGames" : "dpi.whatSessions");
-    return t(tr.percent > 0 ? "dpi.trendUp" : "dpi.trendDown", { p, what });
+    return t(`dpi.trend.${trendStep(tr.percent)}`, { p: num(Math.abs(tr.percent), 1), what });
   }
 
+  /** The change without its sign: the arrow shows the direction. */
   function trendShort(tr: Trend): string {
-    if (tr.kind === "notEnough") return "–";
-    return `${tr.percent >= 0 ? "+" : "−"}${num(Math.abs(tr.percent), 1)}%`;
+    return tr.kind === "notEnough" ? "–" : `${num(Math.abs(tr.percent), 1)}%`;
   }
 
   function trendDir(tr: Trend): "up" | "down" | "steady" | "none" {
     if (tr.kind === "notEnough") return "none";
-    return Math.abs(tr.percent) < STEADY ? "steady" : tr.percent > 0 ? "up" : "down";
+    const step = trendStep(tr.percent);
+    return step === "steady" ? "steady" : step.startsWith("up") ? "up" : "down";
   }
 
   function deleteSession(id: string) {
@@ -845,21 +842,42 @@
       {/each}
     </section>
   {:else if view === "stats"}
-    {#snippet level(p: Performance, basedOn: string, games = false)}
+    {#snippet arrow(tr: Trend)}
+      {@const dir = trendDir(tr)}
+      {#if dir !== "none"}
+        <svg class="arrow" data-dir={dir} viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+          <path
+            d={dir === "up" ? "M4 12 12 4M6 4h6v6" : dir === "down" ? "M4 4l8 8M12 6v6H6" : "M2.5 8h11M9.5 4l4 4-4 4"}
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      {/if}
+    {/snippet}
+    {#snippet level(p: Performance, games = false)}
       <div class="dpi-overall">
         <div class="dpi-score">
           <span class="big">{num(p.current ?? 0)}</span>
           <span class="cap">{t("dpi.of")}</span>
         </div>
-        <div>
-          <p class="plan-meta">{basedOn}</p>
-          <p class="trend" data-dir={trendDir(p.trend)}>{trendText(p.trend, games)}</p>
-        </div>
+        <p class="trend" data-dir={trendDir(p.trend)}>{@render arrow(p.trend)}<span>{trendText(p.trend, games)}</span></p>
       </div>
     {/snippet}
     <section class="history">
       <div class="stats-head">
-        <h2>{t("stats.title")}</h2>
+        <h2>
+          {t("stats.title")}
+          <button class="info" aria-label={t("dpi.helpOpen")} title={t("dpi.helpOpen")} onclick={() => dpiHelp?.showModal()}>
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.4" />
+              <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
+              <path d="M8 7.3v4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+          </button>
+        </h2>
         {#if dpi && dpi.overall.current !== null}
           <div class="toggle" role="tablist" aria-label={t("dpi.title")}>
             <button role="tab" aria-selected={statsView === "overall"} onclick={() => (statsView = "overall")}>
@@ -879,10 +897,7 @@
       {:else if statsView === "overall"}
         <div class="dpi">
           <h3>{t("dpi.overallIndex")}</h3>
-          {@render level(
-            dpi.overall,
-            dpi.overall.count === 1 ? t("dpi.basedOnOne") : t("dpi.basedOn", { n: dpi.overall.count }),
-          )}
+          {@render level(dpi.overall)}
           <h4>{t("dpi.chartTitle")}</h4>
           <DpiChart points={dpi.overallSeries} pointLabel={t("dpi.pointSession")} window={10} />
         </div>
@@ -897,7 +912,7 @@
                   <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
                   <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
                   <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend, true)}>
-                    {trendShort(g.performance.trend)}
+                    {@render arrow(g.performance.trend)}{trendShort(g.performance.trend)}
                   </span>
                 </button>
               </li>
@@ -905,18 +920,11 @@
           </ul>
           {#if statsGame}
             <h4>{gameById(statsGame.gameId).name}</h4>
-            {@render level(
-              statsGame.performance,
-              statsGame.performance.count === 1
-                ? t("dpi.basedOnOneGame")
-                : t("dpi.basedOnGames", { n: statsGame.performance.count }),
-              true,
-            )}
+            {@render level(statsGame.performance, true)}
             <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
           {/if}
         </div>
       {/if}
-      {#if dpi && dpi.overall.current !== null}<p class="hint">{t("dpi.explain", { v: dpi.version })}</p>{/if}
     </section>
   {:else if view === "routines"}
     <section class="routines">
@@ -1215,6 +1223,32 @@
   <div class="foot">
     <button class="ghost" onclick={discardEmptyDraft}>{t("routines.discard")}</button>
     <button class="primary" onclick={keepEmptyDraft}>{t("routines.keep")}</button>
+  </div>
+</dialog>
+
+<!-- How the performance index is worked out, in words. Escape, the backdrop or the button closes it. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm help"
+  bind:this={dpiHelp}
+  aria-labelledby="dpi-help-title"
+  onclick={(e) => {
+    if (e.target === dpiHelp) dpiHelp.close();
+  }}
+>
+  <h3 id="dpi-help-title">{t("dpi.helpTitle")}</h3>
+  <p>{t("dpi.helpIntro")}</p>
+  <h4>{t("dpi.helpGameTitle")}</h4>
+  <p>{t("dpi.helpGame")}</p>
+  <h4>{t("dpi.helpOverallTitle")}</h4>
+  <p>{t("dpi.helpOverall")}</p>
+  <h4>{t("dpi.helpLevelTitle")}</h4>
+  <p>{t("dpi.helpLevel")}</p>
+  <h4>{t("dpi.helpTrendTitle")}</h4>
+  <p>{t("dpi.helpTrend")}</p>
+  <p class="hint">{t("dpi.helpVersion", { v: dpi?.version ?? 1 })}</p>
+  <div class="foot">
+    <button class="primary" onclick={() => dpiHelp?.close()}>{t("dpi.helpClose")}</button>
   </div>
 </dialog>
 
@@ -1676,16 +1710,25 @@
   .toggle button:hover { color: var(--chalk); }
   .toggle button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
   .dpi-overall { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-  .dpi-overall .plan-meta { text-align: left; }
   .dpi-score { display: flex; align-items: baseline; gap: 0.5rem; }
   .dpi-score .big { color: var(--accent); }
-  .dpi-overall p { margin: 0.2rem 0; }
-  .trend { font-weight: 600; }
-  .trend[data-dir="up"] { color: var(--ok); }
-  .trend[data-dir="steady"] { color: var(--chalk); }
-  .trend[data-dir="down"] { color: var(--dart); }
+  /* The arrow carries the direction and its colour; the words stay in the text colour, encouraging either way. */
+  .trend { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600; color: var(--chalk); }
   .trend[data-dir="none"] { color: var(--dim); font-weight: 400; }
-  .trend.small { min-width: 4.5rem; text-align: right; cursor: help; font-variant-numeric: tabular-nums; }
+  .dpi-overall .trend { flex: 1 1 18rem; }
+  .arrow { flex: none; }
+  .arrow[data-dir="up"] { color: var(--ok); }
+  .arrow[data-dir="down"] { color: #ff6b5b; }
+  .arrow[data-dir="steady"] { color: var(--dim); }
+  .trend.small { justify-content: flex-end; min-width: 5rem; cursor: help; font-variant-numeric: tabular-nums; }
+  .trend.small .arrow { width: 15px; height: 15px; }
+  .stats-head h2 { display: flex; align-items: center; gap: 0.4rem; }
+  .stats-head .info { display: grid; place-items: center; padding: 0.2rem; border: 0; border-radius: 50%; background: none; color: var(--dim); cursor: pointer; }
+  .stats-head .info:hover { color: var(--accent); }
+  .help { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 4rem); overflow-y: auto; line-height: 1.5; }
+  .help h4 { margin: 1.1rem 0 0.25rem; }
+  .help p { margin: 0.25rem 0; color: var(--dim); }
+  .help .foot { margin-top: 1.25rem; }
   .dpi-games { list-style: none; margin: 1rem 0 0.75rem; padding: 0; border-top: 1px solid var(--line); }
   .dpi-games li { border-bottom: 1px solid var(--line); }
   .dpi-game { display: flex; align-items: baseline; gap: 0.75rem; width: 100%; padding: 0.55rem 0.75rem; border: none; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
