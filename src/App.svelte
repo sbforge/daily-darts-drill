@@ -567,11 +567,10 @@
     return t("history.playedNoCap", { n: played });
   }
 
-  /** Encouraging feedback on the trend, whichever way it goes. `games`: the trend of one game, not of the sessions. */
-  function trendText(tr: Trend, games = false): string {
+  /** Encouraging feedback on the trend, whichever way it goes. The arrow and the number show the direction. */
+  function trendText(tr: Trend): string {
     if (tr.kind === "notEnough") return tr.missing ? t("dpi.notEnough", { n: tr.missing }) : t("dpi.notEnoughYet");
-    const what = t(games ? "dpi.whatGames" : "dpi.whatSessions");
-    return t(`dpi.trend.${trendStep(tr.percent)}`, { p: num(Math.abs(tr.percent), 1), what });
+    return t(`dpi.trend.${trendStep(tr.percent)}`);
   }
 
   /** The change without its sign: the arrow shows the direction. */
@@ -857,16 +856,20 @@
         </svg>
       {/if}
     {/snippet}
-    {#snippet level(p: Performance, games = false)}
+    {#snippet level(p: Performance)}
       <div class="dpi-overall">
         <div class="dpi-score">
           <span class="big">{num(p.current ?? 0)}</span>
           <span class="cap">{t("dpi.of")}</span>
         </div>
-        <p class="trend" data-dir={trendDir(p.trend)}>{@render arrow(p.trend)}<span>{trendText(p.trend, games)}</span></p>
+        <p class="trend" data-dir={trendDir(p.trend)}>
+          {@render arrow(p.trend)}
+          {#if p.trend.kind === "trend"}<span class="trend-value">{trendShort(p.trend)}</span>{/if}
+          <span class="trend-text">{trendText(p.trend)}</span>
+        </p>
       </div>
     {/snippet}
-    <section class="history">
+    <section class="statistics">
       <div class="stats-head">
         <h2>
           {t("stats.title")}
@@ -904,25 +907,31 @@
       {:else}
         <div class="dpi">
           <h3>{t("dpi.gameIndex")}</h3>
-          <ul class="dpi-games" aria-label={t("dpi.games")}>
-            {#each dpi.games as g (g.gameId)}
-              <li>
-                <button class="dpi-game" aria-pressed={g.gameId === statsGame?.gameId} onclick={() => (statsGameId = g.gameId)}>
-                  <span class="plan-name">{gameById(g.gameId).name}</span>
-                  <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
-                  <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
-                  <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend, true)}>
-                    {@render arrow(g.performance.trend)}{trendShort(g.performance.trend)}
-                  </span>
-                </button>
-              </li>
-            {/each}
-          </ul>
-          {#if statsGame}
-            <h4>{gameById(statsGame.gameId).name}</h4>
-            {@render level(statsGame.performance, true)}
-            <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
-          {/if}
+          <div class="game-split">
+            <ul class="dpi-games" aria-label={t("dpi.games")}>
+              {#each dpi.games as g (g.gameId)}
+                <li>
+                  <button class="dpi-game" aria-pressed={g.gameId === statsGame?.gameId} onclick={() => (statsGameId = g.gameId)}>
+                    <span class="game-label">
+                      <span class="plan-name">{gameById(g.gameId).name}</span>
+                      <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
+                    </span>
+                    <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
+                    <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend)}>
+                      {@render arrow(g.performance.trend)}{trendShort(g.performance.trend)}
+                    </span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+            <div class="game-detail">
+              {#if statsGame}
+                <h4>{gameById(statsGame.gameId).name}</h4>
+                {@render level(statsGame.performance)}
+                <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
+              {/if}
+            </div>
+          </div>
         </div>
       {/if}
     </section>
@@ -1703,6 +1712,14 @@
   .dpi { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .dpi h3 { margin: 0 0 0.75rem; }
   .dpi h4 { margin: 1.5rem 0 0.75rem; }
+  /* Wide enough: the games on the left, the picked one with its chart beside them. */
+  .game-split { display: grid; gap: 0 2rem; }
+  .game-detail { min-width: 0; }
+  @media (min-width: 1000px) {
+    .game-split { grid-template-columns: minmax(20rem, 2fr) 3fr; align-items: start; }
+    .game-split .dpi-games { margin-top: 0; }
+    .game-detail h4 { margin-top: 0; }
+  }
   .stats-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
   .stats-head h2 { margin: 0; }
   .toggle { display: flex; gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
@@ -1716,6 +1733,8 @@
   .trend { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600; color: var(--chalk); }
   .trend[data-dir="none"] { color: var(--dim); font-weight: 400; }
   .dpi-overall .trend { flex: 1 1 18rem; }
+  .trend-value { font-variant-numeric: tabular-nums; }
+  .trend-text { font-weight: 400; color: var(--dim); }
   .arrow { flex: none; }
   .arrow[data-dir="up"] { color: var(--ok); }
   .arrow[data-dir="down"] { color: #ff6b5b; }
@@ -1731,10 +1750,11 @@
   .help .foot { margin-top: 1.25rem; }
   .dpi-games { list-style: none; margin: 1rem 0 0.75rem; padding: 0; border-top: 1px solid var(--line); }
   .dpi-games li { border-bottom: 1px solid var(--line); }
-  .dpi-game { display: flex; align-items: baseline; gap: 0.75rem; width: 100%; padding: 0.55rem 0.75rem; border: none; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .dpi-game { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.55rem 0.75rem; border: none; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .dpi-game:hover { background: rgb(34 211 238 / 0.06); }
   .dpi-game[aria-pressed="true"] { background: rgb(34 211 238 / 0.12); box-shadow: inset 3px 0 0 var(--accent); }
-  .dpi-games .plan-meta { flex: 1; }
+  .game-label { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+  .game-label .plan-meta { text-align: left; font-size: 0.85rem; }
   .dpi-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 
   .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
