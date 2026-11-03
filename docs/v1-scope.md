@@ -26,7 +26,7 @@ Mark each line in / out as we go.
   (`tauri.conf.json` → `../package.json`), bump to `1.0.0` for the release.
 - [ ] **About screen with third-party licenses** (TODO.md #2). Licenses of the bundled JS and Rust libraries
   (e.g. generated with `license-checker` / `cargo-about`), project links, version. SBOM (CycloneDX) as a release asset.
-- [ ] **Buy me a coffee** (TODO.md #4): real link, or hide the button for v1.
+- [x] **Buy me a coffee**: real link (buymeacoffee.com/sbforge), GitHub sponsor button via FUNDING.yml.
 - [ ] **README for v1** (TODO.md #6):
   - says "Windows, macOS and Linux": true once the Linux build above exists; add Linux install notes (AppImage)
   - "Not built yet: trend charts …" is outdated (statistics and charts exist)

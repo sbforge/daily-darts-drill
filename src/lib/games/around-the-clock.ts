@@ -103,14 +103,18 @@ export const aroundTheClock: GameDef = {
       zone: zoneInText(String(s.zone)),
       finish: t(`atc.inText.${finishOf(s.finish)}`),
     }),
-  summary: (v) => t("atc.summary", { accuracy: num(v.accuracy, 1), progress: v.progress }),
-  compute(turns, s) {
+  summary: (v) =>
+    v.rounds
+      ? t("atc.summaryRounds", { accuracy: num(v.accuracy, 1), rounds: v.rounds, progress: v.progress })
+      : t("atc.summary", { accuracy: num(v.accuracy, 1), progress: v.progress }),
+  compute(turns, s, ctx) {
     const order = s.direction === "ccw" ? COUNTER : CLOCKWISE;
     const zone = String(s.zone);
     const total = order.length + 1; // numbers, then the bull
     const finish = finishOf(s.finish);
 
     let step = 0;
+    let rounds = 0;
     let hits = 0;
     let attempts = 0;
     for (const d of turns.flat()) {
@@ -120,6 +124,11 @@ export const aroundTheClock: GameDef = {
       if (hit) {
         hits++;
         step++;
+      }
+      // With time left on the clock the round starts over; accuracy, darts and hits carry on.
+      if (step >= total && ctx.repeat) {
+        rounds++;
+        step = 0;
       }
     }
 
@@ -133,9 +142,10 @@ export const aroundTheClock: GameDef = {
         : finishFields(finish);
 
     return {
-      values: { accuracy, darts: attempts, hits, progress: step },
+      values: { accuracy, darts: attempts, hits, progress: step, rounds },
       lines: [
         { key: "accuracy", label: t("game.accuracy"), value: `${num(accuracy, 1)}%`, hero: true },
+        ...(rounds ? [{ key: "rounds", label: t("atc.rounds"), value: String(rounds) }] : []),
         { key: "progress", label: t("atc.progress"), value: t("game.xOfY", { n: step, total }) },
         { key: "darts", label: t("game.dartsThrown"), value: String(attempts) },
         { key: "hits", label: t("game.hits"), value: String(hits) },

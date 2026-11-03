@@ -46,7 +46,7 @@
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
-  import { AUTODARTS_URL, COFFEE_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, openExternal } from "./lib/links";
+  import { AUTODARTS_URL, COFFEE_ICON, COFFEE_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
@@ -139,6 +139,9 @@
   let paused = $state(false);
   let pausedAt = $state(0);
   let pendingAbort = $state(false);
+  // Skipping a running game ends it early, so it asks for a second click like aborting does.
+  let pendingSkip = $state(false);
+  let skipTimer: ReturnType<typeof setTimeout> | undefined;
   // The countdown before the first game and the break between two games share one clock;
   // the game starts by itself when it runs out.
   let breakEndsAt = $state(0);
@@ -262,7 +265,8 @@
 
   function startGame() {
     if (!item || !def) return;
-    session = new Session(def, { ...item.settings });
+    // With a time cap a game completed early starts over and plays on until the clock runs out.
+    session = new Session(def, { ...item.settings }, totalMs > 0);
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();
@@ -350,6 +354,7 @@
     endsAt = null;
     paused = false;
     pendingAbort = false;
+    pendingSkip = false;
     phase = "idle";
   }
 
@@ -386,12 +391,25 @@
           : t("run.skipBreak"),
   );
 
-  /** Moves on: ends the game early, skips the countdown or break, or starts a waiting game. */
+  /** Moves on: ends the game early (on a second click), skips the countdown or break, or starts a waiting game. */
   function skip() {
+    if (phase === "running" && !pendingSkip) {
+      pendingSkip = true;
+      clearTimeout(skipTimer);
+      skipTimer = setTimeout(() => (pendingSkip = false), 4000);
+      return;
+    }
+    clearTimeout(skipTimer);
+    pendingSkip = false;
     if (phase === "running") finish(true);
     else if (phase === "ready") startGame();
     else endBreak();
   }
+
+  // A second click only counts for the game it was asked for.
+  $effect(() => {
+    if (phase !== "running") pendingSkip = false;
+  });
 
   // A game waiting for the connection starts by itself once Autodarts is there.
   $effect(() => {
@@ -521,7 +539,9 @@
     const id = setInterval(() => {
       if (paused) return;
       now = Date.now();
-      if (now >= breakEndsAt) endBreak();
+      // The countdown before the first game holds at its start until the game can start.
+      if (phase === "countdown" && !canStart) breakEndsAt = now + COUNTDOWN_SECONDS * 1000;
+      else if (now >= breakEndsAt) endBreak();
     }, 200);
     return () => clearInterval(id);
   });
@@ -864,7 +884,9 @@
 
 <!-- Why a game with darts can't start or go on: no connection, or the detection isn't running. -->
 {#snippet waitHint()}
-  {#if conn !== "connected"}
+  {#if conn === "connecting"}
+    <p class="hint">{t("run.reconnecting")}</p>
+  {:else if conn !== "connected"}
     <p class="hint">{t("run.connectFirst")}</p>
   {:else}
     <p class="hint wait-hint">
@@ -911,11 +933,23 @@
           {/if}
         </svg>
       </button>
-      <button class="icon" aria-label={skipLabel} title={skipLabel} onclick={skip} disabled={phase === "ready" && !canStart}>
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path fill="currentColor" d="M5 6.07v11.86a1 1 0 0 0 1.55.83L15 13.1V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.9L6.55 5.24A1 1 0 0 0 5 6.07Z" />
-        </svg>
-      </button>
+      <span class="abort-wrap">
+        <button
+          class="icon"
+          class:armed={pendingSkip}
+          aria-label={pendingSkip ? t("run.confirmSkip") : skipLabel}
+          title={pendingSkip ? undefined : skipLabel}
+          onclick={skip}
+          disabled={phase === "ready" && !canStart}
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M5 6.07v11.86a1 1 0 0 0 1.55.83L15 13.1V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.9L6.55 5.24A1 1 0 0 0 5 6.07Z" />
+          </svg>
+        </button>
+        {#if pendingSkip}
+          <span class="confirm-bubble" role="status">{t("run.confirmSkip")}</span>
+        {/if}
+      </span>
       <span class="abort-wrap">
         <button
           class="icon abort"
@@ -1478,9 +1512,7 @@
             {t("run.keepThrowing")}
           {/if}
         </p>
-        {#if waiting}
-          {@render waitHint()}
-        {:else if paused}
+        {#if paused && !waiting}
           <Quote />
         {/if}
 
@@ -1544,7 +1576,6 @@
             {#if d}
               <button
                 class="dart-box filled"
-                class:done={!session.current.length}
                 class:void={i >= bustAt}
                 class:editing={session.edit === i}
                 class:fixed={d.method === "manual"}
@@ -1570,6 +1601,17 @@
           />
         </div>
       </div>
+
+      <!-- Without the detection the game is paused: a screen over it says why, until Autodarts is back. -->
+      {#if waiting}
+        <div class="lost" role="alertdialog" aria-labelledby="lost-title">
+          <div class="lost-card">
+            <h2 id="lost-title">{t(conn === "connected" ? "run.detectionLost" : "run.connectionLost")}</h2>
+            <p class="lede">{t("run.waitingForBoard")}</p>
+            {@render waitHint()}
+          </div>
+        </div>
+      {/if}
 
       <!-- Over the whole game, but clicks pass through, so the busted dart can still be corrected. -->
       {#if noScoreAt !== null}
@@ -1733,7 +1775,10 @@
 <footer>
   <div class="meta">
     <span>D³ v{__APP_VERSION__}</span>
-    <a href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>{t("footer.coffee")}</a>
+    <a class="coffee" href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d={COFFEE_ICON} /></svg>
+      {t("footer.coffee")}
+    </a>
   </div>
   <div class="conn" data-state={conn} data-board={conn === "connected" && !detecting ? "idle" : undefined} role="status">
     <span class="dot"></span>{connLabel}
@@ -1925,6 +1970,9 @@
   .meta { display: flex; gap: 1.25rem; align-items: center; margin-right: auto; }
   .meta a { color: var(--dim); text-decoration: none; }
   .meta a:hover { color: var(--accent); }
+  .meta .coffee { display: inline-flex; align-items: center; gap: 0.4rem; }
+  /* The cup takes the Buy Me a Coffee yellow on hover. */
+  .meta .coffee:hover svg { color: #ffdd00; }
   .conn { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); font-size: 0.9rem; }
   .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--dim); }
   .conn[data-state="connected"] { color: var(--chalk); }
@@ -2103,6 +2151,27 @@
 
   /* Game info and board share the view half and half; the game info is centred in its half. */
   .stage { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+
+  /* Paused for the lost detection: covers the game, so no dart is set by hand meanwhile. */
+  .lost {
+    position: absolute;
+    inset: -1rem;
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    border-radius: 1rem;
+    background: rgb(6 13 18 / 0.82);
+    backdrop-filter: blur(3px);
+  }
+  .lost-card {
+    max-width: 30rem;
+    padding: 2rem 2.5rem;
+    border: 1px solid var(--dart);
+    border-radius: 0.9rem;
+    background: var(--panel);
+    text-align: center;
+  }
+  .lost-card h2 { margin: 0 0 0.75rem; color: var(--dart); }
 
   /* The bust overlay: the stamp slams in, holds, and fades out within the time it is shown. */
   .no-score {
@@ -2346,8 +2415,6 @@
   .dart-box.filled { color: var(--dart); border-color: var(--dart); }
   button.dart-box { font: inherit; font-size: 1.5rem; font-weight: 700; cursor: pointer; }
   button.dart-box:hover { background: rgb(242 193 78 / 0.08); }
-  /* The last turn after the takeout: still shown, and still correctable, until the next dart. */
-  .dart-box.done { opacity: 0.6; }
   /* Set by hand: a small mark in the corner. */
   .dart-box.fixed { position: relative; }
   .dart-box.fixed::after {

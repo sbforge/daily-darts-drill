@@ -1,11 +1,5 @@
 # Todos
 ## Found bugs while testing
-* reset single dart boxes after taket complete
-* if a training game ends within the time cap the game should restart. but keep progessing the result / score 
-* double click approval for skip action 
-* if autodarts is not connected
-  * dont start the timer on training routines
-  * if disconnected on running routine.. pause and show a screen
 * on fullscreen: can we align the dartboard visualization with the backdrop?
 
 
@@ -18,9 +12,8 @@
   * Motivation Sentence at the end that the player finished the routine
     * let generate like 20 different options
   * Move the Done button somewhere to the top, so the user dont need to scroll down
-1. Buy me a coffee: add the real link (placeholder URL for now)
-2. Fix GitHub Actions asset creation
-3. README.md: write the "Why I built this" section (placeholder for now)
+1. Fix GitHub Actions asset creation
+2. README.md: write the "Why I built this" section (placeholder for now)
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -75,6 +68,13 @@
 
 
 ## Done ✅
+* Bugs from manual testing
+  * The dart boxes clear with the takeout
+  * Around the clock completed before the time cap starts over; accuracy, darts and hits carry on, completed rounds are counted (a game without a time cap still ends)
+  * Ending a running game with skip asks for a second click
+  * Autodarts gone: the countdown before the first game holds until a game can start; a game in play pauses behind a "connection lost" screen and resumes by itself
+  * A dropped network or a switched-off Autodarts PC is noticed within seconds (HTTP watchdog), not only when the websocket closes
+* Buy me a coffee: real link (buymeacoffee.com/sbforge), cup icon in the footer, GitHub sponsor button (.github/FUNDING.yml)
 * README for version 0.1: purpose, features with screenshots, supported autoscorers, install, data location
 * About page (question mark in the header): the project, links (GitHub, issues, Autodarts, coffee), the MIT license
   * SBOM popup: every Rust crate and bundled npm package with version and license, generated at build time as CycloneDX
@@ -127,7 +127,7 @@
 * Around the clock: finish on bull, single bull or any bull; T/D shown on treble and double targets
 * Complex doubles renamed to "Plan B", current target in the score box, "Won with dart n" stats removed
 * Dart correction: click a dart box, then the field on the board (off the board = miss)
-  * Works mid-turn and after the takeout, until the next dart lands
+  * Works while the darts are on the board; the boxes clear with the takeout
   * The game recalculates; a fix survives Autodarts re-sending the turn
   * A board click with no box picked sets the next dart (for darts Autodarts missed)
   * "Next turn" button beside the boxes ends the turn by hand; empty boxes count as misses
