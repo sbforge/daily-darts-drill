@@ -5,5 +5,5 @@ fn main() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .run(tauri::generate_context!())
-        .expect("error while running ADX");
+        .expect("error while running D³ – Daily Darts Drill");
 }

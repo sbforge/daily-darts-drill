@@ -18,13 +18,13 @@ export const en = {
   "common.untitled": "Untitled",
   "error.save": "Could not save to the database: {msg}",
   "db.title": "Can’t open the database",
-  "db.hintBefore": "ADX keeps all settings, routines and results in a local SQLite database. Start the app with",
+  "db.hintBefore": "D³ keeps all settings, routines and results in a local SQLite database. Start the app with",
   "db.hintAfter": "or use the installed app. Opening the page in a normal browser does not work.",
   "db.loading": "Opening your data…",
 
   // settings
   "settings.connTitle": "Autodarts connection",
-  "settings.connLede": "ADX listens to the live event stream of your Autodarts client.",
+  "settings.connLede": "D³ listens to the live event stream of your Autodarts client.",
   "settings.host": "Host",
   "settings.port": "Port",
   "settings.hostRequired": "Enter the host name or IP address of your Autodarts client.",

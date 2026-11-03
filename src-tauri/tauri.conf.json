@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ADX",
+  "productName": "Daily Darts Drill",
   "version": "0.1.0",
   "identifier": "dev.darttrainer.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ADX – Autodarts Training Experience",
+        "title": "D³ – Daily Darts Drill",
         "width": 1100,
         "height": 760,
         "minWidth": 880,
