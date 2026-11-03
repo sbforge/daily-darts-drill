@@ -41,6 +41,8 @@
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
   import { lastBackup } from "./lib/backend";
+  import CrashToasts from "./lib/CrashToasts.svelte";
+  import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
   import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
@@ -85,6 +87,8 @@
   let updateBackup = $state("");
   let backupError = $state("");
   let lastBackupAt = $state<string | null>(null);
+  // The last run didn't close normally (the Rust side left its "running" marker behind).
+  let closedBadly = $state(false);
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
@@ -1007,6 +1011,18 @@
   }
 
   onMount(() => {
+    installCrashHandlers();
+    setCrashContext(() => ({
+      screen: view,
+      phase,
+      routine: run?.routine.name,
+      game: session && def ? { id: def.id, settings: $state.snapshot(session.settings) } : undefined,
+      turns: session?.allTurns.length,
+      connection: conn,
+      board,
+      animations: fx.enabled,
+      language: getLocale(),
+    }));
     client = new AutodartsClient({ onState: onConnState, onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
     const started = performance.now();
     const loaded = (next?: Key) => {
@@ -1022,6 +1038,7 @@
           backupError = startup.backupError;
         }
         lastBackupAt = await lastBackup();
+        if (startup.crashedLastTime) closedBadly = true;
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
@@ -1192,10 +1209,21 @@
   <p class="banner" role="alert">
     {t("backup.failed", { msg: backupError })}
     <button class="link" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
-    <button class="link" onclick={() => (backupError = "")}>{t("common.close")}</button>
+    <button class="link" onclick={() => (backupError = "")}>{t("crash.dismiss")}</button>
+  </p>
+{/if}
+{#if closedBadly}
+  <p class="banner" role="alert">
+    {t("crash.closedBadly")}
+    <button class="link" onclick={() => openFolder("logs")}>{t("about.openLogs")}</button>
+    <button class="link" onclick={() => (closedBadly = false)}>{t("crash.dismiss")}</button>
   </p>
 {/if}
 
+<CrashToasts />
+
+<!-- The boundary wraps <main> (not its content), because snippets declared directly inside a boundary become its props. -->
+<svelte:boundary onerror={(e) => reportCrash(e, "render")}>
 <main>
   {#if dbError}
     <section class="narrow">
@@ -1976,6 +2004,22 @@
     </section>
   {/if}
 </main>
+  {#snippet failed(_error, reset)}
+    <main>
+      <section class="narrow">
+        <h2>{t("crash.screenTitle")}</h2>
+        <p class="hint">{t("crash.screenHint")}</p>
+        <button
+          class="primary"
+          onclick={() => {
+            view = "train";
+            reset();
+          }}>{t("crash.backToTrain")}</button
+        >
+      </section>
+    </main>
+  {/snippet}
+</svelte:boundary>
 
 <FxLayer />
 

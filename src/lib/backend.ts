@@ -6,11 +6,13 @@ export interface StartupReport {
   updateBackup: string | null;
   /** Today's backup, if this start made it. */
   dailyBackup: string | null;
+  /** The app did not close normally the last time. */
+  crashedLastTime: boolean;
   /** Why a backup failed, if it did. */
   backupError: string | null;
 }
 
-const EMPTY: StartupReport = { updateBackup: null, dailyBackup: null, backupError: null };
+const EMPTY: StartupReport = { updateBackup: null, dailyBackup: null, backupError: null, crashedLastTime: false };
 
 export async function startupReport(): Promise<StartupReport> {
   try {
