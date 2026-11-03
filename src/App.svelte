@@ -922,7 +922,6 @@
           <div class="no-score" role="status" style:--no-score-ms="{NO_SCORE_MS}ms">
             <div class="stamp">
               <span class="word">{t("run.noScore")}</span>
-              <span class="why">{t("run.noScoreHint")}</span>
             </div>
           </div>
         {/key}
@@ -1331,7 +1330,6 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
-  .no-score .why { color: var(--chalk); font-size: 1rem; }
   @keyframes no-score-fade {
     from { opacity: 0; }
     10% { opacity: 1; }
