@@ -18,11 +18,16 @@ function component(ecosystem, name, version, license, url) {
   };
 }
 
-/** The crates the app links on this machine's platform, build scripts and macros included, dev-only crates left out. */
+/**
+ * The crates the app links on the platform being built, build scripts and macros included, dev-only crates left out.
+ * `tauri build --target` passes the target to the frontend build; without one it is this machine's platform.
+ */
 export function rustComponents(cargoDir) {
-  const host = execFileSync("rustc", ["-vV"], { encoding: "utf8" }).match(/^host: (.+)$/m)[1];
+  const target =
+    process.env.TAURI_ENV_TARGET_TRIPLE ??
+    execFileSync("rustc", ["-vV"], { encoding: "utf8" }).match(/^host: (.+)$/m)[1];
   const meta = JSON.parse(
-    execFileSync("cargo", ["metadata", "--format-version", "1", "--locked", "--filter-platform", host], {
+    execFileSync("cargo", ["metadata", "--format-version", "1", "--locked", "--filter-platform", target], {
       cwd: cargoDir,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
