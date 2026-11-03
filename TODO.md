@@ -2,19 +2,6 @@
 
 ## Next (in priority order)
 1. Game detail screens: every training game gets its own detail screen
-    * General:
-      * Every parameter of a training game should get a description what that option does. Info Icon in Settings screen or small description below the corresponding field
-    * 121
-      * Show rest score
-      * Show current stage
-      * Show darts left
-      * Safehouse
-        * Can be de-/activated
-        * Safehouse means: whenever you check out a score with your first 3 darts, that score becomes your safehouse. You can no longer fall below it, however often you miss.
-        * Example: you check 121–125, then check 126 with the first 3 darts. 126 is now your safehouse: missing 126 a hundred times still never takes you back below 126.
-      * Skips (+2 +3)
-        * Rename that option to "fast-forward"
-        * Should be optional
     * Complex Doubles
       * Rename ( See fancy Names )
       * Show current target
@@ -132,3 +119,9 @@
   * Games start automatically after the countdown and the pause
   * Random motivational quote on loading, countdown, break and paused game
 * Buy me a coffee link (placeholder)
+* Game settings: info icon with a description for every setting
+* Games split into one module each (src/lib/games/)
+* 121
+  * Rest score as the big number, current stage and darts left in the stats
+  * Safehouse (optional)
+  * Skips renamed to fast-forward (optional)

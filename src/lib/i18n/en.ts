@@ -226,17 +226,26 @@ export const en = {
 
   // 121
   "121.blurb":
-    "Check out within 9 darts. Checking out with darts 1-3 raises the next checkout by 3, with darts 4-6 by 2, with darts 7-9 by 1. Missing it lowers it by 1.",
+    "Check out within 9 darts. A checkout raises the next one, a miss lowers it by 1. Fast-forward and the safehouse are optional.",
   "121.start": "Starting checkout",
   "121.startInfo": "The checkout the game starts with (2-170). From there it goes up with every checkout and down with every miss. The usual start is 121.",
+  "121.fastForward": "Fast-forward",
+  "121.fastForwardInfo": "Rewards a quick checkout. With darts 1-3 the next checkout is 3 higher, with darts 4-6 2 higher, with darts 7-9 1 higher. When it is off, every checkout raises the next one by 1.",
+  "121.fastForwardOn": "Fast-forward on",
+  "121.fastForwardOff": "Fast-forward off",
+  "121.safehouse": "Safehouse",
+  "121.safehouseInfo": "Every checkout you make with your first 3 darts becomes your safehouse, and missed checkouts never take you below it again. Example: you check out 126 with darts 1-3. However often you miss 126 after that, you never drop below 126.",
+  "121.safehouseOn": "Safehouse on",
+  "121.safehouseOff": "Safehouse off",
   "121.describe": "Start at {n}, 9 darts per checkout",
   "121.summary": "Highest checkout {best}, {checkouts} made, {fails} failed",
-  "121.remaining": "Remaining",
+  "121.restOf": "Rest of {n}",
+  "121.stage": "Stage",
+  "121.stageValueStep": "{n} of {total}, +{step}",
   "121.dartsLeft": "Darts left",
   "121.checkouts": "Checkouts made",
   "121.fails": "Failed",
   "121.best": "Highest checkout",
-  "121.checkout": "Checkout",
 
   // motivation, shown while waiting. Every "quote.*" key is in the random pick, so adding one here is enough.
   "quote.1": "Every dart counts. Every day moves you forward.",
