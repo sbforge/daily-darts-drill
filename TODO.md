@@ -1,14 +1,9 @@
 # Todos
 
 ## Next (in priority order)
-1. About Screen
-    * Some information about the project
-    * Related links
-    * Library licenses? Check THAT!
-    * SBOM
-2. Buy me a coffee: add the real link (placeholder URL for now)
-3. Fix GitHub Actions asset creation
-4. Update README.md for version 0.1
+1. Buy me a coffee: add the real link (placeholder URL for now)
+2. Fix GitHub Actions asset creation
+3. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -58,6 +53,9 @@
 
 
 ## Done ✅
+* About page (question mark in the header): the project, links (GitHub, issues, Autodarts, coffee), the MIT license
+  * SBOM popup: every Rust crate and bundled npm package with version and license, generated at build time as CycloneDX
+  * GitHub link moved there from the footer
 * Loading screen with the D³ backdrop and a progress bar, visible for at least 2 seconds
 * History tab
   * Filter by date range (last month by default) and by routines / quick games
