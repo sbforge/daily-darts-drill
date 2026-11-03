@@ -253,7 +253,7 @@ export const en = {
   "121.blurb":
     "Check out within 9 darts. A checkout raises the next one, a miss lowers it by 1. Fast-forward and the safehouse are optional.",
   "121.start": "Starting checkout",
-  "121.startInfo": "The checkout the game starts with (2-170). From there it goes up with every checkout and down with every miss. The usual start is 121.",
+  "121.startInfo": "The checkout the game starts with (2-170). From there it goes up with every checkout and down with every miss, but never below the start. The usual start is 121.",
   "121.fastForward": "Fast-forward",
   "121.fastForwardInfo": "Rewards a quick checkout. With darts 1-3 the next checkout is 3 higher, with darts 4-6 2 higher, with darts 7-9 1 higher. When it is off, every checkout raises the next one by 1.",
   "121.fastForwardOn": "Fast-forward on",

@@ -119,7 +119,8 @@ export const oneTwentyOne: GameDef = {
         slotBase += 3; // a finished or busted turn uses all three darts, even if fewer were thrown
         if (slotBase >= DARTS_PER_ATTEMPT) {
           fails++;
-          target = Math.max(2, safehouse, target - 1);
+          // A miss never drops below the starting checkout (nor the safehouse).
+          target = Math.max(start, safehouse, target - 1);
           remaining = target;
           slotBase = 0;
         }

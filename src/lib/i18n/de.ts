@@ -254,7 +254,7 @@ export const de: Record<Key, string> = {
   "121.blurb":
     "Checke innerhalb von 9 Darts. Ein Checkout erhöht den nächsten, ein Fehlversuch senkt ihn um 1. Fast-Forward und Safehouse sind optional.",
   "121.start": "Start-Checkout",
-  "121.startInfo": "Der Checkout, mit dem das Spiel beginnt (2-170). Von dort geht es mit jedem Checkout nach oben und mit jedem Fehlversuch nach unten. Üblich ist der Start bei 121.",
+  "121.startInfo": "Der Checkout, mit dem das Spiel beginnt (2-170). Von dort geht es mit jedem Checkout nach oben und mit jedem Fehlversuch nach unten, aber nie unter den Start. Üblich ist der Start bei 121.",
   "121.fastForward": "Fast-Forward",
   "121.fastForwardInfo": "Belohnt einen schnellen Checkout. Mit Dart 1-3 ist der nächste Checkout 3 höher, mit Dart 4-6 2 höher, mit Dart 7-9 1 höher. Ist es aus, erhöht jeder Checkout den nächsten um 1.",
   "121.fastForwardOn": "Fast-Forward an",

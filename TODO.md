@@ -127,3 +127,4 @@
   * 121: the busted turn uses all three darts right away, the rest goes back to the start of the turn
   * The turn is over at the bust: its empty boxes are closed, a dart Autodarts still detects is struck through and doesn't count; no dart can be set by hand until a dart is corrected, the darts are taken out, or "next turn" is clicked
   * Animated "No Score" overlay for 2 s on a bust, also when a correction makes a turn bust; still with reduced motion
+* 121: a missed checkout never drops below the starting checkout
