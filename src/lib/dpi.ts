@@ -168,33 +168,82 @@ export function sessionIndex(results: ResultRecord[], config = DPI_CONFIG): numb
 }
 
 export type Trend =
-  /** `missing`: results still to play before both periods are full enough; 0 when the previous level is 0. */
+  /**
+   * `missing`: results still to play in the current period before a trend shows;
+   * 0 when it is the period before that has too few (or a level of 0), which playing now can't change.
+   */
   | { kind: "notEnough"; missing: number }
   | { kind: "trend"; percent: number };
 
 export interface Performance {
-  /** Average of the latest results (up to the window), 0-100; null without any. */
+  /** Average of the results in the period, 0-100; null without any. */
   current: number | null;
   /** How many results the current value is made of. */
   count: number;
   trend: Trend;
 }
 
+/** How far back to look: the last `amount` days, weeks, months or years, or all time. */
+export type TimeRange = { unit: "all" } | { unit: "day" | "week" | "month" | "year"; amount: number };
+
+export const DEFAULT_RANGE: TimeRange = { unit: "day", amount: 30 };
+
+/** Where the period ends going back from `now`; months and years follow the calendar. null for all time. */
+export function rangeStart(range: TimeRange, now: number): number | null {
+  if (range.unit === "all") return null;
+  const n = Math.max(1, Math.round(range.amount) || 1);
+  const d = new Date(now);
+  if (range.unit === "day") d.setDate(d.getDate() - n);
+  else if (range.unit === "week") d.setDate(d.getDate() - 7 * n);
+  else {
+    // 31 March minus a month is the end of February, not 3 March.
+    const day = d.getDate();
+    d.setDate(1);
+    if (range.unit === "month") d.setMonth(d.getMonth() - n);
+    else d.setFullYear(d.getFullYear() - n);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  }
+  return d.getTime();
+}
+
 const avg = (list: number[]) => (list.length ? list.reduce((s, n) => s + n, 0) / list.length : null);
 
-/** Current level and trend from a series of indices, oldest first. */
-export function performance(series: number[], config = DPI_CONFIG): Performance {
-  const current = series.slice(-config.window);
-  const previous = series.slice(-2 * config.window, -config.window);
+function compare(current: number[], previous: number[], missing: number, config: IndexConfig): Performance {
   const now = avg(current);
   const before = avg(previous);
   const needed = config.minTrend;
-  // The previous period only fills once the current one is full. Without a previous level above 0 a percentage says nothing.
+  // Without a previous level above 0 a percentage says nothing.
   const trend: Trend =
     current.length < needed || previous.length < needed || now === null || !before
-      ? { kind: "notEnough", missing: Math.max(0, config.window + needed - series.length) }
+      ? { kind: "notEnough", missing }
       : { kind: "trend", percent: ((now - before) / before) * 100 };
   return { current: now, count: current.length, trend };
+}
+
+/**
+ * Current level and trend from a series of indices, oldest first.
+ * For a period: the average within it, and the trend against the same span right before it.
+ * For all time: the latest `window` results, and the trend against the `window` before them.
+ */
+export function performance(
+  series: { at: string; value: number }[],
+  range: TimeRange = { unit: "all" },
+  now = Date.now(),
+  config = DPI_CONFIG,
+): Performance {
+  const needed = config.minTrend;
+  const start = rangeStart(range, now);
+  if (start === null) {
+    const values = series.map((p) => p.value);
+    const current = values.slice(-config.window);
+    // The previous period only fills once the current one is full.
+    return compare(current, values.slice(-2 * config.window, -config.window), Math.max(0, config.window + needed - values.length), config);
+  }
+  const before = start - (now - start);
+  const at = (p: { at: string }) => Date.parse(p.at);
+  const current = series.filter((p) => at(p) > start && at(p) <= now).map((p) => p.value);
+  const previous = series.filter((p) => at(p) > before && at(p) <= start).map((p) => p.value);
+  return compare(current, previous, Math.max(0, needed - current.length), config);
 }
 
 /** How far a trend moved, for its feedback. Changes below `steady` percent read as steady; from `strong` on as a big move. */
@@ -226,9 +275,11 @@ export function withLevel(series: { at: string; value: number }[], config = DPI_
 
 export interface DpiOverview {
   version: number;
+  /** Any result counts at all, in any period. */
+  hasData: boolean;
   overall: Performance;
   overallSeries: DpiPoint[];
-  /** Per game, in the order of the config; games without any counting result are left out. */
+  /** Per game, in the order of the config; games without any counting result at all are left out. */
   games: {
     gameId: string;
     area: SkillArea;
@@ -242,8 +293,19 @@ export interface DpiOverview {
   bySession: Map<string, number>;
 }
 
-/** Everything the app shows about the index, calculated from all stored results. */
-export function overview(results: ResultRecord[], config = DPI_CONFIG): DpiOverview {
+/**
+ * Everything the app shows about the index, calculated from all stored results.
+ * Levels, trends and chart points follow the time range; the history badges always cover every result.
+ */
+export function overview(
+  results: ResultRecord[],
+  range: TimeRange = { unit: "all" },
+  now = Date.now(),
+  config = DPI_CONFIG,
+): DpiOverview {
+  const start = rangeStart(range, now);
+  // The level line is the average of the latest results, so it is drawn over the whole history and then cut.
+  const inRange = (list: DpiPoint[]) => (start === null ? list : list.filter((p) => Date.parse(p.at) > start));
   const sorted = [...results].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   const byResult = new Map<string, number>();
   for (const r of sorted) {
@@ -271,20 +333,24 @@ export function overview(results: ResultRecord[], config = DPI_CONFIG): DpiOverv
       return {
         gameId: g.gameId,
         area: g.area,
-        performance: performance(series.map((p) => p.value), config),
-        series: withLevel(series, config),
+        performance: performance(series, range, now, config),
+        series: inRange(withLevel(series, config)),
         raw: keys.map((key) => ({
           key,
-          series: withLevel(counted.map((r) => ({ at: r.startedAt, value: Number(r.values[key]) || 0 })), config),
+          series: inRange(withLevel(counted.map((r) => ({ at: r.startedAt, value: Number(r.values[key]) || 0 })), config)),
         })),
+        played: series.length > 0,
       };
     })
-    .filter((g) => g.performance.count > 0);
+    // Games never played don't show; games not played in the period do, without a level.
+    .filter((g) => g.played)
+    .map(({ played: _, ...g }) => g);
 
   return {
     version: config.version,
-    overall: performance(overallSeries.map((p) => p.value), config),
-    overallSeries: withLevel(overallSeries, config),
+    hasData: overallSeries.length > 0,
+    overall: performance(overallSeries, range, now, config),
+    overallSeries: inRange(withLevel(overallSeries, config)),
     games,
     byResult,
     bySession,

@@ -20,7 +20,15 @@
     type RoutineItem,
   } from "./lib/store";
   import * as db from "./lib/db";
-  import { overview, trendStep, type DpiOverview, type Performance, type Trend } from "./lib/dpi";
+  import {
+    DEFAULT_RANGE,
+    overview,
+    trendStep,
+    type Performance,
+    type ResultRecord,
+    type TimeRange,
+    type Trend,
+  } from "./lib/dpi";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
@@ -70,7 +78,10 @@
   let lastPlayed = $state<Record<string, string>>({});
   let pendingSessionDelete = $state<string | null>(null);
   // The performance index, calculated from all stored results each time they change.
-  let dpi = $state<DpiOverview | null>(null);
+  // The raw results, read from the database whenever they change; the index is worked out from them for the picked period.
+  let dpiResults = $state<ResultRecord[]>([]);
+  let statsRange = $state<TimeRange>(DEFAULT_RANGE);
+  const dpi = $derived(overview(dpiResults, statsRange));
   let dpiHelp = $state<HTMLDialogElement>();
   // Statistics shows either the overall index or the index of one game (the picked one, else the first).
   let statsView = $state<"overall" | "games">("overall");
@@ -153,7 +164,7 @@
   }
 
   function refreshDpi() {
-    db.loadResults().then((r) => (dpi = overview(r)), failed);
+    db.loadResults().then((r) => (dpiResults = r), failed);
   }
 
   // ---- live events
@@ -598,6 +609,41 @@
   const metricOf = (key: string) => METRICS[key] ?? { label: "dpi.metric" as Key, digits: 1 };
   const metricFormat = (key: string) => (n: number) => `${num(n, metricOf(key).digits)}${metricOf(key).percent ? "%" : ""}`;
 
+  const RANGE_UNITS = ["day", "week", "month", "year", "all"] as const;
+  type RangeUnit = (typeof RANGE_UNITS)[number];
+  // What the number field shows; the period only changes once it holds a whole number from 1 up.
+  let rangeAmount = $state(30);
+
+  function setRange(unit: RangeUnit, amount = rangeAmount) {
+    statsRange = unit === "all" ? { unit } : { unit, amount };
+    db.setSetting("stats_range", JSON.stringify(statsRange)).catch(failed);
+  }
+
+  function rangeUnitLabel(unit: RangeUnit): string {
+    if (unit === "all") return t("range.all");
+    return t(`range.${unit}${rangeAmount === 1 ? "" : "s"}` as Key);
+  }
+
+  function changeRangeAmount(ev: Event) {
+    const n = Math.round(Number((ev.currentTarget as HTMLInputElement).value));
+    if (!Number.isFinite(n) || n < 1 || n > 999) return;
+    rangeAmount = n;
+    if (statsRange.unit !== "all") setRange(statsRange.unit, n);
+  }
+
+  async function loadRange() {
+    try {
+      const r = JSON.parse((await db.getSetting("stats_range")) ?? "null");
+      if (r?.unit === "all") statsRange = { unit: "all" };
+      else if (RANGE_UNITS.includes(r?.unit) && Number(r.amount) >= 1) {
+        rangeAmount = Math.round(Number(r.amount));
+        statsRange = { unit: r.unit, amount: rangeAmount };
+      }
+    } catch {
+      /* a broken setting keeps the default */
+    }
+  }
+
   function deleteSession(id: string) {
     if (pendingSessionDelete !== id) {
       pendingSessionDelete = id;
@@ -648,6 +694,7 @@
         ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
         history = await db.loadSessions();
         lastPlayed = await db.loadLastPlayed();
+        await loadRange();
         refreshDpi();
         ready = true;
         client.connect(config.host, config.port);
@@ -873,12 +920,14 @@
     {#snippet level(p: Performance)}
       <div class="dpi-overall">
         <div class="dpi-score">
-          <span class="big">{num(p.current ?? 0)}</span>
+          <span class="big">{p.current === null ? "–" : num(p.current)}</span>
           <span class="cap">{t("dpi.of")}</span>
         </div>
         <!-- Motivating is what the app is about: the line on the trend is the hero, the change sits under it. -->
         <div class="motivation">
-          <p class="motto" class:quiet={p.trend.kind !== "trend"}>{trendText(p.trend)}</p>
+          <p class="motto" class:quiet={p.trend.kind !== "trend"}>
+            {p.current === null ? t("dpi.noneInRange") : trendText(p.trend)}
+          </p>
           {#if p.trend.kind === "trend"}
             <p class="trend" data-dir={trendDir(p.trend)}>
               {@render arrow(p.trend)}<span class="trend-value">{trendShort(p.trend)}</span>
@@ -899,18 +948,39 @@
             </svg>
           </button>
         </h2>
-        {#if dpi && dpi.overall.current !== null}
-          <div class="toggle" role="tablist" aria-label={t("dpi.title")}>
-            <button role="tab" aria-selected={statsView === "overall"} onclick={() => (statsView = "overall")}>
-              {t("dpi.overallIndex")}
-            </button>
-            <button role="tab" aria-selected={statsView === "games"} onclick={() => (statsView = "games")}>
-              {t("dpi.gameIndex")}
-            </button>
+        {#if dpi.hasData}
+          <div class="stats-controls">
+            <div class="range" role="group" aria-label={t("range.label")}>
+              {#if statsRange.unit !== "all"}
+                <span>{t("range.last")}</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="999"
+                  value={rangeAmount}
+                  oninput={changeRangeAmount}
+                  aria-label={t("range.amount")}
+                />
+              {/if}
+              <Select
+                label={t("range.unit")}
+                value={statsRange.unit as RangeUnit}
+                options={RANGE_UNITS.map((u) => ({ value: u, label: rangeUnitLabel(u) }))}
+                onchange={(u) => setRange(u)}
+              />
+            </div>
+            <div class="toggle" role="tablist" aria-label={t("dpi.title")}>
+              <button role="tab" aria-selected={statsView === "overall"} onclick={() => (statsView = "overall")}>
+                {t("dpi.overallIndex")}
+              </button>
+              <button role="tab" aria-selected={statsView === "games"} onclick={() => (statsView = "games")}>
+                {t("dpi.gameIndex")}
+              </button>
+            </div>
           </div>
         {/if}
       </div>
-      {#if !dpi || dpi.overall.current === null}
+      {#if !dpi.hasData}
         <div class="dpi">
           <h3>{t("dpi.title")}</h3>
           <p class="hint">{t("dpi.empty")}</p>
@@ -920,7 +990,11 @@
           <h3>{t("dpi.overallIndex")}</h3>
           {@render level(dpi.overall)}
           <h4>{t("dpi.chartTitle")}</h4>
-          <DpiChart points={dpi.overallSeries} pointLabel={t("dpi.pointSession")} window={10} />
+          {#if dpi.overallSeries.length}
+            <DpiChart points={dpi.overallSeries} pointLabel={t("dpi.pointSession")} window={10} />
+          {:else}
+            <p class="hint">{t("dpi.chartEmpty")}</p>
+          {/if}
         </div>
       {:else}
         <div class="dpi">
@@ -934,7 +1008,7 @@
                       <span class="plan-name">{gameById(g.gameId).name}</span>
                       <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
                     </span>
-                    <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
+                    <span class="dpi-value">{g.performance.current === null ? "–" : num(g.performance.current)}</span>
                     <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend)}>
                       {@render arrow(g.performance.trend)}{trendShort(g.performance.trend)}
                     </span>
@@ -967,7 +1041,9 @@
                     </div>
                   </div>
                 </div>
-                {#if statsChart === "raw" && statsRaw}
+                {#if !statsGame.series.length}
+                  <p class="hint">{t("dpi.chartEmpty")}</p>
+                {:else if statsChart === "raw" && statsRaw}
                   <DpiChart
                     points={statsRaw.series}
                     pointLabel={t(metricOf(statsRaw.key).label)}
@@ -1304,7 +1380,7 @@
   <p>{t("dpi.helpLevel")}</p>
   <h4>{t("dpi.helpTrendTitle")}</h4>
   <p>{t("dpi.helpTrend")}</p>
-  <p class="hint">{t("dpi.helpVersion", { v: dpi?.version ?? 1 })}</p>
+  <p class="hint">{t("dpi.helpVersion", { v: dpi.version })}</p>
   <div class="foot">
     <button class="primary" onclick={() => dpiHelp?.close()}>{t("dpi.helpClose")}</button>
   </div>
@@ -1775,6 +1851,9 @@
   .toggle button { padding: 0.35rem 1rem; border: none; border-radius: 999px; background: none; color: var(--dim); font: inherit; cursor: pointer; }
   .toggle button:hover { color: var(--chalk); }
   .toggle button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .stats-controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .range { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); }
+  .range input { width: 4.5rem; }
   .toggle.small button { padding: 0.2rem 0.75rem; font-size: 0.9rem; }
   .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
   .chart-title { font-weight: 700; }
