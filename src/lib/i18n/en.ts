@@ -194,8 +194,8 @@ export const en = {
   "simpleDoubles.doubleInfo": "The double you throw at for the whole game. Only that double counts as a hit, every other dart is a miss.",
   "simpleDoubles.summary": "{accuracy}% accuracy ({hits} of {darts} darts)",
 
-  // complex doubles
-  "complexDoubles.name": "Complex doubles",
+  // Plan B (was "Complex doubles"; the keys keep the old name)
+  "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
     "Check out the double over three darts. Single hits are subtracted and the next target follows from what is left. With an odd leave after dart 2, the bull is the target.",
   "complexDoubles.describe": "Target D{n}",
@@ -208,7 +208,6 @@ export const en = {
   "complexDoubles.setUp": "Set up",
   "complexDoubles.rounds": "Rounds",
   "complexDoubles.successes": "Successful rounds",
-  "complexDoubles.wonWith": "Won with dart {n}",
 
   // scoring
   "scoring.name": "Scoring",

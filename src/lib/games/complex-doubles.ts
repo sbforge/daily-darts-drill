@@ -35,6 +35,7 @@ function evalRound(turn: Dart[], target: number): Round {
 }
 
 export const complexDoubles: GameDef = {
+  // Shown as "Plan B". The id keeps the working name: saved routines and results refer to it.
   id: "complex-doubles",
   get name() {
     return t("complexDoubles.name");
@@ -99,9 +100,6 @@ export const complexDoubles: GameDef = {
         { key: "rate", label: t("game.successRate"), value: `${num(rate, 1)}%`, hero: true },
         { key: "rounds", label: t("complexDoubles.rounds"), value: String(rounds) },
         { key: "successes", label: t("complexDoubles.successes"), value: String(successes) },
-        { key: "d1", label: t("complexDoubles.wonWith", { n: 1 }), value: String(by[0]) },
-        { key: "d2", label: t("complexDoubles.wonWith", { n: 2 }), value: String(by[1]) },
-        { key: "d3", label: t("complexDoubles.wonWith", { n: 3 }), value: String(by[2]) },
       ],
       focus,
       done: false,

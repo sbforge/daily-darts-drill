@@ -2,9 +2,6 @@
 
 ## Next (in priority order)
 1. Game detail screens: every training game gets its own detail screen
-    * Complex Doubles
-      * Rename ( See fancy Names )
-      * Show current target
     * Around the clock:
       * Add Single Bull or Bull as final field (any of them)
 2. Manual score correction in the score boxes above the dartboard
@@ -125,3 +122,4 @@
   * Rest score as the big number, current stage and darts left in the stats
   * Safehouse (optional)
   * Skips renamed to fast-forward (optional)
+* Complex doubles renamed to "Plan B", current target in the score box, "Won with dart n" stats removed
