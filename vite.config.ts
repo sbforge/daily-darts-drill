@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import pkg from "./package.json";
 import { sbom } from "./scripts/sbom.js";
@@ -15,4 +15,5 @@ export default defineConfig({
   clearScreen: false,
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   server: { port: 1420, strictPort: true },
+  test: { include: ["src/**/*.test.ts"], environment: "node" },
 });

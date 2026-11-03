@@ -37,8 +37,9 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
-  import { GAMES, gameById, type GameDef, type Moment, type Settings, type StatLine } from "./lib/games";
+  import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
+  import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
@@ -673,22 +674,12 @@
   // plus a 180 and No Score for every game. Each plays once, so a correction that makes a turn great
   // or bust shows it too, and a game recomputing on every dart doesn't repeat it. Keys carry the
   // game's start, so turn 4 of the next game is a new moment.
-  const is180 = (turn: Dart[]) => turn.length === 3 && turn.every((d) => d.kind === "triple" && d.number === 20);
   $effect(() => {
     if (phase !== "running" || !session || !result) return;
     const game = gameStartedAt;
-    const moments: Moment[] = [...(result.moments ?? [])];
-    const bust = result.noScore;
-    if (bust) moments.push({ key: `noscore:${bust.turn}`, turn: bust.turn, effect: "stamp", text: t("run.noScore"), tone: "bad", priority: 4 });
-    session.allTurns.forEach((turn, i) => {
-      if (is180(turn)) moments.push({ key: `180:${i}`, turn: i, effect: "stamp", text: "180", tone: "great", priority: 3 });
-    });
-    // One stamp per turn: the highest priority plays, the others count as played. A bust is never great,
-    // so No Score beats a 180 thrown past the rest.
-    const top = new Map<number, Moment>();
-    for (const m of moments) if ((m.priority ?? 0) > (top.get(m.turn)?.priority ?? -1)) top.set(m.turn, m);
-    for (const m of moments) if (top.get(m.turn) !== m) fx.skip(`${game}:${m.key}`);
-    for (const m of top.values()) {
+    const { play, skip } = pickMoments(result, session.allTurns);
+    for (const m of skip) fx.skip(`${game}:${m.key}`);
+    for (const m of play) {
       fx.play(m.effect, { text: m.text, tone: m.tone, size: "big", key: `${game}:${m.key}`, priority: m.priority });
     }
   });
