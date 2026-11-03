@@ -132,6 +132,7 @@ export const en = {
   "run.dartsAria": "Darts this turn",
   "run.corrected": "(corrected)",
   "run.correctDart": "Dart {n}: {dart}. Click to correct it",
+  "run.nextTurn": "Next turn (empty boxes count as misses)",
   "run.pickHint": "Click where dart {n} landed. Off the board = miss.",
   "summary.title": "Routine finished",
   "summary.noResult": "No result for this game.",
