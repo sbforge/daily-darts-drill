@@ -39,7 +39,7 @@ export interface IndexConfig {
   games: GameIndexConfig[];
   /** Weight of each area in the overall index. Areas without a result in a session are left out and the rest scaled up. */
   areas: Record<SkillArea, number>;
-  /** Results in the current and in the previous period. */
+  /** Results the rolling average (the chart line) is made of, and for all time the latest results against as many before. */
   window: number;
   /** Results each period needs before a trend is shown. */
   minTrend: number;
@@ -52,6 +52,16 @@ const higher = (key: string, baseline: number, target: number, weight = 1): Metr
   direction: "higher",
   weight,
 });
+
+/** "Results per comparison" until it is changed in the settings. Small, so the line follows the results closely. */
+export const DEFAULT_SAMPLE = 3;
+export const MAX_SAMPLE = 20;
+
+/** The config with "Results per comparison" from the settings. Only how levels and trends are read changes, not the index. */
+export function withSample(n: number, config = DPI_CONFIG): IndexConfig {
+  const size = Math.max(1, Math.min(MAX_SAMPLE, Math.round(n) || DEFAULT_SAMPLE));
+  return { ...config, window: size, minTrend: size };
+}
 
 /** The index config. Changing a baseline, target or weight means a new version: the whole history is recalculated with it. */
 export const DPI_CONFIG: IndexConfig = {
@@ -99,8 +109,9 @@ export const DPI_CONFIG: IndexConfig = {
     },
   ],
   areas: { scoring: 0.25, doubles: 0.25, checkout: 0.25, accuracy: 0.15, consistency: 0.1 },
-  window: 10,
-  minTrend: 5,
+  // Both come from "Results per comparison" in the settings, see withSample.
+  window: DEFAULT_SAMPLE,
+  minTrend: DEFAULT_SAMPLE,
 };
 
 // ------------------------------------------------------------ the engine

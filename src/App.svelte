@@ -22,7 +22,10 @@
   import * as db from "./lib/db";
   import {
     DEFAULT_RANGE,
+    DEFAULT_SAMPLE,
+    MAX_SAMPLE,
     overview,
+    withSample,
     trendStep,
     type Performance,
     type ResultRecord,
@@ -81,7 +84,9 @@
   // The raw results, read from the database whenever they change; the index is worked out from them for the picked period.
   let dpiResults = $state<ResultRecord[]>([]);
   let statsRange = $state<TimeRange>(DEFAULT_RANGE);
-  const dpi = $derived(overview(dpiResults, statsRange));
+  // "Results per comparison" from the settings: the rolling average, and how many a trend needs per period.
+  let statsSample = $state(DEFAULT_SAMPLE);
+  const dpi = $derived(overview(dpiResults, statsRange, Date.now(), withSample(statsSample)));
   let dpiHelp = $state<HTMLDialogElement>();
   // Statistics shows either the overall index or the index of one game (the picked one, else the first).
   let statsView = $state<"overall" | "games">("overall");
@@ -631,7 +636,16 @@
     if (statsRange.unit !== "all") setRange(statsRange.unit, n);
   }
 
+  function changeSample(ev: Event) {
+    const n = Math.round(Number((ev.currentTarget as HTMLInputElement).value));
+    if (!Number.isFinite(n) || n < 1 || n > MAX_SAMPLE) return;
+    statsSample = n;
+    db.setSetting("stats_sample", String(n)).catch(failed);
+  }
+
   async function loadRange() {
+    const n = Number(await db.getSetting("stats_sample"));
+    if (Number.isInteger(n) && n >= 1 && n <= MAX_SAMPLE) statsSample = n;
     try {
       const r = JSON.parse((await db.getSetting("stats_range")) ?? "null");
       if (r?.unit === "all") statsRange = { unit: "all" };
@@ -855,6 +869,13 @@
           onchange={(id) => changeLanguage(id)}
         />
       </label>
+
+      <h3>{t("settings.statsTitle")}</h3>
+      <label>
+        {t("settings.sample")}
+        <input type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
+      </label>
+      <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
     </section>
   {:else if view === "history"}
     <section class="history">
@@ -991,7 +1012,7 @@
           {@render level(dpi.overall)}
           <h4>{t("dpi.chartTitle")}</h4>
           {#if dpi.overallSeries.length}
-            <DpiChart points={dpi.overallSeries} pointLabel={t("dpi.pointSession")} window={10} />
+            <DpiChart points={dpi.overallSeries} pointLabel={t("dpi.pointSession")} window={statsSample} />
           {:else}
             <p class="hint">{t("dpi.chartEmpty")}</p>
           {/if}
@@ -1047,12 +1068,12 @@
                   <DpiChart
                     points={statsRaw.series}
                     pointLabel={t(metricOf(statsRaw.key).label)}
-                    window={10}
+                    window={statsSample}
                     max={metricOf(statsRaw.key).percent ? 100 : undefined}
                     format={metricFormat(statsRaw.key)}
                   />
                 {:else}
-                  <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
+                  <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={statsSample} />
                 {/if}
               {/if}
             </div>
@@ -1377,9 +1398,9 @@
   <h4>{t("dpi.helpOverallTitle")}</h4>
   <p>{t("dpi.helpOverall")}</p>
   <h4>{t("dpi.helpLevelTitle")}</h4>
-  <p>{t("dpi.helpLevel")}</p>
+  <p>{t("dpi.helpLevel", { n: statsSample })}</p>
   <h4>{t("dpi.helpTrendTitle")}</h4>
-  <p>{t("dpi.helpTrend")}</p>
+  <p>{t("dpi.helpTrend", { n: statsSample })}</p>
   <p class="hint">{t("dpi.helpVersion", { v: dpi.version })}</p>
   <div class="foot">
     <button class="primary" onclick={() => dpiHelp?.close()}>{t("dpi.helpClose")}</button>

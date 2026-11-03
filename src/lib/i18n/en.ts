@@ -57,6 +57,9 @@ export const en = {
   "settings.recentEmpty": "Throw a dart. It shows up here, so you know the connection works.",
   "settings.languageTitle": "Language",
   "settings.language": "Language of the app",
+  "settings.statsTitle": "Statistics",
+  "settings.sample": "Results per comparison",
+  "settings.sampleHint": "The chart line is the average of the latest {n} results, a trend needs at least {n} results in each period, and for all time your latest {n} are compared with the {n} before. Fewer follow your results more closely, more even them out.",
 
   // history
   "history.title": "History",
@@ -114,9 +117,9 @@ export const en = {
   "dpi.helpOverallTitle": "Overall index",
   "dpi.helpOverall": "The games of a session are grouped into skill areas: scoring, doubles, checkout, accuracy and consistency. Each area has a fixed share of the overall index, so a game you play a lot doesn't outweigh the rest. Areas you didn't train in a session are left out for that session.",
   "dpi.helpLevelTitle": "Your score",
-  "dpi.helpLevel": "The big number is the average of your results in the period you picked at the top. For all time it is the average of your latest 10 sessions, or of the latest 10 results of a game.",
+  "dpi.helpLevel": "The big number is the average of your results in the period you picked at the top. For all time it is the average of your latest {n} sessions, or of the latest {n} results of a game. The line in the chart is the average of the latest {n} up to each point.",
   "dpi.helpTrendTitle": "Trend",
-  "dpi.helpTrend": "The trend compares the period with the same span right before it, e.g. the last 30 days with the 30 days before, as soon as both have at least 5 results. For all time it compares your latest 10 with the 10 before them. The index measures you against the targets, the trend against your own past: both matter, and a dip is a normal part of training.",
+  "dpi.helpTrend": "The trend compares the period with the same span right before it, e.g. the last 30 days with the 30 days before, as soon as both have at least {n} results. For all time it compares your latest {n} with the {n} before them. How many that is can be set in the settings. The index measures you against the targets, the trend against your own past: both matter, and a dip is a normal part of training.",
   "dpi.helpVersion": "Index version {v}.",
   "dpi.helpClose": "Got it",
   "dpi.notEnough": "Play {n} more to see your trend.",

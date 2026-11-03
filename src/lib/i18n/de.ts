@@ -60,6 +60,9 @@ export const de: Record<Key, string> = {
   "settings.recentEmpty": "Wirf einen Dart. Er erscheint hier, dann weißt du, dass die Verbindung steht.",
   "settings.languageTitle": "Sprache",
   "settings.language": "Sprache der App",
+  "settings.statsTitle": "Statistik",
+  "settings.sample": "Ergebnisse pro Vergleich",
+  "settings.sampleHint": "Die Linie im Diagramm ist der Durchschnitt der letzten {n} Ergebnisse, ein Trend braucht mindestens {n} Ergebnisse in jedem Zeitraum, und für den gesamten Zeitraum werden deine letzten {n} mit den {n} davor verglichen. Weniger folgen deinen Ergebnissen enger, mehr gleichen sie aus.",
 
   // history
   "history.title": "Verlauf",
@@ -117,9 +120,9 @@ export const de: Record<Key, string> = {
   "dpi.helpOverallTitle": "Gesamtindex",
   "dpi.helpOverall": "Die Spiele einer Einheit werden nach Bereichen gruppiert: Scoring, Doppel, Checkout, Präzision und Konstanz. Jeder Bereich hat einen festen Anteil am Gesamtindex, so überwiegt ein Spiel, das du oft spielst, nicht den Rest. Bereiche, die du in einer Einheit nicht trainiert hast, fallen für diese Einheit weg.",
   "dpi.helpLevelTitle": "Deine Punktzahl",
-  "dpi.helpLevel": "Die große Zahl ist der Durchschnitt deiner Ergebnisse im oben gewählten Zeitraum. Für den gesamten Zeitraum ist es der Durchschnitt deiner letzten 10 Einheiten, oder der letzten 10 Ergebnisse eines Spiels.",
+  "dpi.helpLevel": "Die große Zahl ist der Durchschnitt deiner Ergebnisse im oben gewählten Zeitraum. Für den gesamten Zeitraum ist es der Durchschnitt deiner letzten {n} Einheiten, oder der letzten {n} Ergebnisse eines Spiels. Die Linie im Diagramm ist an jedem Punkt der Durchschnitt der letzten {n}.",
   "dpi.helpTrendTitle": "Trend",
-  "dpi.helpTrend": "Der Trend vergleicht den Zeitraum mit dem gleich langen Zeitraum direkt davor, etwa die letzten 30 Tage mit den 30 Tagen davor, sobald beide mindestens 5 Ergebnisse haben. Für den gesamten Zeitraum vergleicht er deine letzten 10 mit den 10 davor. Der Index misst dich an den Zielen, der Trend an deiner eigenen Entwicklung: beides zählt, und ein Tal ist ein normaler Teil des Trainings.",
+  "dpi.helpTrend": "Der Trend vergleicht den Zeitraum mit dem gleich langen Zeitraum direkt davor, etwa die letzten 30 Tage mit den 30 Tagen davor, sobald beide mindestens {n} Ergebnisse haben. Für den gesamten Zeitraum vergleicht er deine letzten {n} mit den {n} davor. Wie viele das sind, lässt sich in den Einstellungen festlegen. Der Index misst dich an den Zielen, der Trend an deiner eigenen Entwicklung: beides zählt, und ein Tal ist ein normaler Teil des Trainings.",
   "dpi.helpVersion": "Index-Version {v}.",
   "dpi.helpClose": "Verstanden",
   "dpi.notEnough": "Noch {n} Mal spielen, dann siehst du deinen Trend.",

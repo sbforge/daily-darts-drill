@@ -129,8 +129,9 @@
   * Central, versioned config: metrics, baselines, targets and weights per game; Around the clock has a scale per ring; too short a game doesn't count
   * Overall index per session: game indices averaged per skill area (scoring, doubles, checkout, accuracy, consistency), the areas weighted, so a game played often doesn't dominate
   * Period picker for the overall and the game index: "Last {n} days / weeks / months / years" or all time, 30 days by default, remembered
-  * Current level: average of the results in the period; for all time the latest 10 sessions (overall) or results (per game)
-  * Trend: the period against the same span right before it (all time: latest 10 against the 10 before), shown from 5 in each; encouraging also when it goes down
+  * Current level: average of the results in the period; for all time the latest n sessions (overall) or results (per game)
+  * Trend: the period against the same span right before it (all time: latest n against the n before), shown from n in each; encouraging also when it goes down
+  * n = "Results per comparison" in the settings (3 by default, 1-20); also the rolling average of the chart line
   * Own "Statistics" page in the navigation: the index (overall, per game with trend) and a chart of the index over time
     * Toggle between the overall index and the game index; the game index lists every game, a click picks the one charted
     * A dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values
