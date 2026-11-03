@@ -427,7 +427,11 @@
     client.start().catch(() => (startError = true));
   }
 
-  // ---- reset and calibrate, beside the Autodarts status in the footer
+  // ---- start / stop, reset and calibrate, beside the Autodarts status in the footer
+
+  // "noCamera" and "blocked" are a running detection with a problem, so they can be stopped too.
+  const canStartDetection = $derived(conn === "connected" && board === "stopped");
+  const canStopDetection = $derived(conn === "connected" && (board === "running" || board === "noCamera" || board === "blocked"));
 
   // Reset only does something while darts are detected; calibrating waits until the client is settled.
   const canReset = $derived(conn === "connected" && board === "running");
@@ -449,6 +453,20 @@
       () => noteBoard(t("board.resetDone"), false),
       () => noteBoard(t("board.resetFailed"), true),
     );
+  }
+
+  /** Starts the detection when it is stopped, stops it when it runs. */
+  function toggleDetection() {
+    if (canStartDetection)
+      client.start().then(
+        () => noteBoard(t("board.startDone"), false),
+        () => noteBoard(t("board.startFailed"), true),
+      );
+    else if (canStopDetection)
+      client.stop().then(
+        () => noteBoard(t("board.stopDone"), false),
+        () => noteBoard(t("board.stopFailed"), true),
+      );
   }
 
   /** Starts the auto-calibration of the cameras. */
@@ -943,6 +961,14 @@
             <span class="conn" data-state={conn}><span class="dot"></span>{connLabel}</span>
           </div>
           <p class="lede">{t("settings.connLede")}</p>
+          {#if conn === "connected" && board !== "unknown"}
+            <p class="detection" data-board={board}>
+              {t("settings.detection", { status: boardLabel })}
+              {#if canStartDetection}
+                <button type="button" class="primary small" onclick={toggleDetection}>{t("board.start")}</button>
+              {/if}
+            </p>
+          {/if}
           <div class="conn-split">
             <form onsubmit={saveSettings}>
               <div class="fields">
@@ -1660,6 +1686,22 @@
   </div>
   {#if conn === "connected"}
     <div class="board-actions" role="group" aria-label={t("board.actions")}>
+      <button
+        class="icon"
+        class:go={canStartDetection}
+        aria-label={t(canStopDetection ? "board.stop" : "board.start")}
+        title={t(canStopDetection ? "board.stop" : "board.start")}
+        disabled={!canStartDetection && !canStopDetection}
+        onclick={toggleDetection}
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          {#if canStopDetection}
+            <path fill="currentColor" d="M7 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
+          {:else}
+            <path fill="currentColor" d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.8-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z" />
+          {/if}
+        </svg>
+      </button>
       <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={resetBoard}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" />
@@ -1820,6 +1862,7 @@
   /* Pulled up against the status, so the buttons read as part of it. */
   .board-actions { position: relative; display: flex; gap: 0.15rem; margin-left: -0.65rem; }
   .board-actions button.icon { width: 1.9rem; height: 1.9rem; }
+  .board-actions button.icon.go { color: var(--accent); }
   .confirm-bubble.up { top: auto; bottom: calc(100% + 0.6rem); right: -0.6rem; }
   .confirm-bubble.up::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: #ff9b8f; }
   .confirm-bubble.ok { border-color: var(--accent); background: #0f2a31; color: #d4f6fc; }
@@ -2071,6 +2114,8 @@
   .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
   .group-head h3 { margin-bottom: 0.35rem; }
   .group .lede { margin-bottom: 1.25rem; }
+  .detection { display: flex; align-items: center; gap: 0.75rem; margin: -0.5rem 0 1.25rem; color: var(--dim); }
+  .detection[data-board="stopped"] { color: var(--dart); }
   .conn-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1.5rem; }
   .fields { display: grid; grid-template-columns: minmax(0, 1fr) 7rem; gap: 0 0.75rem; }
   .fields label { margin-bottom: 0.5rem; }
