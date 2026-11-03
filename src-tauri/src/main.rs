@@ -77,6 +77,16 @@ fn save_crash_report(app: tauri::AppHandle, json: String) -> Result<String, Stri
     Ok(path.display().to_string())
 }
 
+/// The "Save as" dialog already asked about replacing the file; `VACUUM INTO` refuses to write over one.
+#[tauri::command]
+fn clear_export_target(path: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if p.is_file() {
+        std::fs::remove_file(p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Opens one of the app's folders in the file manager.
 #[tauri::command]
 fn open_folder(app: tauri::AppHandle, kind: String) -> Result<(), String> {
@@ -175,6 +185,7 @@ fn main() {
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // Before any window can open the database: the files are not in use, a plain copy is complete.
             let config = app.path().app_config_dir()?;
@@ -220,7 +231,8 @@ fn main() {
             last_backup,
             open_folder,
             log_tail,
-            save_crash_report
+            save_crash_report,
+            clear_export_target
         ])
         .build(tauri::generate_context!())
         .expect("error while building D³ – Daily Darts Drill")

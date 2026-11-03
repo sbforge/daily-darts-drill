@@ -66,6 +66,10 @@ export const de: Record<Key, string> = {
   "crash.screenTitle": "Auf diesem Bildschirm ist etwas schiefgelaufen",
   "crash.screenHint": "Der Fehler steht im Log. Deine Daten sind sicher.",
   "crash.backToTrain": "Zurück zu Training",
+  "export.button": "Meine Daten exportieren",
+  "export.hint": "Speichert eine Kopie aller deiner Daten in einer Datei, z. B. für einen USB-Stick oder einen neuen Computer. Nicht während eine Routine läuft.",
+  "export.done": "Exportiert.",
+  "export.failed": "Export fehlgeschlagen: {msg}",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",
