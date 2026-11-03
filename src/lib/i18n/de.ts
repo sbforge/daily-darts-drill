@@ -210,6 +210,7 @@ export const de: Record<Key, string> = {
   "routines.untilDone": "bis fertig",
   "train.totalEstimate": "Etwa {n} Minuten insgesamt.",
   "settings.routinesTitle": "Routinen",
+  "run.fullscreen": "Vollbild (F11)",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",

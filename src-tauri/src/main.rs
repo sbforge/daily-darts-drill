@@ -212,6 +212,8 @@ fn main() {
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
+        // Size, position and maximised state are remembered, so the player sets the window up once at the oche.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -252,6 +254,22 @@ fn main() {
                 }
             }
             app.manage(startup);
+
+            // The first start fits the screen: on a small one (a 1366 x 768 laptop at 125 %) the 1100 x 760 window
+            // would be taller than the screen and can't be made smaller, so it opens maximised instead.
+            // Once the window state plugin has saved a state, that state wins.
+            if !config.join(".window-state.json").exists() {
+                if let Some(win) = app.get_webview_window("main") {
+                    if let Ok(Some(monitor)) = win.current_monitor() {
+                        let area = monitor.work_area();
+                        let scale = monitor.scale_factor();
+                        let (w, h) = (area.size.width as f64 / scale, area.size.height as f64 / scale);
+                        if w < 1100.0 || h < 760.0 {
+                            let _ = win.maximize();
+                        }
+                    }
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

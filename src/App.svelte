@@ -63,6 +63,7 @@
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
   import { AUTODARTS_URL, COFFEE_ICON, COFFEE_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, openExternal } from "./lib/links";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
@@ -155,6 +156,8 @@
     startedAt: string;
   } | null>(null);
   let phase = $state<"idle" | "countdown" | "ready" | "break" | "running" | "summary">("idle");
+  // Countdown, game and break never scroll: the layout fits the window instead (see main.fit).
+  const fit = $derived(view === "train" && (phase === "countdown" || phase === "running" || phase === "break"));
   let session = $state<Session | null>(null);
   let gameStartedAt = "";
   let endsAt = $state<number | null>(null);
@@ -234,6 +237,20 @@
     const add = missingBuiltins($state.snapshot(routines));
     routines = [...routines, ...add];
     restoreNote = add.length ? t("builtin.restored", { n: add.length }) : t("builtin.nothingToRestore");
+  }
+
+  // F11 (and a button in the header while a routine runs) gives back the title bar and the taskbar; Esc leaves it.
+  let fullscreen = $state(false);
+  async function toggleFullscreen() {
+    const next = !fullscreen;
+    try {
+      await getCurrentWindow().setFullscreen(next);
+    } catch {
+      // Outside Tauri (the browser preview): the page's own fullscreen.
+      if (next) await document.documentElement.requestFullscreen?.().catch(() => {});
+      else await document.exitFullscreen?.().catch(() => {});
+    }
+    fullscreen = next;
   }
 
   function failed(e: unknown) {
@@ -1136,9 +1153,19 @@
 {/snippet}
 
 <!-- Escape stops correcting a dart. -->
-<svelte:window onkeydown={(e) => e.key === "Escape" && session?.editing && (session.editing = null)} />
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === "F11") {
+      e.preventDefault();
+      toggleFullscreen();
+    } else if (e.key === "Escape") {
+      if (session?.editing) session.editing = null;
+      else if (fullscreen) toggleFullscreen();
+    }
+  }}
+/>
 
-<header>
+<header class:compact={fit}>
   <h1><Logo height={26} /></h1>
   <nav aria-label={t("nav.main")}>
     <button class="tab" aria-current={view === "train" || view === "routines" ? "page" : undefined} onclick={() => go("train")}>
@@ -1153,6 +1180,11 @@
   </nav>
   {#if inRun}
     <div class="run-controls" role="group" aria-label={t("run.controls")}>
+      <button class="icon" class:active={fullscreen} aria-label={t("run.fullscreen")} title={t("run.fullscreen")} onclick={toggleFullscreen}>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="currentColor" d="M5 5h5v2H7v3H5V5Zm9 0h5v5h-2V7h-3V5ZM5 14h2v3h3v2H5v-5Zm12 0h2v5h-5v-2h3v-3Z" />
+        </svg>
+      </button>
       <button
         class="icon"
         class:active={paused}
@@ -1262,9 +1294,9 @@
 
 <CrashToasts />
 
-<!-- The boundary wraps <main> (not its content), because snippets declared directly inside a boundary become its props. -->
+<!-- The boundary wraps <main class:fit> (not its content), because snippets declared directly inside a boundary become its props. -->
 <svelte:boundary onerror={(e) => reportCrash(e, "render")}>
-<main>
+<main class:fit>
   {#if dbError}
     <section class="narrow">
       <h2>{t(isNewerDatabase(dbError) ? "db.newerTitle" : "db.title")}</h2>
@@ -1866,7 +1898,7 @@
         <div class="clock" class:paused class:last={lastSeconds} use:useFx={{ effect: "pulse", active: lastSeconds }}>
           {totalMs ? fmt(remaining) : fmt(elapsed, true)}
         </div>
-        <p class="note">
+        <p class="note" class:quiet={!waiting && !paused}>
           {#if waiting}
             {t("run.waitingForBoard")}
           {:else if paused}
@@ -2243,7 +2275,7 @@
   <LoadingScreen progress={loadDone / LOAD_STEPS} label={t(loadLabel)} fillMs={MIN_LOADING_MS - 250} />
 {/if}
 
-<footer>
+<footer class:compact={fit}>
   <div class="meta">
     <span>D³ v{__APP_VERSION__}</span>
     <a class="coffee" href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>
@@ -2909,5 +2941,93 @@
   .pick-hint { max-width: 400px; width: 100%; height: 1.4em; line-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
   .pick-hint.show { visibility: visible; }
 
-  @media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }
+  /* ------------------------------------------------------------------------------------------------
+     Nothing scrolls inside a routine (countdown, game, break): main.fit is exactly as high as the window
+     allows, both columns are as high as main, and the board and the left panel scale with their own size
+     (container query units) instead of fixed rem sizes. See docs/responsive-layout-plan.md. */
+  header.compact { padding: 0.4rem 1.5rem; gap: 1.5rem; }
+  footer.compact { padding: 0.35rem 1.5rem; }
+  footer.compact .meta { display: none; }
+
+  main.fit {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.75rem max(1rem, calc((100% - 1600px) / 2 + 1rem));
+  }
+  main.fit > section { flex: 1; min-height: 0; }
+
+  main.fit .stage {
+    height: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: stretch;
+  }
+  .lost { inset: -0.5rem; }
+  .lost-card { max-height: calc(100% - 2rem); overflow: auto; }
+
+  /* The board takes what's left of its column: the dart boxes above it keep their fixed height. */
+  main.fit .views {
+    --bs: min(100cqw, calc(100cqh - 5.6rem), 800px);
+    container-type: size;
+    min-height: 0;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  main.fit .board, main.fit .darts, main.fit .pick-hint { width: var(--bs); max-width: none; }
+  main.fit .pick-hint { height: 1.2rem; line-height: 1.2rem; margin: 0; }
+
+  /* The left panel: sizes follow its own height, with floors so text stays readable. */
+  main.fit .stage .panel { container-type: size; min-height: 0; justify-content: center; }
+  main.fit .panel .progress { margin: 0 0 0.2rem; font-size: clamp(0.8rem, 2.4cqh, 0.95rem); }
+  main.fit .panel .clock { font-size: clamp(2.2rem, 11cqh, 5rem); }
+  main.fit .panel .note { margin: 0.25rem 0 clamp(0.25rem, 1.8cqh, 1.25rem); font-size: clamp(0.8rem, 2.4cqh, 1rem); }
+  main.fit .panel .focus {
+    margin: clamp(0.15rem, 1cqh, 0.5rem) 0 clamp(0.4rem, 2cqh, 1.25rem);
+    padding: clamp(0.35rem, 2cqh, 1rem) clamp(1rem, 6cqw, 2.5rem) clamp(0.45rem, 2.4cqh, 1.25rem);
+  }
+  main.fit .panel .focus .big { font-size: clamp(2.6rem, 17cqh, 6.5rem); }
+  main.fit .panel .focus .big.long { font-size: clamp(1.8rem, 9cqh, 3.6rem); line-height: 1.15; }
+  main.fit .panel .focus :global(.route) { margin-top: 0.15rem; font-size: clamp(0.75rem, 2.2cqh, 1rem); }
+  main.fit .panel :global(.meter) { margin-bottom: clamp(0.25rem, 1.6cqh, 1.25rem); gap: clamp(0.15rem, 1cqh, 0.45rem); }
+  main.fit .panel :global(.meter .dart) { height: clamp(24px, 6.5cqh, 50px); width: auto; }
+  main.fit .panel .hero { margin-bottom: clamp(0.25rem, 1.6cqh, 1.25rem); }
+  main.fit .panel .hero .big { font-size: clamp(1.8rem, 8cqh, 3.2rem); }
+  main.fit .panel .stats div { padding: clamp(0.15rem, 0.9cqh, 0.55rem) 0; }
+
+  /* What gives way when the panel is still too short, in this order:
+     1. the stats become one wrapped line of numbers, 2. the dart meter loses its label,
+     3. the quiet "Keep throwing" note goes (paused / waiting stay). */
+  @container (max-height: 470px) {
+    .stage .stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.1rem 1rem; border-top: 0; }
+    .stage .stats div { border: 0; padding: 0; gap: 0.35rem; }
+    .stage .stats dt::after { content: ":"; }
+  }
+  @container (max-height: 400px) {
+    main.fit .panel :global(.meter .cap) { display: none; }
+  }
+  @container (max-height: 340px) {
+    main.fit .panel .note.quiet { display: none; }
+  }
+
+  /* Countdown: the number grows with the window. */
+  main.fit .countdown { width: 100%; height: 100%; justify-content: center; padding-top: 0; container-type: size; }
+  main.fit .count { font-size: clamp(5rem, 40cqh, 14rem); }
+
+  /* Break: the cards sit in one row, the clock and "Next game" stay visible. */
+  main.fit .break { width: 100%; height: 100%; max-width: 70rem; justify-content: center; container-type: size; }
+  main.fit .break .clock { font-size: clamp(2.2rem, 12cqh, 4rem); }
+  main.fit .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: 0; margin-top: 0.25rem; }
+  main.fit .card { min-height: 0; overflow: hidden; padding: 0.75rem 1rem 0.25rem; }
+  main.fit .card h2 { font-size: clamp(1.1rem, 3.4cqh, 1.6rem); }
+  main.fit .card .lede, main.fit .card .game-goal { font-size: 0.9rem; margin-bottom: 0.4rem; }
+  /* At most three lines of the goal; the full text is in the add-game dialog and before the game. */
+  main.fit .card .lede, main.fit .card .game-goal {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+  }
 </style>

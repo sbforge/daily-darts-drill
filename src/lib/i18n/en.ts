@@ -208,6 +208,7 @@ export const en = {
   "routines.untilDone": "until done",
   "train.totalEstimate": "About {n} minutes in total.",
   "settings.routinesTitle": "Routines",
+  "run.fullscreen": "Fullscreen (F11)",
   "db.title": "Can’t open the database",
   "db.hintBefore": "D³ keeps all settings, routines and results in a local SQLite database. Start the app with",
   "db.hintAfter": "or use the installed app. Opening the page in a normal browser does not work.",

@@ -100,6 +100,7 @@
 <dialog bind:this={dialog} onclick={backdrop} aria-labelledby="add-game-title">
   <form onsubmit={add}>
     <h3 id="add-game-title">{t(quick ? "quick.title" : "routines.addGame")}</h3>
+    <div class="scroll">
 
     <fieldset class="games">
       <legend class="sr-only">{t(quick ? "quick.gameToPlay" : "routines.gameToAdd")}</legend>
@@ -126,6 +127,8 @@
       {/each}
     </div>
 
+    </div>
+
     <div class="foot">
       <button type="button" class="ghost" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
       <button type="submit" class="primary">{t(quick ? "run.startGame" : "routines.addGame")}</button>
@@ -136,8 +139,9 @@
 <style>
   dialog {
     width: min(40rem, calc(100vw - 2rem));
-    max-height: calc(100dvh - 4rem);
-    padding: 1.25rem 1.5rem;
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--panel);
@@ -145,7 +149,11 @@
     box-shadow: 0 20px 60px rgb(0 0 0 / 0.55);
   }
   dialog::backdrop { background: rgb(2 6 9 / 0.7); }
-  h3 { margin: 0 0 1rem; font-size: 1.2rem; }
+  /* Title and "Cancel / Start game" stay pinned; what is between them scrolls. */
+  dialog[open] { display: flex; flex-direction: column; }
+  form { display: flex; flex-direction: column; min-height: 0; max-height: calc(100dvh - 2rem); }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 1.5rem; }
+  h3 { margin: 0; padding: 1.25rem 1.5rem 0.75rem; font-size: 1.2rem; }
 
   .games {
     display: grid;
@@ -178,6 +186,6 @@
   .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; }
   .fields { --field-bg: var(--bg); }
   .fields :global(input) { background: var(--bg); }
-  .foot { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; }
+  .foot { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem 1.5rem 1.25rem; border-top: 1px solid var(--line); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
