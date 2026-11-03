@@ -1,25 +1,21 @@
 # Todos
 
 ## Next (in priority order)
-1. Single training game (play one game without a routine)
-    * add quickgame option to the training screen
-      * button on the top left
-    * Show Popup with available training games (like in the "add game" function when editing a routine)
-2. History graph per training game
+1. History graph per training game
     * Track result progress (per game)
-3. Reset & calibrate button (`AutodartsClient.reset()` / `calibrate()` already exist)
-4. Loading Screen
+2. Reset & calibrate button (`AutodartsClient.reset()` / `calibrate()` already exist)
+3. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-5. About Screen
+4. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-6. Settings: Autodarts auto discovery of IP & port
-7. Buy me a coffee: add the real link (placeholder URL for now)
-8. Fix GitHub Actions asset creation
-9. Update README.md for version 0.1
+5. Settings: Autodarts auto discovery of IP & port
+6. Buy me a coffee: add the real link (placeholder URL for now)
+7. Fix GitHub Actions asset creation
+8. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -128,3 +124,8 @@
   * The turn is over at the bust: its empty boxes are closed, a dart Autodarts still detects is struck through and doesn't count; no dart can be set by hand until a dart is corrected, the darts are taken out, or "next turn" is clicked
   * Animated "No Score" overlay for 2 s on a bust, also when a correction makes a turn bust; still with reduced motion
 * 121: a missed checkout never drops below the starting checkout
+* Quick game: a single game without a routine
+  * "Quick game" button on the top left of the Train screen, opens the add game dialog with a start button
+  * Same flow as a routine: countdown, game, summary with "Play again"
+  * Results are saved and show up in History as "Quick game"; aborting keeps no scores
+  * The dialog opens on the game played last, every game keeps its settings from the last quick game

@@ -9,10 +9,20 @@
     type ConnState,
     type DartEvent,
   } from "./lib/autodarts";
-  import { DEFAULT_CONFIG, MAX_PAUSE_SECONDS, newRoutine, pauseSeconds, totalSeconds, type Config, type Routine } from "./lib/store";
+  import {
+    DEFAULT_CONFIG,
+    MAX_PAUSE_SECONDS,
+    newRoutine,
+    pauseSeconds,
+    totalSeconds,
+    type Config,
+    type Routine,
+    type RoutineItem,
+  } from "./lib/store";
   import * as db from "./lib/db";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
+  import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
   import Logo from "./lib/Logo.svelte";
@@ -61,6 +71,8 @@
   // running a routine
   let run = $state<{
     routine: Routine;
+    /** A quick game: one game without a routine, its routine made up just for this run. */
+    quick: boolean;
     index: number;
     results: RunResult[];
     sessionId: string;
@@ -138,8 +150,41 @@
   function startRoutine() {
     const r = routines.find((x) => x.id === selectedId);
     if (!r || r.items.length === 0) return;
+    begin(structuredClone($state.snapshot(r)), false);
+  }
+
+  // ---- quick game: a single game without a routine
+
+  let quickDialog = $state<AddGameDialog>();
+  // The settings played last per game, and the game played last, so the dialog opens on them.
+  let quickItems = $state<RoutineItem[]>([]);
+  let quickLast = $state("");
+
+  function openQuick() {
+    quickDialog?.open($state.snapshot(quickItems), quickLast);
+  }
+
+  function startQuick(item: RoutineItem) {
+    quickLast = item.gameId;
+    quickItems = [...quickItems.filter((i) => i.gameId !== item.gameId), item];
+    db.saveQuickGame(quickLast, $state.snapshot(quickItems)).catch(failed);
+    const routine = newRoutine(t("quick.name"));
+    routine.pauseSeconds = 0;
+    routine.items = [structuredClone(item)];
+    begin(routine, true);
+  }
+
+  /** The same game again, with the same settings. */
+  function playAgain() {
+    const again = run?.quick ? $state.snapshot(run.routine.items[0]) : null;
+    closeRun();
+    if (again) startQuick(again);
+  }
+
+  function begin(routine: Routine, quick: boolean) {
     run = {
-      routine: structuredClone($state.snapshot(r)),
+      routine,
+      quick,
       index: 0,
       results: [],
       sessionId: crypto.randomUUID(),
@@ -177,7 +222,7 @@
     if (def.hasResult) {
       db.saveGameResult({
         sessionId: run.sessionId,
-        routineId: run.routine.id,
+        routineId: run.quick ? null : run.routine.id,
         routineName: run.routine.name,
         sessionStartedAt: run.startedAt,
         position: run.index,
@@ -196,7 +241,12 @@
   }
 
   function sessionInfo(r: NonNullable<typeof run>): db.SessionInfo {
-    return { sessionId: r.sessionId, routineId: r.routine.id, routineName: r.routine.name, startedAt: r.startedAt };
+    return {
+      sessionId: r.sessionId,
+      routineId: r.quick ? null : r.routine.id,
+      routineName: r.routine.name,
+      startedAt: r.startedAt,
+    };
   }
 
   /** Straight on from a finished game: the break if the routine has one, else the next game. */
@@ -487,6 +537,7 @@
         routines = await db.loadRoutines();
         const last = await db.getSetting("selected_routine");
         selectedId = routines.find((r) => r.id === last)?.id ?? routines[0].id;
+        ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
         history = await db.loadSessions();
         lastPlayed = await db.loadLastPlayed();
         ready = true;
@@ -554,8 +605,8 @@
         <button
           class="icon abort"
           class:armed={pendingAbort}
-          aria-label={pendingAbort ? t("run.confirmAbort") : t("run.abort")}
-          title={pendingAbort ? undefined : t("run.abort")}
+          aria-label={pendingAbort ? t("run.confirmAbort") : t(run?.quick ? "quick.abort" : "run.abort")}
+          title={pendingAbort ? undefined : t(run?.quick ? "quick.abort" : "run.abort")}
           onclick={abortRoutine}
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -656,7 +707,8 @@
         <div class="session">
           <div class="session-head">
             <div>
-              <strong>{s.routineName}</strong>
+              <!-- The stored routine name is in the language of the day it was played; a quick game follows the current one. -->
+              <strong>{s.quick ? t("quick.name") : s.routineName}</strong>
               <span class="plan-meta">{dateTime(s.startedAt)}</span>
               {#if s.status === "aborted"}
                 <span class="badge">{t("history.aborted")}</span>
@@ -749,6 +801,10 @@
   {:else if phase === "idle"}
     <section class="pick">
       <div class="pick-head">
+        <button class="ghost small quick" onclick={openQuick} title={t("quick.hint")}>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
+          {t("quick.name")}
+        </button>
         <h2>{t("train.title")}</h2>
         <button class="ghost small new" onclick={addRoutine}>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
@@ -756,6 +812,7 @@
         </button>
       </div>
       <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} onedit={() => go("routines")} />
+      <AddGameDialog bind:this={quickDialog} quick onadd={startQuick} />
     </section>
   {:else if phase === "countdown" && run && item && def}
     <section class="countdown">
@@ -763,7 +820,7 @@
       {#key countdownLeft}
         <div class="count" aria-live="assertive">{countdownLeft}</div>
       {/key}
-      <p class="lede">{t("run.firstUp", { name: def.name })}</p>
+      <p class="lede">{run.quick ? def.name : t("run.firstUp", { name: def.name })}</p>
       <Quote />
       {#if !canStart}
         {@render waitHint()}
@@ -801,7 +858,7 @@
     </section>
   {:else if phase === "ready" && run && item && def}
     <section class="narrow">
-      <p class="progress">{t("run.progress", { n: run.index + 1, total: run.routine.items.length })}</p>
+      <p class="progress">{run.quick ? t("quick.name") : t("run.progress", { n: run.index + 1, total: run.routine.items.length })}</p>
       <h2>{def.name}</h2>
       <p class="lede">{def.blurb}</p>
       <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
@@ -812,7 +869,11 @@
   {:else if phase === "running" && session && result && run && def}
     <section class="stage">
       <div class="panel">
-        <p class="progress">{t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}</p>
+        <p class="progress">
+          {run.quick
+            ? t("quick.progress", { name: def.name })
+            : t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}
+        </p>
         <div class="clock" class:paused>{fmt(remaining)}</div>
         <p class="note">
           {#if waiting}
@@ -929,8 +990,8 @@
     </section>
   {:else if phase === "summary" && run}
     <section class="narrow">
-      <h2>{t("summary.title")}</h2>
-      <p class="lede">{run.routine.name}</p>
+      <h2>{t(run.quick ? "quick.finished" : "summary.title")}</h2>
+      {#if !run.quick}<p class="lede">{run.routine.name}</p>{/if}
       {#each run.results as r, i (i)}
         <div class="result">
           <h3>{gameById(r.gameId).name}</h3>
@@ -945,8 +1006,11 @@
           {/if}
         </div>
       {/each}
-      <p class="hint">{t("summary.saved")}</p>
+      {#if run.results.some((r) => r.hasResult)}<p class="hint">{t("summary.saved")}</p>{/if}
       <div class="row">
+        {#if run.quick}
+          <button class="ghost" onclick={playAgain}>{t("quick.again")}</button>
+        {/if}
         <button class="primary" onclick={closeRun}>{t("summary.done")}</button>
       </div>
     </section>
@@ -1210,10 +1274,12 @@
   .pick-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
   .pick-head h2 { grid-column: 2; margin: 0; text-align: center; }
   .pick-head .new { grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 0.35rem; }
+  .pick-head .quick { grid-column: 1; grid-row: 1; justify-self: start; display: inline-flex; align-items: center; gap: 0.35rem; }
   @media (max-width: 640px) {
-    .pick-head { grid-template-columns: 1fr auto; }
+    .pick-head { grid-template-columns: 1fr auto auto; }
     .pick-head h2 { grid-column: 1; text-align: left; }
-    .pick-head .new { grid-column: 2; }
+    .pick-head .quick { grid-column: 2; }
+    .pick-head .new { grid-column: 3; }
   }
   /* Shared form controls and buttons, also used by components in lib/. */
   :global {

@@ -3,7 +3,7 @@
 import Database from "@tauri-apps/plugin-sql";
 import type { Dart } from "./autodarts";
 import type { Settings } from "./games";
-import { cleanItems, DEFAULT_CONFIG, pauseSeconds, starterRoutine, type Config, type Routine } from "./store";
+import { cleanItems, DEFAULT_CONFIG, pauseSeconds, starterRoutine, type Config, type Routine, type RoutineItem } from "./store";
 
 let db: Database | null = null;
 
@@ -132,6 +132,20 @@ export async function saveConfig(config: Config): Promise<void> {
   await setSetting("autodarts_port", String(config.port));
 }
 
+/** The games and settings last played as a quick game, and which game that was. */
+export async function loadQuickGame(): Promise<{ last: string; items: RoutineItem[] }> {
+  try {
+    const v = JSON.parse((await getSetting("quick_game")) ?? "{}");
+    return { last: String(v.last ?? ""), items: cleanItems(Array.isArray(v.items) ? v.items : []) };
+  } catch {
+    return { last: "", items: [] };
+  }
+}
+
+export function saveQuickGame(last: string, items: RoutineItem[]): Promise<void> {
+  return setSetting("quick_game", JSON.stringify({ last, items }));
+}
+
 // ------------------------------------------------------------- routines
 
 export async function loadRoutines(): Promise<Routine[]> {
@@ -186,7 +200,8 @@ export function saveRoutines(routines: Routine[]): Promise<void> {
 
 export interface GameResultInput {
   sessionId: string;
-  routineId: string;
+  /** null for a quick game, played without a routine. */
+  routineId: string | null;
   routineName: string;
   sessionStartedAt: string;
   position: number;
@@ -268,7 +283,8 @@ export function saveGameResult(p: GameResultInput): Promise<void> {
 
 export interface SessionInfo {
   sessionId: string;
-  routineId: string;
+  /** null for a quick game, played without a routine. */
+  routineId: string | null;
   routineName: string;
   startedAt: string;
 }
@@ -331,6 +347,8 @@ export interface HistoryRow {
 
 export interface HistorySession {
   id: string;
+  /** A quick game, played without a routine. */
+  quick: boolean;
   routineName: string;
   startedAt: string;
   finishedAt: string | null;
@@ -341,7 +359,7 @@ export interface HistorySession {
 export async function loadSessions(limit = 100): Promise<HistorySession[]> {
   const d = conn();
   const sessions = await d.select<any[]>(
-    `SELECT id, routine_name, started_at, finished_at, status FROM sessions
+    `SELECT id, routine_id, routine_name, started_at, finished_at, status FROM sessions
      ORDER BY started_at DESC LIMIT $1`,
     [limit],
   );
@@ -357,6 +375,7 @@ export async function loadSessions(limit = 100): Promise<HistorySession[]> {
 
   return sessions.map((r) => ({
     id: r.id,
+    quick: r.routine_id === null,
     routineName: r.routine_name,
     startedAt: r.started_at,
     finishedAt: r.finished_at,

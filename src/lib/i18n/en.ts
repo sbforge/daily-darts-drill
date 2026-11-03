@@ -52,7 +52,7 @@ export const en = {
 
   // history
   "history.title": "History",
-  "history.empty": "No results yet. Finish a game in a routine and it shows up here.",
+  "history.empty": "No results yet. Finish a game and it shows up here.",
   "history.aborted": "Aborted",
   "history.running": "In progress",
   "history.minutesEarly": "{n} min, ended early",
@@ -155,6 +155,17 @@ export const en = {
   "summary.noResult": "No result for this game.",
   "summary.saved": "Results are saved. See them under History.",
   "summary.done": "Done",
+
+  // quick game: one game without a routine
+  "quick.name": "Quick game",
+  "quick.hint": "Play a single game without a routine",
+  "quick.title": "Quick game",
+  "quick.gameToPlay": "Game to play",
+  "quick.timeCapInfo": "The longest this game runs. When the time is up, the game ends, even if it is not finished yet.",
+  "quick.progress": "Quick game: {name}",
+  "quick.abort": "Abort game",
+  "quick.finished": "Game finished",
+  "quick.again": "Play again",
 
   // darts and board
   "dart.bull": "Bull",

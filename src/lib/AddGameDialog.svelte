@@ -1,16 +1,26 @@
 <script lang="ts">
   // Modal for adding a game to a routine: pick the game, set its time cap and settings, add it.
+  // As a quick game it starts the game instead, without a routine.
   // Uses the native <dialog>, which brings focus trapping, Escape to close and the backdrop.
   import GameField from "./GameField.svelte";
   import { GAMES, gameById, type Field } from "./games";
   import { t } from "./i18n/index.svelte";
   import { newItem, type RoutineItem } from "./store";
 
-  let { onadd }: { onadd: (item: RoutineItem) => void } = $props();
+  let {
+    onadd,
+    quick = false,
+  }: {
+    onadd: (item: RoutineItem) => void;
+    /** Starts a single game instead of adding one to a routine. */
+    quick?: boolean;
+  } = $props();
 
   let dialog = $state<HTMLDialogElement>();
   let gameId = $state(GAMES[0].id);
   let draft = $state<RoutineItem>(newItem(GAMES[0].id));
+  // Settings already made for a game, so switching back to it keeps them. Starts from what open() was given.
+  let made: Record<string, RoutineItem> = {};
   const g = $derived(gameById(draft.gameId));
 
   const timeCap: Field = {
@@ -19,22 +29,26 @@
       return t("routines.timeCap");
     },
     get info() {
-      return t("routines.timeCapInfo");
+      return t(quick ? "quick.timeCapInfo" : "routines.timeCapInfo");
     },
     kind: "number",
     min: 1,
     max: 120,
   };
 
-  export function open() {
-    pick(gameId);
+  /** Opens on the given games' settings (e.g. the ones played last), else on each game's defaults. */
+  export function open(last: RoutineItem[] = [], id = gameId) {
+    made = Object.fromEntries(last.map((i) => [i.gameId, i]));
+    gameId = GAMES.some((g) => g.id === id) ? id : GAMES[0].id;
+    draft = structuredClone(made[gameId] ?? newItem(gameId));
     dialog?.showModal();
   }
 
-  /** Switching games starts over from that game's defaults. */
+  /** Switching games starts from that game's settings made so far, or from its defaults. */
   function pick(id: string) {
+    if (draft.gameId !== id) made[draft.gameId] = $state.snapshot(draft);
     gameId = id;
-    draft = newItem(id);
+    draft = structuredClone(made[id] ?? newItem(id));
   }
 
   function add(e: SubmitEvent) {
@@ -52,10 +66,10 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog bind:this={dialog} onclick={backdrop} aria-labelledby="add-game-title">
   <form onsubmit={add}>
-    <h3 id="add-game-title">{t("routines.addGame")}</h3>
+    <h3 id="add-game-title">{t(quick ? "quick.title" : "routines.addGame")}</h3>
 
     <fieldset class="games">
-      <legend class="sr-only">{t("routines.gameToAdd")}</legend>
+      <legend class="sr-only">{t(quick ? "quick.gameToPlay" : "routines.gameToAdd")}</legend>
       {#each GAMES as game (game.id)}
         <label class="game" class:selected={game.id === gameId}>
           <input type="radio" name="game" value={game.id} checked={game.id === gameId} onchange={() => pick(game.id)} />
@@ -74,7 +88,7 @@
 
     <div class="foot">
       <button type="button" class="ghost" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
-      <button type="submit" class="primary">{t("routines.addGame")}</button>
+      <button type="submit" class="primary">{t(quick ? "run.startGame" : "routines.addGame")}</button>
     </div>
   </form>
 </dialog>

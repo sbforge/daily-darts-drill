@@ -55,7 +55,7 @@ export const de: Record<Key, string> = {
 
   // history
   "history.title": "Verlauf",
-  "history.empty": "Noch keine Ergebnisse. Beende ein Spiel in einer Routine, dann erscheint es hier.",
+  "history.empty": "Noch keine Ergebnisse. Beende ein Spiel, dann erscheint es hier.",
   "history.aborted": "Abgebrochen",
   "history.running": "Läuft",
   "history.minutesEarly": "{n} Min., vorzeitig beendet",
@@ -157,6 +157,17 @@ export const de: Record<Key, string> = {
   "summary.noResult": "Kein Ergebnis für dieses Spiel.",
   "summary.saved": "Die Ergebnisse sind gespeichert. Du findest sie im Verlauf.",
   "summary.done": "Fertig",
+
+  // quick game: one game without a routine
+  "quick.name": "Schnelles Spiel",
+  "quick.hint": "Ein einzelnes Spiel ohne Routine spielen",
+  "quick.title": "Schnelles Spiel",
+  "quick.gameToPlay": "Spiel zum Spielen",
+  "quick.timeCapInfo": "So lange läuft dieses Spiel höchstens. Ist die Zeit um, endet das Spiel, auch wenn es noch nicht beendet ist.",
+  "quick.progress": "Schnelles Spiel: {name}",
+  "quick.abort": "Spiel abbrechen",
+  "quick.finished": "Spiel beendet",
+  "quick.again": "Nochmal spielen",
 
   // darts and board
   "dart.bull": "Bull",
