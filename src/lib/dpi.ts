@@ -53,6 +53,14 @@ const higher = (key: string, baseline: number, target: number, weight = 1): Metr
   weight,
 });
 
+const lower = (key: string, baseline: number, target: number, weight = 1): MetricConfig => ({
+  key,
+  baseline,
+  target,
+  direction: "lower",
+  weight,
+});
+
 /** "Results per comparison" until it is changed in the settings. Small, so the line follows the results closely. */
 export const DEFAULT_SAMPLE = 3;
 export const MAX_SAMPLE = 20;
@@ -97,6 +105,21 @@ export const DPI_CONFIG: IndexConfig = {
       // 60 points over the 40 numbers is the "professional" mark.
       metrics: [higher("pointsPerNumber", 0.4, 1.5)],
       sample: { keys: ["numbers"], min: 10 },
+    },
+    {
+      gameId: "solo-leg",
+      // Its own area, so a session with a Solo Leg doesn't count twice for scoring.
+      area: "consistency",
+      metrics: [lower("dartsPerLeg", 45, 18, 0.6), higher("checkoutRate", 10, 40, 0.4)],
+      // 301 and 701 are scaled from 501.
+      bySetting: {
+        key: "start",
+        metrics: {
+          "301": [lower("dartsPerLeg", 27, 11, 0.6), higher("checkoutRate", 10, 40, 0.4)],
+          "701": [lower("dartsPerLeg", 63, 25, 0.6), higher("checkoutRate", 10, 40, 0.4)],
+        },
+      },
+      sample: { keys: ["legs"], min: 1 },
     },
     {
       gameId: "around-the-clock",
