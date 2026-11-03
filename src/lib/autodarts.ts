@@ -1,5 +1,6 @@
-// Turns raw Autodarts websocket messages into clean dart events.
-// Only "state" messages matter; "vantage" (camera debug) and "stats" are ignored.
+// Turns raw Autodarts websocket messages into clean dart events and the detection status.
+// "state" carries the darts and the status, "board" the blockers (e.g. no camera);
+// "vantage" (camera debug), "stats", "cams" and "calibration" are ignored.
 import { t } from "./i18n/index.svelte";
 
 export type DartKind = "single" | "double" | "triple" | "outerBull" | "bull" | "miss";
@@ -129,13 +130,40 @@ export class AutodartsNormalizer {
 
 export type ConnState = "disconnected" | "connecting" | "connected";
 
+/**
+ * What the Autodarts client itself is doing. A connected websocket only means the client
+ * is up; darts are detected only while it is "running" (throw, takeout, takeout in progress).
+ */
+export type BoardStatus =
+  | "unknown"
+  | "starting"
+  | "running"
+  | "calibrating"
+  | "stopping"
+  | "stopped"
+  | "noCamera"
+  | "blocked";
+
 export interface ClientHandlers {
   onState(state: ConnState): void;
+  onBoard(status: BoardStatus): void;
   onEvent(event: DartEvent): void;
 }
 
 export function autodartsUrl(host: string, port: number): string {
   return `ws://${host}:${port}/api/events/system`;
+}
+
+/** Folds the status of a "state" message and the blocker of a "board" message into one. */
+export function boardStatus(state: any, blocker: string, calibrating: boolean): BoardStatus {
+  const status = String(state?.status ?? "").toLowerCase();
+  if (status === "starting") return "starting";
+  if (status === "stopping") return "stopping";
+  if (calibrating || status.startsWith("calibrat")) return "calibrating";
+  if (!state?.running) return "stopped";
+  if (blocker === "noCamera") return "noCamera";
+  if (blocker && blocker !== "none") return "blocked";
+  return "running";
 }
 
 export class AutodartsClient {
@@ -147,6 +175,10 @@ export class AutodartsClient {
   private host = "";
   private port = 0;
   private norm = new AutodartsNormalizer();
+  private lastState: any = null;
+  private blocker = "none";
+  private calibrating = false;
+  private status: BoardStatus = "unknown";
 
   constructor(handlers: ClientHandlers) {
     this.handlers = handlers;
@@ -170,11 +202,16 @@ export class AutodartsClient {
       ws.close();
     }
     this.handlers.onState("disconnected");
+    this.setStatus("unknown");
   }
 
   private open() {
     this.handlers.onState("connecting");
     this.norm.reset();
+    this.lastState = null;
+    this.blocker = "none";
+    this.calibrating = false;
+    this.setStatus("unknown");
 
     let ws: WebSocket;
     try {
@@ -188,21 +225,87 @@ export class AutodartsClient {
     ws.onopen = () => {
       this.attempt = 0;
       this.handlers.onState("connected");
+      this.fetchStatus(ws);
     };
     ws.onmessage = (ev) => {
-      let msg: unknown;
+      let msg: any;
       try {
         msg = JSON.parse(ev.data);
       } catch {
         return;
       }
+      if (msg?.type === "state") this.lastState = msg.data;
+      if (msg?.type === "board") this.readBoard(msg.data?.status);
+      if (msg?.type === "state" || msg?.type === "board") this.updateStatus();
       for (const e of this.norm.handle(msg)) this.handlers.onEvent(e);
     };
     ws.onclose = () => {
       if (this.ws !== ws) return;
       this.ws = null;
+      this.setStatus("unknown");
       this.scheduleRetry();
     };
+  }
+
+  /** Start / stop the detection, reset the turn (takeout by hand), auto-calibrate the cameras. */
+  start() {
+    return this.command("PUT", "/api/start");
+  }
+
+  stop() {
+    return this.command("PUT", "/api/stop");
+  }
+
+  reset() {
+    return this.command("POST", "/api/reset");
+  }
+
+  calibrate() {
+    return this.command("POST", "/api/config/calibration/auto");
+  }
+
+  private async command(method: string, path: string) {
+    const res = await fetch(this.httpUrl(path), { method });
+    if (!res.ok) throw new Error(`${method} ${path}: ${res.status}`);
+  }
+
+  private httpUrl(path: string) {
+    return `http://${this.host}:${this.port}${path}`;
+  }
+
+  /**
+   * The websocket only sends a "state" when the status changes, so right after connecting to a
+   * client that is idle nothing arrives. The REST API fills that gap once per connection.
+   */
+  private async fetchStatus(ws: WebSocket) {
+    try {
+      const [state, system] = await Promise.all(
+        ["/api/state", "/api/system"].map((p) => fetch(this.httpUrl(p)).then((r) => r.json())),
+      );
+      // A message on the socket in the meantime is newer than these answers.
+      if (this.ws !== ws || this.lastState) return;
+      this.lastState = state;
+      this.readBoard(system?.status);
+      this.updateStatus();
+    } catch {
+      // Without the REST API the status stays unknown until the client sends a state.
+    }
+  }
+
+  private readBoard(status: any) {
+    if (!status) return;
+    this.blocker = status.blocker ?? "none";
+    this.calibrating = (status.calibratingCams ?? 0) > 0;
+  }
+
+  private updateStatus() {
+    this.setStatus(this.lastState ? boardStatus(this.lastState, this.blocker, this.calibrating) : "unknown");
+  }
+
+  private setStatus(status: BoardStatus) {
+    if (status === this.status) return;
+    this.status = status;
+    this.handlers.onBoard(status);
   }
 
   private scheduleRetry() {
