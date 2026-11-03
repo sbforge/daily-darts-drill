@@ -105,10 +105,12 @@
         <label class="game" class:selected={game.id === gameId}>
           <input type="radio" name="game" value={game.id} checked={game.id === gameId} onchange={() => pick(game.id)} />
           <strong>{game.name}</strong>
+          {#if game.classic !== game.name}<em class="classic">{game.classic}</em>{/if}
           <span>{game.blurb}</span>
         </label>
       {/each}
     </fieldset>
+    <p class="goal"><strong>{t("game.goal")}</strong> {g.goal}</p>
 
     <div class="fields">
       {#if quick}
@@ -166,6 +168,10 @@
   .game:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   .game input { position: absolute; opacity: 0; pointer-events: none; }
   .game span { color: var(--dim); font-size: 0.85rem; line-height: 1.35; }
+  /* The usual name of the drill, so a new name is easy to place. */
+  .classic { margin-top: -0.2rem; color: var(--dim); font-size: 0.75rem; font-style: normal; letter-spacing: 0.04em; text-transform: uppercase; }
+  .goal { margin: 0 0 1rem; padding: 0.6rem 0.8rem; border-left: 3px solid var(--accent); border-radius: 4px; background: rgb(34 211 238 / 0.06); font-size: 0.9rem; line-height: 1.4; }
+  .goal strong { color: var(--accent); margin-right: 0.25rem; }
 
   .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; }
   .fields { --field-bg: var(--bg); }

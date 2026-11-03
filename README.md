@@ -34,14 +34,14 @@ No time for a full routine? Play a single game with or without a time cap. D³ r
 
 The games so far:
 
-| Game | What it trains |
-|---|---|
-| **Warm up** | Throw freely. No result, the clock just keeps the routine on schedule. |
-| **Around the clock** | Accuracy: hit every number in board order, then finish on the bull. |
-| **Simple doubles** | Doubles: throw at one double, only that double counts. |
-| **Plan B** | Checkouts: check out the double over three darts. Single hits are subtracted and the next target follows from what is left. |
-| **Scoring** | Scoring: your score per three darts is the number that counts. |
-| **121** | Checkouts: check out within 9 darts. A checkout raises the next one, a miss lowers it. |
+| Game | What it is | Why play it |
+|---|---|---|
+| **Loose Arm** (warm up) | Throw freely. No result, the clock just keeps the routine on schedule. | Loosen your arm and find your rhythm before the drills that count. |
+| **Clockwork** (around the clock) | Hit every number in board order, then finish on the bull. | Accuracy all over the board, not just on the 20. |
+| **Double Trouble** (simple doubles) | Throw at one double, only that double counts. | Makes your favourite double automatic. |
+| **Plan B** (complex doubles) | Check out the double over three darts. Single hits are subtracted and the next target follows from what is left. | Recovering when the first dart misses. |
+| **Ton Machine** (scoring) | Your score per three darts is the number that counts. | A steady, heavy scoring rhythm. |
+| **Checkout Ladder** (121) | Check out within 9 darts. A checkout raises the next one, a miss lowers it. | Finishing under pressure, and it gets harder the better you get. |
 
 ### Live board
 

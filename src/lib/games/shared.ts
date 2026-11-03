@@ -1,7 +1,17 @@
 // Helpers used by more than one game.
 import type { Dart } from "../autodarts";
 import { t } from "../i18n/index.svelte";
-import type { BoardField } from "./types";
+import type { BoardField, Moment } from "./types";
+
+/** A great turn, as the game defines it: a big stamp, below a 180 in the same turn. */
+export const great = (turn: number, text: string): Moment => ({
+  key: `great:${turn}`,
+  turn,
+  effect: "stamp",
+  text,
+  tone: "great",
+  priority: 1,
+});
 
 export const pct = (hits: number, total: number) => (total ? (hits / total) * 100 : 0);
 export const sum = (darts: Dart[]) => darts.reduce((s, d) => s + d.score, 0);

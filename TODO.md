@@ -3,15 +3,8 @@
 
 
 ## Next (in priority order)
-0. overhault routine result screen
-  * show training game as list on the left. make it selectable
-  * detailed statistics on the right side of the screen
-  * per game: show DPI in the list
-  * show total DPI for routine
-  * Motivation Sentence at the end that the player finished the routine
-    * let generate like 20 different options
-  * Move the Done button somewhere to the top, so the user dont need to scroll down
-1. Fix GitHub Actions asset creation
+Version 1 checklist with a plan per item: docs/v1-scope.md
+1. Fix GitHub Actions asset creation (docs/release-plan.md)
 2. README.md: write the "Why I built this" section (placeholder for now)
     * Especially expectation management: why did I build this, how do I want to train?
 
@@ -25,11 +18,7 @@
     * pre match routine
     * Doubles only
     
-* General: Think of fancy names for the games
-* Game Description
-  * Every training game should have a short text description
-  * Every training game should have a target. Why to play?
-  * Nice to have: Explanation Video on Youtube ;) AI generated ofc
+* New games: plan with rules, settings, stats and DPI per game in docs/new-games-plan.md (all points decided, build order at the end)
 * Random Checkout
 * Bobs 27
 * 170
@@ -45,10 +34,11 @@
 ## Design & Artwork
 * Create Artwork for every Training game
 * Change Dartboard on carousel to real artwork instead of png
-* Animations
+* Animations: the ⏳ ideas in docs/animations-plan.md (chart draws in, loading screen logo, …)
 * Fading Screens
 
 ## Idea Backlog
+* Explanation video per training game, e.g. on YouTube (AI generated ofc)
 * Routine Im- & Export ( for easy sharing) ( prio: medium)
 * Heatmap per training game, configurable per game (Random Checkout i.e. does not need one) (prio: medium)
 * Local Multiplayer games
@@ -61,12 +51,26 @@
 * AI Trainer Suggestions ( for the very far future ; Would love to have it.. Not important enough for now)
 
 ## Open Questions
-* How to handle updates
-  * Especially database schema changes
-  * Do I need migrations once a stable version was shipped?
+* How to handle updates → answered: docs/ota-updates-plan.md (updater) and docs/db-migrations-plan.md (yes, versioned
+  migrations from v1 on)
 
 
 ## Done ✅
+* A routine or quick game resets Autodarts during its countdown (once the detection runs), so the first game starts on a clean board
+* Game names & descriptions: every game has a catchy name (Loose Arm, Clockwork, Double Trouble, Plan B, Ton Machine, Checkout Ladder) with its usual name under it, a short description and a "Why play" goal, in the add game dialog, before a game and on the break screen
+* The dart boxes have a fixed height, so filling or highlighting one no longer shifts the board; the backdrop also realigns when the column above the board changes
+* Animations, first batch (docs/animations-plan.md)
+  * Global fx module (src/lib/fx/): queued overlay stamps played once per key, element effects via `use:useFx`
+  * No Score moved onto it, unchanged; 180 in every game; a "great result" per game (121: checkout in 3, Plan B: first dart, Simple doubles: 3 of 3, Around the clock: 3 in a row). One stamp per turn, No Score beats 180 beats great
+  * Last 10 seconds of a timed game: the clock turns accent and beats once a second, "Time" flashes at 0
+  * Summary: the games slide in one after another, DPI values count up, "New best" when an index value beats every earlier result with the same settings
+  * Setting "Animations: on / off" (Display card), first start follows the system's reduce motion; off keeps every stamp, just still
+* Routine result screen overhaul
+  * Games of the routine as a selectable list on the left with their DPI, the picked one in detail on the right
+  * Total DPI of the routine and the Done button at the top, no scrolling needed
+  * Details: settings and time played, the game's DPI with a breakdown per metric, every stat next to your average (same settings, latest "Results per comparison", too short games left out)
+  * One of 20 closing sentences (English, German) picked at random
+  * A quick game shows the detail only, with "Play again" beside Done
 * Bugs from manual testing
   * The dart boxes clear with the takeout
   * Around the clock completed before the time cap starts over; accuracy, darts and hits carry on, completed rounds are counted (a game without a time cap still ends)

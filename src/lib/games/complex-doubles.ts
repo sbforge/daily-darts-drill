@@ -1,7 +1,7 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
-import { doubleField, doubleOptions, pct } from "./shared";
-import type { BoardField, GameDef, GameResult } from "./types";
+import { doubleField, doubleOptions, great, pct } from "./shared";
+import type { BoardField, GameDef, GameResult, Moment } from "./types";
 
 interface Round {
   outcome: "success" | "fail" | "pending";
@@ -44,6 +44,12 @@ export const complexDoubles: GameDef = {
   get blurb() {
     return t("complexDoubles.blurb");
   },
+  get classic() {
+    return t("complexDoubles.classic");
+  },
+  get goal() {
+    return t("complexDoubles.goal");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
@@ -69,6 +75,7 @@ export const complexDoubles: GameDef = {
     let rounds = 0;
     let successes = 0;
     let noScore: GameResult["noScore"];
+    const moments: Moment[] = [];
     const by = [0, 0, 0];
 
     turns.forEach((turn, ti) => {
@@ -79,6 +86,7 @@ export const complexDoubles: GameDef = {
         rounds++;
         successes++;
         by[r.at - 1]++;
+        if (r.at === 1) moments.push(great(ti, t("complexDoubles.great")));
       } else if (r.outcome === "fail" || !open) {
         rounds++; // a failed round, or a turn that ended early without success
       }
@@ -108,13 +116,14 @@ export const complexDoubles: GameDef = {
     return {
       values: { successRate: rate, rounds, successes, firstDart: by[0], secondDart: by[1], thirdDart: by[2] },
       lines: [
-        { key: "rate", label: t("game.successRate"), value: `${num(rate, 1)}%`, hero: true },
+        { key: "rate", stored: "successRate", label: t("game.successRate"), value: `${num(rate, 1)}%`, hero: true },
         { key: "rounds", label: t("complexDoubles.rounds"), value: String(rounds) },
         { key: "successes", label: t("complexDoubles.successes"), value: String(successes) },
       ],
       focus,
       targets,
       noScore,
+      moments,
       done: false,
     };
   },

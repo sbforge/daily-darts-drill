@@ -9,6 +9,12 @@ export const warmUp: GameDef = {
   get blurb() {
     return t("warmUp.blurb");
   },
+  get classic() {
+    return t("warmUp.classic");
+  },
+  get goal() {
+    return t("warmUp.goal");
+  },
   needsDarts: false,
   hasResult: false,
   defaultMinutes: 5,

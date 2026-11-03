@@ -1,4 +1,5 @@
 import type { Dart } from "../autodarts";
+import type { EffectName, Tone } from "../fx";
 
 export type Settings = Record<string, string | number>;
 
@@ -18,6 +19,8 @@ export interface StatLine {
   label: string;
   value: string;
   hero?: boolean;
+  /** The stored value this line shows, to compare it with earlier results. Defaults to `key`. */
+  stored?: string;
 }
 
 /** A field of the board. Segment fields have a number; the bulls have none. */
@@ -25,6 +28,20 @@ export type Bed = "innerSingle" | "outerSingle" | "triple" | "double" | "outerBu
 export interface BoardField {
   bed: Bed;
   number?: number;
+}
+
+/**
+ * Something worth a moment on screen, like a great turn. The game only describes it; the training screen
+ * plays it once per key, so recomputing on every dart or correction doesn't repeat it.
+ */
+export interface Moment {
+  key: string;
+  /** The turn it belongs to (an index into turns): a turn gets one moment, the highest priority wins. */
+  turn: number;
+  effect: EffectName;
+  text?: string;
+  tone?: Tone;
+  priority?: number;
 }
 
 export interface GameResult {
@@ -44,6 +61,8 @@ export interface GameResult {
    * It names the turn (an index into turns), so a bust in the next turn is a new one, even right after another.
    */
   noScore?: { turn: number; darts: number };
+  /** Moments to show, e.g. a great turn. 180 and No Score are added by the training screen for every game. */
+  moments?: Moment[];
   /** True when the game has been completed before the time cap. */
   done: boolean;
 }
@@ -65,7 +84,12 @@ export interface ComputeContext {
 export interface GameDef {
   id: string;
   name: string;
+  /** The usual name of the drill, shown under the name so it is easy to recognise. */
+  classic: string;
+  /** What the game is: a short description of how it is played. */
   blurb: string;
+  /** Why to play it: what it trains. */
+  goal: string;
   needsDarts: boolean; // false: can run without an Autodarts connection
   hasResult: boolean;
   defaultMinutes: number;
