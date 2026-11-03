@@ -71,8 +71,6 @@ export const en = {
   "dpi.pointGame": "Game",
   "dpi.levelLine": "Average of the latest {n}",
   "dpi.chartAria": "Index over time, {n} points, current level {level} of 100. Arrow keys step through the points.",
-  "dpi.showTable": "Show as table",
-  "dpi.date": "Date",
   "dpi.overallIndex": "Overall index",
   "dpi.gameIndex": "Game index",
   "dpi.title": "D³ Performance Index",

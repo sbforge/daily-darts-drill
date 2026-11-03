@@ -74,8 +74,6 @@ export const de: Record<Key, string> = {
   "dpi.pointGame": "Spiel",
   "dpi.levelLine": "Durchschnitt der letzten {n}",
   "dpi.chartAria": "Index im Verlauf, {n} Punkte, aktuelles Niveau {level} von 100. Mit den Pfeiltasten durch die Punkte gehen.",
-  "dpi.showTable": "Als Tabelle zeigen",
-  "dpi.date": "Datum",
   "dpi.overallIndex": "Gesamtindex",
   "dpi.gameIndex": "Spielindex",
   "dpi.title": "D³ Performance Index",

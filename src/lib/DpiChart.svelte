@@ -1,7 +1,7 @@
 <script lang="ts">
   // The performance index over time: one dot per session (or game), and a line for the current level,
   // the average of the latest results up to each point. The scale is fixed to 0-100, so charts compare.
-  // Hover or the arrow keys pick a point; the same numbers are in the table below the chart.
+  // Hover or the arrow keys pick a point.
   import type { DpiPoint } from "./dpi";
   import { date, dateTime, num, t } from "./i18n/index.svelte";
 
@@ -104,19 +104,6 @@
     {/if}
   </div>
 
-  <details>
-    <summary>{t("dpi.showTable")}</summary>
-    <table>
-      <thead>
-        <tr><th>{t("dpi.date")}</th><th>{pointLabel}</th><th>{t("dpi.levelLine", { n: window })}</th></tr>
-      </thead>
-      <tbody>
-        {#each [...points].reverse() as p, i (i)}
-          <tr><td>{dateTime(p.at)}</td><td>{num(p.value)}</td><td>{num(p.level)}</td></tr>
-        {/each}
-      </tbody>
-    </table>
-  </details>
 </div>
 
 <style>
@@ -155,11 +142,4 @@
   .tip-date { margin-bottom: 0.25rem; }
   .tip-row { display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
   .tip-row strong { color: var(--chalk); font-variant-numeric: tabular-nums; }
-  details { margin-top: 0.75rem; color: var(--dim); font-size: 0.9rem; }
-  summary { cursor: pointer; }
-  table { width: 100%; margin-top: 0.5rem; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th, td { padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--line); text-align: right; }
-  th:first-child, td:first-child { text-align: left; }
-  th { color: var(--dim); font-weight: 600; }
-  td { color: var(--chalk); }
 </style>

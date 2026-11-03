@@ -134,7 +134,7 @@
   * Trend: latest 10 against the 10 before, shown from 5 in each; encouraging also when it goes down
   * Own "Statistics" page in the navigation: the index (overall, per game with trend) and a chart of the index over time
     * Toggle between the overall index and the game index; the game index lists every game, a click picks the one charted
-    * A dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values; also as a table
+    * A dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values
     * Trend as a diagonal arrow (green up, red down, grey sideways for steady) and the change in %, with an encouraging line in seven steps: steady below 2%, slight below 5%, strong from 15%
     * Uses the full width; on a wide window the game list sits beside the picked game's chart
     * The encouraging line is the hero beside the score, the arrow and the change sit under it
