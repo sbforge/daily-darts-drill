@@ -64,9 +64,11 @@ and not our own Rust command.
 The plugin migrates inside `Database.load`, so the backup has to happen **before** the database is opened:
 
 - A Rust step in `setup()` (before any window can call `load`): if `darttrainer.db` exists and the app version differs
-  from the one in `<config>/last-version` (a one-line text file), copy the file to
-  `<config>/backups/d3-<old version>-<date>.db`, keep the last 3, then write the new version into `last-version`.
+  from the one in `<config>/last-version` (a one-line text file), copy `darttrainer.db` and its `-wal` file (WAL mode)
+  to `<config>/backups/update/<old version>-<date>/`, keep the last 3, then write the new version into `last-version`.
 - A plain file copy is safe there: the database isn't open yet at that point.
+- The same step also takes the **daily backup** (first start of the day, last 5 kept), see
+  `docs/logs-and-export-plan.md` §1: one backup step in `setup()`, two folders.
 - "Version changed" is a simple stand-in for "migrations pending" and also catches manual installs. It makes a few
   backups that weren't strictly needed (a version without a schema change); with only the last 3 kept, that's fine.
 - The updater's own backup right before installing (`docs/ota-updates-plan.md`) stays; with the database open it uses

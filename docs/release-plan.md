@@ -1,7 +1,7 @@
 # Release plan
 
 Scope: everything between "the code is ready" and "players can download and update v1": the release workflow,
-the Linux build, one version number, macOS ad-hoc signing, the SBOM as a release asset, and the steps to cut a release.
+the Linux build, one version number, macOS ad-hoc signing, and the steps to cut a release.
 Covers the v1 Musts "Release workflow fixed", "Linux build" and "Version number" (`docs/v1-scope.md`).
 The updater side (keys, plugin, `latest.json` content, client flow) is in `docs/ota-updates-plan.md`.
 Status: plan only, nothing is built yet.
@@ -12,7 +12,7 @@ Status legend: ✅ decided · ❓ needs a decision (my proposal next to it).
 
 - `.github/workflows/release.yml`, hand-made: runs when a release is **published** (or by hand), builds Windows
   (`.msi`), macOS Apple Silicon and Intel (`.dmg`, Intel cross-compiled on the Apple Silicon runner), then deletes and
-  re-uploads `.msi`/`.dmg` on the release. No Linux, no signing, no `latest.json`, no SBOM asset.
+  re-uploads `.msi`/`.dmg` on the release. No Linux, no signing, no `latest.json`.
 - No CI on pull requests: nothing runs `npm run check` or a build before merging.
 - Version `0.1.0` in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`.
 - The build already writes `sbom.json` (CycloneDX, `scripts/sbom.js`) into the frontend for the About page.
@@ -74,11 +74,10 @@ Status legend: ✅ decided · ❓ needs a decision (my proposal next to it).
 - The README's macOS steps describe the Sequoia way (Open Anyway); `xattr -dr com.apple.quarantine …` stays as the
   fallback.
 
-## 5. SBOM as a release asset
+## 5. SBOM
 
-- The `sbom.json` the build writes into `dist/` is uploaded to the release as `D3-<version>-sbom.cdx.json`
-  (one extra step after the Linux job with `gh release upload`; it is the same file on every platform).
-- ❓ Rust and npm in one SBOM as today, or one per platform? Proposal: one, as today.
+✅ No separate release asset: the build already packs `sbom.json` (CycloneDX, Rust + npm) into the app, and the About
+page shows it. One file for every platform, as today.
 
 ## 6. CI on pull requests (new `ci.yml`)
 
@@ -101,6 +100,6 @@ On every pull request and push to `main`, on `ubuntu-22.04`:
 ## Order
 
 1. Version source + `sync-version.js` + `ci.yml`. (S)
-2. `release.yml` on `tauri-action` with the four jobs, draft releases, ad-hoc signing, SBOM upload; a test run by
+2. `release.yml` on `tauri-action` with the four jobs, draft releases, ad-hoc signing; a test run by
    hand. (M) Updater signing and `latest.json` switch on in the same file once the keys exist (OTA plan step 1).
 3. Linux test on a real machine. (S)

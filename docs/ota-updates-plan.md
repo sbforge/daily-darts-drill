@@ -52,7 +52,8 @@ Status legend: ❓ = needs a decision from you before I start.
   start (unless skipped, US-6).
 - **US-10 Safe data.** As a player, I want my history to survive an update, and a backup to exist if a new version's
   database migration goes wrong.
-  - Before installing, the SQLite file is copied to `backups/d3-<old version>-<date>.db` (keep the last 3).
+  - Before installing, the database is copied to `backups/update/<old version>-<date>/` (keep the last 3). Separate
+    from the daily backups (`docs/logs-and-export-plan.md` §1).
 - **US-11 Trustworthy updates.** As a player, I want the app to install only updates that really come from the
   D³ project, so that nobody can push a manipulated build to me.
   - Every update is signature checked (Tauri updater signature); a bad signature aborts with an error, nothing is installed.
@@ -78,7 +79,7 @@ whether it was updated in the app or installed by hand.
 1. **Check.** After the loading screen (at most once a day, if switched on) the app downloads `latest.json` from
    GitHub. Is its version higher than the running one, and not skipped? → badge on the gear icon. Nothing else happens.
 2. **Decide.** The player opens Settings → Updates, reads the notes, clicks "Update now". Disabled while a routine runs.
-3. **Backup.** The app copies the SQLite file to `backups/d3-<old version>-<date>.db` (keeps the last 3).
+3. **Backup.** The app copies the database to `backups/update/<old version>-<date>/` (keeps the last 3).
 4. **Download.** The package for this platform downloads in the background with a progress bar; the app keeps running.
    The signature is checked against the public key in the app; a bad signature stops here, nothing is installed.
 5. **Install and restart**, per platform:
@@ -133,7 +134,7 @@ This is separate from OS code signing (Apple Developer ID / Windows Authenticode
 
 ### 3. Release workflow (`.github/workflows/release.yml`)
 
-The workflow as a whole (jobs, Linux, version source, ad-hoc signing, SBOM, release checklist) is in
+The workflow as a whole (jobs, Linux, version source, ad-hoc signing, release checklist) is in
 `docs/release-plan.md`; this section is what the updater needs from it.
 
 - Pass the two signing secrets as env vars to the `tauri build` step.

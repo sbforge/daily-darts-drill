@@ -51,9 +51,8 @@ points. Plus per game:
 ### Darts in (`autodarts.test.ts`, `session.test.ts`)
 
 - `toDart` for every bed, a miss, a bouncer.
-- `AutodartsNormalizer`: a real recorded message sequence (throw, throw, correction, takeout) → the expected events.
-  ❓ Record a few real sessions from the board as JSON fixtures. Proposal: yes, one normal turn, one correction,
-  one takeout without three darts.
+- `AutodartsNormalizer`: hand-written message sequences (throw, throw, correction, takeout) → the expected events.
+  Recorded real sessions from the board as fixtures come **later**, when there is time for a few sessions.
 - `Session`: darts collect into turns, a correction from Autodarts keeps a manual fix, "next turn" fills misses,
   a busted turn takes no more darts.
 
@@ -79,6 +78,6 @@ cases above are.
 
 1. vitest + helpers + 121 and Plan B tests (the checkout logic the new games will share). (S)
 2. The other games, `dpi`, `Session`, `toDart`. (S)
-3. Recorded Autodarts fixtures + normalizer tests. (S)
+3. Normalizer tests with hand-written messages; real recorded sessions later. (S)
 4. `pickMoments` out of `App.svelte` + tests. (S)
 5. Migration tests, together with the migrations. (S)
