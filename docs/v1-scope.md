@@ -24,6 +24,9 @@ Every open item points to its plan.
   synced by `npm version`), bump to `1.0.0`. Plan: `docs/release-plan.md` §1.
 - [ ] **macOS ad-hoc signing.** `signingIdentity: "-"` and a `codesign --verify` step, so Apple Silicon shows
   "Open Anyway" instead of "damaged". Plan: `docs/release-plan.md` §4.
+- [ ] **Responsive layout.** Nothing scrolls inside a routine (countdown, game, break) from 900 × 540 up; the board
+  and the game panel grow with the window; the window fits a 1366 × 768 laptop at 125 % and remembers its size; F11
+  fullscreen. Found on the first Windows test. Plan: `docs/responsive-layout-plan.md`.
 - [x] **Animations, first batch** (`docs/animations-plan.md`): fx module, No Score on it, last seconds, 180 + great
   turns, summary motion and New best, animations on / off.
 - [x] **About screen with third-party licenses:** project, links, MIT license, SBOM popup (CycloneDX, Rust + npm).
@@ -75,7 +78,7 @@ Every open item points to its plan.
 
 ## Suggested order
 
-1. Log file, daily backup, crash reports.
+1. Responsive layout (the first real test found it), then log file, daily backup, crash reports.
 2. Migrations (+ their tests).
 3. Release workflow, version source, CI, ad-hoc signing.
 4. OTA updates (keys, plugin, settings UI).

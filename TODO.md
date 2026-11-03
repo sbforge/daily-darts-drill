@@ -1,5 +1,7 @@
 # Todos
 ## Found bugs while testing
+* Low-resolution screens (Windows, 1366 × 768 at 125 %): the game view scrolls, the window is taller than the screen,
+  space unused on big screens → docs/responsive-layout-plan.md
 
 
 ## Next (in priority order)
