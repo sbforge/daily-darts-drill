@@ -9,11 +9,12 @@ import { simpleDoubles } from "./simple-doubles";
 import { soloLeg } from "./solo-leg";
 import type { GameDef } from "./types";
 import { warmUp } from "./warm-up";
+import { wildCard } from "./wild-card";
 
 export type * from "./types";
-export { aroundTheClock, bigFish, catch40, complexDoubles, oneTwentyOne, scoring, simpleDoubles, soloLeg, warmUp };
+export { aroundTheClock, bigFish, catch40, complexDoubles, oneTwentyOne, scoring, simpleDoubles, soloLeg, warmUp, wildCard };
 
-export const GAMES: GameDef[] = [warmUp, aroundTheClock, simpleDoubles, complexDoubles, scoring, oneTwentyOne, catch40, soloLeg, bigFish];
+export const GAMES: GameDef[] = [warmUp, aroundTheClock, simpleDoubles, complexDoubles, scoring, oneTwentyOne, catch40, soloLeg, bigFish, wildCard];
 
 export function gameById(id: string): GameDef {
   return GAMES.find((g) => g.id === id) ?? GAMES[0];

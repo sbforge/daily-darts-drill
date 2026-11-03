@@ -29,7 +29,7 @@ export interface GameIndexConfig {
   area: SkillArea;
   metrics: MetricConfig[];
   /** Metrics that depend on a setting (e.g. the ring in Around the clock): they replace `metrics` for that value. */
-  bySetting?: { key: string; metrics: Record<string, MetricConfig[]> };
+  bySetting?: { key: string | string[]; metrics: Record<string, MetricConfig[]> };
   /** A result only counts with at least `min` of these values added up (darts, rounds, ...). Too short a game says little. */
   sample: { keys: string[]; min: number };
 }
@@ -60,6 +60,23 @@ const lower = (key: string, baseline: number, target: number, weight = 1): Metri
   direction: "lower",
   weight,
 });
+
+/** Success rate (baseline, target) per range, for 3, 6 and 9 darts. */
+const WILD_SCALES: Record<string, [number, number][]> = {
+  "2-40": [[20, 70], [40, 90], [60, 95]],
+  "41-80": [[10, 50], [25, 75], [40, 90]],
+  "61-100": [[5, 35], [10, 50], [20, 70]],
+  "81-120": [[3, 25], [8, 40], [15, 55]],
+  "101-170": [[2, 15], [3, 25], [5, 35]],
+  "2-170": [[5, 30], [8, 40], [12, 50]],
+};
+function wildCardScales(): Record<string, MetricConfig[]> {
+  const out: Record<string, MetricConfig[]> = {};
+  for (const [range, scales] of Object.entries(WILD_SCALES)) {
+    [3, 6, 9].forEach((darts, i) => (out[`${range}|${darts}`] = [higher("successRate", scales[i][0], scales[i][1])]));
+  }
+  return out;
+}
 
 /** "Results per comparison" until it is changed in the settings. Small, so the line follows the results closely. */
 export const DEFAULT_SAMPLE = 3;
@@ -129,6 +146,14 @@ export const DPI_CONFIG: IndexConfig = {
       sample: { keys: ["legs"], min: 2 },
     },
     {
+      gameId: "wild-card",
+      area: "checkout",
+      metrics: [higher("successRate", 5, 35)],
+      // Every range and number of darts has its own scale: a 3-dart 40 is not a 3-dart 140.
+      bySetting: { key: ["range", "darts"], metrics: wildCardScales() },
+      sample: { keys: ["attempts"], min: 5 },
+    },
+    {
       gameId: "around-the-clock",
       area: "accuracy",
       metrics: [higher("accuracy", 20, 60)],
@@ -167,6 +192,10 @@ export function weighted(parts: { score: number; weight: number }[]): number | n
   return total > 0 ? parts.reduce((s, p) => s + p.score * p.weight, 0) / total : null;
 }
 
+/** The value a `bySetting` table is looked up by: one setting, or several joined with "|" (e.g. "61-100|6"). */
+const settingKey = (key: string | string[], settings: Settings) =>
+  (Array.isArray(key) ? key : [key]).map((k) => String(settings[k])).join("|");
+
 function gameConfig(gameId: string, config: IndexConfig): GameIndexConfig | undefined {
   return config.games.find((g) => g.gameId === gameId);
 }
@@ -197,7 +226,7 @@ export function metricScores(
   const g = gameConfig(gameId, config);
   if (!g) return null;
   const sample = g.sample.keys.reduce((s, k) => s + (Number(values[k]) || 0), 0);
-  const metrics = (g.bySetting && g.bySetting.metrics[String(settings[g.bySetting.key])]) ?? g.metrics;
+  const metrics = (g.bySetting && g.bySetting.metrics[settingKey(g.bySetting.key, settings)]) ?? g.metrics;
   const total = metrics.reduce((s, m) => s + m.weight, 0) || 1;
   return {
     counts: sample >= g.sample.min,

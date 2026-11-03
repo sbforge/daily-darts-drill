@@ -293,7 +293,7 @@
   function startGame() {
     if (!item || !def) return;
     // With a time cap a game completed early starts over and plays on until the clock runs out.
-    session = new Session(def, { ...item.settings }, totalMs > 0);
+    session = new Session(def, def.prepare ? def.prepare({ ...item.settings }) : { ...item.settings }, totalMs > 0);
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();

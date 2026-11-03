@@ -95,6 +95,8 @@ export interface GameDef {
   defaultMinutes: number;
   defaultSettings: Settings;
   fields: Field[];
+  /** Settings the app adds when a game starts (a seed for a random order), kept with the result. */
+  prepare?(settings: Settings): Settings;
   describe(settings: Settings): string;
   /** One line for the history screen, built from the stored values. */
   summary(values: Record<string, number>): string;
