@@ -125,6 +125,8 @@ export async function reportCrash(error: unknown, source = "unhandled") {
 export function installCrashHandlers() {
   window.addEventListener("error", (ev) => {
     // Resource load errors (images) have no error object and are not crashes.
+    // WebKit and Chromium report a harmless "ResizeObserver loop" as a window error; it is not a crash.
+    if (/ResizeObserver loop/i.test(ev.message)) return;
     if (ev.error || ev.message) reportCrash(ev.error ?? ev.message, "window.onerror");
   });
   window.addEventListener("unhandledrejection", (ev) => reportCrash(ev.reason, "unhandledrejection"));
