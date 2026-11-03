@@ -1,6 +1,23 @@
 # Todos
+## Found bugs while testing
+* reset single dart boxes after taket complete
+* if a training game ends within the time cap the game should restart. but keep progessing the result / score 
+* double click approval for skip action 
+* if autodarts is not connected
+  * dont start the timer on training routines
+  * if disconnected on running routine.. pause and show a screen
+* on fullscreen: can we align the dartboard visualization with the backdrop?
+
 
 ## Next (in priority order)
+0. overhault routine result screen
+  * show training game as list on the left. make it selectable
+  * detailed statistics on the right side of the screen
+  * per game: show DPI in the list
+  * show total DPI for routine
+  * Motivation Sentence at the end that the player finished the routine
+    * let generate like 20 different options
+  * Move the Done button somewhere to the top, so the user dont need to scroll down
 1. Buy me a coffee: add the real link (placeholder URL for now)
 2. Fix GitHub Actions asset creation
 3. README.md: write the "Why I built this" section (placeholder for now)
@@ -11,6 +28,11 @@
 * Routines: Predefined training routines
   * deletable?
   * recoverable?
+  * Ideas:
+    * everyday training
+    * pre match routine
+    * Doubles only
+    
 * General: Think of fancy names for the games
 * Game Description
   * Every training game should have a short text description
