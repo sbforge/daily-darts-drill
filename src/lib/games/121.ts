@@ -135,7 +135,6 @@ export const oneTwentyOne: GameDef = {
             ? t("121.stageValueStep", { n: stage, total: STAGES, step: step(stage * 3, true) })
             : t("game.xOfY", { n: stage, total: STAGES }),
         },
-        { key: "dartsLeft", label: t("121.dartsLeft"), value: String(dartsLeft) },
         ...(useSafehouse
           ? [{ key: "safehouse", label: t("121.safehouse"), value: safehouse ? String(safehouse) : t("game.noneYet") }]
           : []),
@@ -146,6 +145,8 @@ export const oneTwentyOne: GameDef = {
       ],
       // The rest score is what to aim at right now; the checkout it belongs to is in the label.
       focus: { label: t("121.restOf", { n: target }), value: String(remaining) },
+      // Grouped by stage, so the stage can be read off the icons too.
+      darts: { label: t("121.dartsLeftN", { n: dartsLeft }), total: DARTS_PER_ATTEMPT, used, group: 3 },
       done: false,
     };
   },

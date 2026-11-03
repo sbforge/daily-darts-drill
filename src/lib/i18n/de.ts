@@ -245,7 +245,7 @@ export const de: Record<Key, string> = {
   "121.restOf": "Rest von {n}",
   "121.stage": "Stufe",
   "121.stageValueStep": "{n} von {total}, +{step}",
-  "121.dartsLeft": "Verbleibende Darts",
+  "121.dartsLeftN": "Verbleibende Darts: {n}",
   "121.checkouts": "Geschaffte Checkouts",
   "121.fails": "Verpasst",
   "121.best": "Höchster Checkout",

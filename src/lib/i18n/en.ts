@@ -242,7 +242,7 @@ export const en = {
   "121.restOf": "Rest of {n}",
   "121.stage": "Stage",
   "121.stageValueStep": "{n} of {total}, +{step}",
-  "121.dartsLeft": "Darts left",
+  "121.dartsLeftN": "Darts left: {n}",
   "121.checkouts": "Checkouts made",
   "121.fails": "Failed",
   "121.best": "Highest checkout",

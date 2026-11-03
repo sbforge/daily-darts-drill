@@ -27,6 +27,8 @@ export interface GameResult {
   lines: StatLine[];
   /** The one thing to look at right now (next target, checkout, ...). */
   focus: { label: string; value: string } | null;
+  /** Darts drawn as icons under the focus: how many there are, how many are thrown, and how many form a group. */
+  darts?: { label: string; total: number; used: number; group: number };
   /** True when the game has been completed before the time cap. */
   done: boolean;
 }

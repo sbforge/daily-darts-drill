@@ -12,6 +12,7 @@
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import Board from "./lib/Board.svelte";
+  import DartMeter from "./lib/DartMeter.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
@@ -778,6 +779,10 @@
           </div>
         {/if}
 
+        {#if result.darts}
+          <DartMeter {...result.darts} />
+        {/if}
+
         {#if hero}
           <div class="hero">
             <span class="big">{hero.value}</span>
@@ -872,6 +877,7 @@
     --dim: #8aa1ab;
     --accent: #22d3ee;
     --accent-hi: #67e8f9;
+    --petrol: #1a9fae;
     --on-accent: #04161c;
     --ok: #4ade80;
     --dart: #f2c14e;
