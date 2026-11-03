@@ -173,7 +173,14 @@ export const en = {
   "atc.triple": "Treble",
   "atc.double": "Double",
   "atc.finish": "Finish on",
-  "atc.finishInfo": "The last target after all 20 numbers. Bull needs the bullseye, single bull the green ring around it.",
+  "atc.finishInfo": "The last target after all 20 numbers. Bull needs the bullseye, single bull the green ring around it, and any bull takes either of the two.",
+  "atc.finish.bull": "Bull",
+  "atc.finish.singleBull": "Single bull",
+  "atc.finish.anyBull": "Bull or single bull",
+  // the final target as it shows in the score box
+  "atc.target.bull": "Bull",
+  "atc.target.singleBull": "Single bull",
+  "atc.target.anyBull": "Any bull",
   // the same names, as they read inside a sentence
   "atc.inText.outerSingle": "outer single",
   "atc.inText.innerSingle": "inner single",
@@ -181,6 +188,7 @@ export const en = {
   "atc.inText.double": "double",
   "atc.inText.bull": "bull",
   "atc.inText.singleBull": "single bull",
+  "atc.inText.anyBull": "bull or single bull",
   "atc.describe": "{direction}, {zone}, finish on {finish}",
   "atc.summary": "{accuracy}% accuracy, {progress} of 21 reached",
   "atc.progress": "Progress",

@@ -763,7 +763,8 @@
         {#if result.focus}
           <div class="focus">
             <span class="cap">{result.focus.label}</span>
-            <span class="big">{result.focus.value}</span>
+            <!-- Words ("Single bull", "Success") get a smaller size so they fit the box. -->
+            <span class="big" class:long={result.focus.value.length > 4}>{result.focus.value}</span>
           </div>
         {/if}
 
@@ -1159,6 +1160,7 @@
     box-shadow: 0 0 0 4px rgb(26 159 174 / 0.12);
   }
   .focus .big { font-size: 6.5rem; line-height: 1; }
+  .focus .big.long { font-size: 3.6rem; line-height: 1.2; }
   .hero { display: flex; align-items: baseline; justify-content: center; gap: 0.75rem; margin-bottom: 1.25rem; }
   .big { font-size: 3.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .cap { color: var(--dim); }
