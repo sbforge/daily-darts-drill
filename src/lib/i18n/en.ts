@@ -22,7 +22,6 @@ export const en = {
   "board.resetDone": "Board reset",
   "board.resetFailed": "Reset failed. Check the client.",
   "board.calibrate": "Calibrate the cameras automatically",
-  "board.confirmCalibrate": "Click again: replaces the calibration",
   "board.calibrateStarted": "Calibration started",
   "board.calibrateFailed": "Calibration failed. Check the client.",
   "phase.throw": "Throw",

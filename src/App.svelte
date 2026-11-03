@@ -384,8 +384,6 @@
   // Reset only does something while darts are detected; calibrating waits until the client is settled.
   const canReset = $derived(conn === "connected" && board === "running");
   const canCalibrate = $derived(conn === "connected" && board !== "starting" && board !== "stopping" && board !== "calibrating");
-  let pendingCalibrate = $state(false);
-  let calibrateTimer: ReturnType<typeof setTimeout> | undefined;
   // What became of the last reset or calibration, shown for a moment as a bubble over the buttons.
   let boardNote = $state<{ text: string; failed: boolean } | null>(null);
   let boardNoteTimer: ReturnType<typeof setTimeout> | undefined;
@@ -405,17 +403,9 @@
     );
   }
 
-  /** Starts the auto-calibration. It replaces the stored calibration, so it asks for a second click. */
+  /** Starts the auto-calibration of the cameras. */
   function calibrateBoard() {
     if (!canCalibrate) return;
-    if (!pendingCalibrate) {
-      boardNote = null;
-      pendingCalibrate = true;
-      calibrateTimer = setTimeout(() => (pendingCalibrate = false), 4000);
-      return;
-    }
-    clearTimeout(calibrateTimer);
-    pendingCalibrate = false;
     client.calibrate().then(
       () => noteBoard(t("board.calibrateStarted"), false),
       () => noteBoard(t("board.calibrateFailed"), true),
@@ -1146,22 +1136,13 @@
           <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" />
         </svg>
       </button>
-      <button
-        class="icon"
-        class:armed={pendingCalibrate}
-        aria-label={pendingCalibrate ? t("board.confirmCalibrate") : t("board.calibrate")}
-        title={pendingCalibrate ? undefined : t("board.calibrate")}
-        disabled={!canCalibrate}
-        onclick={calibrateBoard}
-      >
+      <button class="icon" aria-label={t("board.calibrate")} title={t("board.calibrate")} disabled={!canCalibrate} onclick={calibrateBoard}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path fill="currentColor" d="M11 2h2v3.07A7 7 0 0 1 18.93 11H22v2h-3.07A7 7 0 0 1 13 18.93V22h-2v-3.07A7 7 0 0 1 5.07 13H2v-2h3.07A7 7 0 0 1 11 5.07V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z" />
         </svg>
       </button>
-      <!-- The second click is asked for over the buttons, like the abort in the header; results show there too. -->
-      {#if pendingCalibrate}
-        <span class="confirm-bubble up" role="status">{t("board.confirmCalibrate")}</span>
-      {:else if boardNote}
+      <!-- Whether the last reset or calibration worked, over the buttons. -->
+      {#if boardNote}
         <span class="confirm-bubble up" class:ok={!boardNote.failed} role="status">{boardNote.text}</span>
       {/if}
     </div>
@@ -1310,7 +1291,6 @@
   /* Pulled up against the status, so the buttons read as part of it. */
   .board-actions { position: relative; display: flex; gap: 0.15rem; margin-left: -0.65rem; }
   .board-actions button.icon { width: 1.9rem; height: 1.9rem; }
-  .board-actions button.icon.armed { color: #ff9b8f; background: rgb(255 155 143 / 0.15); }
   .confirm-bubble.up { top: auto; bottom: calc(100% + 0.6rem); right: -0.6rem; }
   .confirm-bubble.up::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: #ff9b8f; }
   .confirm-bubble.ok { border-color: var(--accent); background: #0f2a31; color: #d4f6fc; }

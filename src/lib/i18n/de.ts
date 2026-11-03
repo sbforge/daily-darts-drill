@@ -24,7 +24,6 @@ export const de: Record<Key, string> = {
   "board.resetDone": "Board zurückgesetzt",
   "board.resetFailed": "Zurücksetzen fehlgeschlagen. Prüfe den Client.",
   "board.calibrate": "Kameras automatisch kalibrieren",
-  "board.confirmCalibrate": "Nochmal klicken: ersetzt die Kalibrierung",
   "board.calibrateStarted": "Kalibrierung gestartet",
   "board.calibrateFailed": "Kalibrierung fehlgeschlagen. Prüfe den Client.",
   "phase.throw": "Werfen",

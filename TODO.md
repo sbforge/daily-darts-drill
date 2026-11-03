@@ -131,5 +131,5 @@
   * The dialog opens on the game played last, every game keeps its settings from the last quick game
 * Reset & calibrate buttons beside the Autodarts status in the footer
   * Reset (`POST /api/reset`) clears the darts like a takeout by hand; only while the detection runs. A running game takes it as the end of the turn
-  * Calibrate (`POST /api/config/calibration/auto`) asks for a second click, since it replaces the stored calibration
+  * Calibrate (`POST /api/config/calibration/auto`) starts the auto-calibration right away
   * A bubble over the buttons says whether it worked
