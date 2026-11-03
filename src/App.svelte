@@ -1484,8 +1484,8 @@
     /* The D³ backdrop artwork sits behind every view, dimmed so it never competes with the content. */
     background:
       radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed,
-      linear-gradient(rgb(6 13 18 / 0.78), rgb(6 13 18 / 0.78)) fixed,
-      url("./assets/brand/d3-backdrop.svg") center / cover no-repeat fixed,
+      linear-gradient(rgb(6 13 18 / 0.5), rgb(6 13 18 / 0.5)) fixed,
+      url("./assets/brand/art/backdrop.webp") center / cover no-repeat fixed,
       var(--bg);
   }
   /* Header and footer stay put; only the content between them scrolls. */
