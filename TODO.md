@@ -1,20 +1,18 @@
 # Todos
 
 ## Next (in priority order)
-1. History graph per training game
-    * Track result progress (per game)
-2. Loading Screen
+1. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-3. About Screen
+2. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-4. Settings: Autodarts auto discovery of IP & port
-5. Buy me a coffee: add the real link (placeholder URL for now)
-6. Fix GitHub Actions asset creation
-7. Update README.md for version 0.1
+3. Settings: Autodarts auto discovery of IP & port
+4. Buy me a coffee: add the real link (placeholder URL for now)
+5. Fix GitHub Actions asset creation
+6. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -130,13 +128,16 @@
   * Every metric normalized between a baseline (0) and a target (100), clamped; a game's index is the weighted average of its metrics
   * Central, versioned config: metrics, baselines, targets and weights per game; Around the clock has a scale per ring; too short a game doesn't count
   * Overall index per session: game indices averaged per skill area (scoring, doubles, checkout, accuracy, consistency), the areas weighted, so a game played often doesn't dominate
-  * Current level: average of the latest 10 sessions (overall) or results (per game)
-  * Trend: latest 10 against the 10 before, shown from 5 in each; encouraging also when it goes down
+  * Period picker for the overall and the game index: "Last {n} days / weeks / months / years" or all time, 30 days by default, remembered
+  * Current level: average of the results in the period; for all time the latest n sessions (overall) or results (per game)
+  * Trend: the period against the same span right before it (all time: latest n against the n before), shown from n in each; encouraging also when it goes down
+  * n = "Results per comparison" in the settings (3 by default, 1-20); also the rolling average of the chart line
   * Own "Statistics" page in the navigation: the index (overall, per game with trend) and a chart of the index over time
     * Toggle between the overall index and the game index; the game index lists every game, a click picks the one charted
     * A dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values
     * Trend as a diagonal arrow (green up, red down, grey sideways for steady) and the change in %, with an encouraging line in seven steps: steady below 2%, slight below 5%, strong from 15%
     * Uses the full width; on a wide window the game list sits beside the picked game's chart
     * The encouraging line is the hero beside the score, the arrow and the change sit under it
+* History graph per training game: the game index view charts each game's progress over time, as its index or as its own values (toggle "Index / Values"; a dropdown picks the value when a game has several, e.g. 121: success rate or highest checkout)
     * Info button beside the title: how the index works, in words
   * History shows the DPI per session and per game; deleting a session recalculates it
