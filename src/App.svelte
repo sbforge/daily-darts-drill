@@ -274,8 +274,19 @@
     };
     now = Date.now();
     breakEndsAt = now + COUNTDOWN_SECONDS * 1000;
+    resetOnStart = true;
     phase = "countdown";
   }
+
+  // A session starts on a clean board: Autodarts is reset during the countdown, so darts left in the board
+  // from before don't count for the first game. Without the detection running yet, it waits until it does.
+  let resetOnStart = false;
+  $effect(() => {
+    if (phase === "countdown" && canReset && resetOnStart) {
+      resetOnStart = false;
+      resetBoard();
+    }
+  });
 
   function startGame() {
     if (!item || !def) return;

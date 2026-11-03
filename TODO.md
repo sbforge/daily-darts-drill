@@ -56,6 +56,7 @@ Version 1 checklist with a plan per item: docs/v1-scope.md
 
 
 ## Done ✅
+* A routine or quick game resets Autodarts during its countdown (once the detection runs), so the first game starts on a clean board
 * Game names & descriptions: every game has a catchy name (Loose Arm, Clockwork, Double Trouble, Plan B, Ton Machine, Checkout Ladder) with its usual name under it, a short description and a "Why play" goal, in the add game dialog, before a game and on the break screen
 * The dart boxes have a fixed height, so filling or highlighting one no longer shifts the board; the backdrop also realigns when the column above the board changes
 * Animations, first batch (docs/animations-plan.md)
