@@ -58,6 +58,12 @@ export const aroundTheClock: GameDef = {
   get blurb() {
     return t("atc.blurb");
   },
+  get classic() {
+    return t("atc.classic");
+  },
+  get goal() {
+    return t("atc.goal");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,

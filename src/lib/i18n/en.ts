@@ -184,7 +184,7 @@ export const en = {
   "dpi.helpTitle": "How the index works",
   "dpi.helpIntro": "The D³ Performance Index shows how close your results come to a set target, on a scale from 0 to 100. 100 means you reached the target, not that you were perfect. It is always worked out from your saved results, so deleting a session updates everything.",
   "dpi.helpGameTitle": "Game index",
-  "dpi.helpGame": "Every game looks at the numbers that matter for it, like the 3-dart average in Scoring or the hit rate in Simple doubles. Each number is placed between a starting level (0 points) and a target (100 points): halfway there gives 50. Games that look at several numbers give each one its own share. Games with only a few darts don't count, they say too little.",
+  "dpi.helpGame": "Every game looks at the numbers that matter for it, like the 3-dart average in Ton Machine or the hit rate in Double Trouble. Each number is placed between a starting level (0 points) and a target (100 points): halfway there gives 50. Games that look at several numbers give each one its own share. Games with only a few darts don't count, they say too little.",
   "dpi.helpOverallTitle": "Overall index",
   "dpi.helpOverall": "The games of a session are grouped into skill areas: scoring, doubles, checkout, accuracy and consistency. Each area has a fixed share of the overall index, so a game you play a lot doesn't outweigh the rest. Areas you didn't train in a session are left out for that session.",
   "dpi.helpLevelTitle": "Your score",
@@ -369,6 +369,7 @@ export const en = {
   "game.accuracy": "Accuracy",
   "game.dartsThrown": "Darts thrown",
   "game.hits": "Hits",
+  "game.goal": "Why play:",
   "game.target": "Target",
   "game.double": "Double",
   "game.successRate": "Success rate",
@@ -377,13 +378,17 @@ export const en = {
   "game.xOfY": "{n} of {total}",
 
   // warm up
-  "warmUp.name": "Warm up",
-  "warmUp.blurb": "Throw freely. No result, the clock just keeps the routine on schedule.",
+  "warmUp.name": "Loose Arm",
+  "warmUp.blurb": "Throw freely at whatever you like. No score and no pressure: the clock only keeps your routine on schedule.",
+  "warmUp.classic": "Warm up",
+  "warmUp.goal": "Loosen your arm and find your rhythm before the drills that count.",
   "warmUp.focus": "Throw freely",
 
   // around the clock
-  "atc.name": "Around the clock",
-  "atc.blurb": "Hit every number in board order, then finish on the bull. Only hits move you on.",
+  "atc.name": "Clockwork",
+  "atc.blurb": "Hit every number in board order, then finish on the bull. Only a hit moves you on to the next number.",
+  "atc.classic": "Around the clock",
+  "atc.goal": "Accuracy all over the board, so you can hit any number a finish asks for, not just the 20.",
   "atc.direction": "Direction",
   "atc.directionInfo": "The order you go round the board. Clockwise starts at 1 and follows the board via 18, 4, 13 … to 20. Counter-clockwise starts at 1 and goes via 20, 5, 12 … to 18.",
   "atc.cw": "Clockwise",
@@ -422,8 +427,10 @@ export const en = {
   "atc.nextTargetZone": "Next target, {zone}",
 
   // simple doubles
-  "simpleDoubles.name": "Simple doubles",
-  "simpleDoubles.blurb": "Throw at one double. Only that double counts as a hit.",
+  "simpleDoubles.name": "Double Trouble",
+  "simpleDoubles.blurb": "Throw at one double for the whole game. Only that double counts as a hit.",
+  "simpleDoubles.classic": "Simple doubles",
+  "simpleDoubles.goal": "Makes your favourite double automatic, so it's there when the leg is on the line.",
   "simpleDoubles.doubleInfo": "The double you throw at for the whole game. Only that double counts as a hit, every other dart is a miss.",
   "simpleDoubles.summary": "{accuracy}% accuracy ({hits} of {darts} darts)",
   "simpleDoubles.great": "3 of 3!",
@@ -432,6 +439,8 @@ export const en = {
   "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
     "Check out the double over three darts. Single hits are subtracted and the next target follows from what is left. With an odd leave after dart 2, the bull is the target.",
+  "complexDoubles.classic": "Complex doubles",
+  "complexDoubles.goal": "Teaches you to recover when the first dart misses: read the new leave and still check out with the darts left.",
   "complexDoubles.describe": "Target D{n}",
   "complexDoubles.doubleInfo": "The double each round starts on. Every round is a checkout of twice its value (D16 = 32) with three darts. Bull is not available here.",
   "complexDoubles.summary": "{rate}% success ({successes} of {rounds} rounds)",
@@ -445,8 +454,10 @@ export const en = {
   "complexDoubles.successes": "Successful rounds",
 
   // scoring
-  "scoring.name": "Scoring",
-  "scoring.blurb": "Score as many points as you can. Your score per three darts is the number that counts.",
+  "scoring.name": "Ton Machine",
+  "scoring.blurb": "Score as many points as you can. Your average per three darts is the number that counts.",
+  "scoring.classic": "Scoring",
+  "scoring.goal": "Builds a steady, heavy scoring rhythm, which is what brings you to a finish in the first place.",
   "scoring.average": "3-dart average",
   "scoring.summary": "{average} three-dart average",
   "scoring.total": "Total score",
@@ -459,6 +470,9 @@ export const en = {
   // 121
   "121.blurb":
     "Check out within 9 darts. A checkout raises the next one, a miss lowers it by 1. Fast-forward and the safehouse are optional.",
+  "121.classic": "121",
+  "121.goal": "Finishing under pressure: real checkouts with a limited number of darts, and it gets harder the better you get.",
+  "121.name": "Checkout Ladder",
   "121.start": "Starting checkout",
   "121.startInfo": "The checkout the game starts with (2-170). From there it goes up with every checkout and down with every miss, but never below the start. The usual start is 121.",
   "121.fastForward": "Fast-forward",

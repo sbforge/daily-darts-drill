@@ -10,9 +10,17 @@ const step = (dart: number, fastForward: boolean) => (fastForward ? STAGES + 1 -
 
 export const oneTwentyOne: GameDef = {
   id: "121",
-  name: "121",
+  get name() {
+    return t("121.name");
+  },
   get blurb() {
     return t("121.blurb");
+  },
+  get classic() {
+    return t("121.classic");
+  },
+  get goal() {
+    return t("121.goal");
   },
   needsDarts: true,
   hasResult: true,

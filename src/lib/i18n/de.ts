@@ -187,7 +187,7 @@ export const de: Record<Key, string> = {
   "dpi.helpTitle": "So funktioniert der Index",
   "dpi.helpIntro": "Der D³ Performance Index zeigt, wie nah deine Ergebnisse an einem festen Ziel liegen, auf einer Skala von 0 bis 100. 100 heißt: Ziel erreicht, nicht perfekt. Er wird immer aus deinen gespeicherten Ergebnissen berechnet, wenn du eine Einheit löschst, passt sich alles an.",
   "dpi.helpGameTitle": "Spielindex",
-  "dpi.helpGame": "Jedes Spiel schaut auf die Zahlen, die für es zählen, etwa den 3-Dart-Durchschnitt beim Scoring oder die Trefferquote bei Einfache Doubles. Jede Zahl wird zwischen einem Startniveau (0 Punkte) und einem Ziel (100 Punkte) eingeordnet: auf halbem Weg gibt es 50. Schaut ein Spiel auf mehrere Zahlen, hat jede ihren eigenen Anteil. Spiele mit nur wenigen Darts zählen nicht, sie sagen zu wenig aus.",
+  "dpi.helpGame": "Jedes Spiel schaut auf die Zahlen, die für es zählen, etwa den 3-Dart-Durchschnitt bei Ton Machine oder die Trefferquote bei Double Trouble. Jede Zahl wird zwischen einem Startniveau (0 Punkte) und einem Ziel (100 Punkte) eingeordnet: auf halbem Weg gibt es 50. Schaut ein Spiel auf mehrere Zahlen, hat jede ihren eigenen Anteil. Spiele mit nur wenigen Darts zählen nicht, sie sagen zu wenig aus.",
   "dpi.helpOverallTitle": "Gesamtindex",
   "dpi.helpOverall": "Die Spiele einer Einheit werden nach Bereichen gruppiert: Scoring, Doppel, Checkout, Präzision und Konstanz. Jeder Bereich hat einen festen Anteil am Gesamtindex, so überwiegt ein Spiel, das du oft spielst, nicht den Rest. Bereiche, die du in einer Einheit nicht trainiert hast, fallen für diese Einheit weg.",
   "dpi.helpLevelTitle": "Deine Punktzahl",
@@ -371,6 +371,7 @@ export const de: Record<Key, string> = {
   "game.accuracy": "Trefferquote",
   "game.dartsThrown": "Geworfene Darts",
   "game.hits": "Treffer",
+  "game.goal": "Warum spielen:",
   "game.target": "Ziel",
   "game.double": "Double",
   "game.successRate": "Erfolgsquote",
@@ -379,14 +380,17 @@ export const de: Record<Key, string> = {
   "game.xOfY": "{n} von {total}",
 
   // warm up
-  "warmUp.name": "Aufwärmen",
-  "warmUp.blurb": "Wirf frei. Kein Ergebnis, die Uhr hält nur die Routine im Zeitplan.",
+  "warmUp.name": "Loose Arm",
+  "warmUp.blurb": "Wirf frei, worauf du willst. Keine Wertung, kein Druck: die Uhr hält nur deine Routine im Zeitplan.",
+  "warmUp.classic": "Aufwärmen",
+  "warmUp.goal": "Lockere deinen Arm und finde deinen Rhythmus, bevor die Übungen zählen.",
   "warmUp.focus": "Frei werfen",
 
   // around the clock
-  "atc.name": "Around the Clock",
-  "atc.blurb":
-    "Triff jede Zahl in der Reihenfolge der Scheibe und beende mit dem Bull. Nur Treffer bringen dich weiter.",
+  "atc.name": "Clockwork",
+  "atc.blurb": "Triff jede Zahl in der Reihenfolge der Scheibe und beende mit dem Bull. Nur ein Treffer bringt dich zur nächsten Zahl.",
+  "atc.classic": "Around the Clock",
+  "atc.goal": "Genauigkeit auf der ganzen Scheibe, damit du jede Zahl triffst, die ein Finish verlangt, nicht nur die 20.",
   "atc.direction": "Richtung",
   "atc.directionInfo": "Die Reihenfolge, in der du um das Board gehst. Im Uhrzeigersinn beginnt bei 1 und folgt dem Board über 18, 4, 13 … bis zur 20. Gegen den Uhrzeigersinn beginnt bei 1 und geht über 20, 5, 12 … bis zur 18.",
   "atc.cw": "Im Uhrzeigersinn",
@@ -423,8 +427,10 @@ export const de: Record<Key, string> = {
   "atc.nextTargetZone": "Nächstes Ziel, {zone}",
 
   // simple doubles
-  "simpleDoubles.name": "Einfache Doubles",
-  "simpleDoubles.blurb": "Wirf auf ein Double. Nur dieses Double zählt als Treffer.",
+  "simpleDoubles.name": "Double Trouble",
+  "simpleDoubles.blurb": "Wirf das ganze Spiel auf ein Double. Nur dieses Double zählt als Treffer.",
+  "simpleDoubles.classic": "Einfache Doubles",
+  "simpleDoubles.goal": "Macht dein Lieblingsdouble zur Routine, damit es sitzt, wenn es um das Leg geht.",
   "simpleDoubles.doubleInfo": "Das Double, auf das du das ganze Spiel wirfst. Nur dieses Double zählt als Treffer, jeder andere Dart ist ein Fehlwurf.",
   "simpleDoubles.summary": "{accuracy} % Trefferquote ({hits} von {darts} Darts)",
   "simpleDoubles.great": "3 von 3!",
@@ -433,6 +439,8 @@ export const de: Record<Key, string> = {
   "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
     "Checke das Double mit drei Darts aus. Single-Treffer werden abgezogen, das nächste Ziel ergibt sich aus dem Rest. Bleibt nach Dart 2 eine ungerade Zahl, ist das Bull das Ziel.",
+  "complexDoubles.classic": "Komplexe Doubles",
+  "complexDoubles.goal": "Lehrt dich, nach einem Fehlwurf umzuplanen: den neuen Rest lesen und mit den übrigen Darts trotzdem checken.",
   "complexDoubles.describe": "Ziel D{n}",
   "complexDoubles.doubleInfo": "Das Double, mit dem jede Runde beginnt. Jede Runde ist ein Checkout über den doppelten Wert (D16 = 32) mit drei Darts. Bull gibt es hier nicht.",
   "complexDoubles.summary": "{rate} % Erfolg ({successes} von {rounds} Runden)",
@@ -446,8 +454,10 @@ export const de: Record<Key, string> = {
   "complexDoubles.successes": "Erfolgreiche Runden",
 
   // scoring
-  "scoring.name": "Scoring",
+  "scoring.name": "Ton Machine",
   "scoring.blurb": "Erziele so viele Punkte wie möglich. Es zählt dein Schnitt pro drei Darts.",
+  "scoring.classic": "Scoring",
+  "scoring.goal": "Baut einen stabilen, starken Scoring-Rhythmus auf, denn der bringt dich überhaupt erst ins Finish.",
   "scoring.average": "3-Dart-Schnitt",
   "scoring.summary": "{average} 3-Dart-Schnitt",
   "scoring.total": "Gesamtpunkte",
@@ -460,6 +470,9 @@ export const de: Record<Key, string> = {
   // 121
   "121.blurb":
     "Checke innerhalb von 9 Darts. Ein Checkout erhöht den nächsten, ein Fehlversuch senkt ihn um 1. Fast-Forward und Safehouse sind optional.",
+  "121.classic": "121",
+  "121.goal": "Finishen unter Druck: echte Checkouts mit begrenzten Darts, und es wird schwerer, je besser du wirst.",
+  "121.name": "Checkout Ladder",
   "121.start": "Start-Checkout",
   "121.startInfo": "Der Checkout, mit dem das Spiel beginnt (2-170). Von dort geht es mit jedem Checkout nach oben und mit jedem Fehlversuch nach unten, aber nie unter den Start. Üblich ist der Start bei 121.",
   "121.fastForward": "Fast-Forward",

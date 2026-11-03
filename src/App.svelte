@@ -37,7 +37,7 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
-  import { GAMES, gameById, type Moment, type Settings, type StatLine } from "./lib/games";
+  import { GAMES, gameById, type GameDef, type Moment, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { en } from "./lib/i18n/en";
   import { Session } from "./lib/session.svelte";
@@ -1039,6 +1039,13 @@
   });
 </script>
 
+<!-- What a game is and why to play it, under its name before it starts. -->
+{#snippet gameIntro(g: GameDef)}
+  {#if g.classic !== g.name}<p class="classic-name">{g.classic}</p>{/if}
+  <p class="lede">{g.blurb}</p>
+  <p class="game-goal"><strong>{t("game.goal")}</strong> {g.goal}</p>
+{/snippet}
+
 <!-- Why a game with darts can't start or go on: no connection, or the detection isn't running. -->
 {#snippet waitHint()}
   {#if conn === "connecting"}
@@ -1649,7 +1656,7 @@
         <div class="card">
           <p class="progress">{t("run.upNext", { n: run.index + 1, total: run.routine.items.length })}</p>
           <h2>{def.name}</h2>
-          <p class="lede">{def.blurb}</p>
+          {@render gameIntro(def)}
           <p class="settings-line">{settingsLine(item)}</p>
         </div>
       </div>
@@ -1661,7 +1668,7 @@
     <section class="narrow">
       <p class="progress">{run.quick ? t("quick.name") : t("run.progress", { n: run.index + 1, total: run.routine.items.length })}</p>
       <h2>{def.name}</h2>
-      <p class="lede">{def.blurb}</p>
+      {@render gameIntro(def)}
       <p class="settings-line">{settingsLine(item)}</p>
       {#if !canStart}
         {@render waitHint()}
@@ -2443,6 +2450,9 @@
   .clock { font-size: 4.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock.paused { color: var(--dart); opacity: 0.75; }
   .clock.last { color: var(--accent); }
+  .classic-name { margin: -0.35rem 0 0.75rem; color: var(--dim); font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .game-goal { margin: 0 0 1rem; color: var(--chalk); line-height: 1.45; }
+  .game-goal strong { color: var(--accent); margin-right: 0.25rem; }
   .note { color: var(--dim); margin: 0.5rem 0 1.5rem; }
   /* The current score, the one number to read at a glance from the oche. */
   .focus {

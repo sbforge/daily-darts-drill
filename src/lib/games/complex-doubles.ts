@@ -44,6 +44,12 @@ export const complexDoubles: GameDef = {
   get blurb() {
     return t("complexDoubles.blurb");
   },
+  get classic() {
+    return t("complexDoubles.classic");
+  },
+  get goal() {
+    return t("complexDoubles.goal");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,

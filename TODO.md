@@ -17,11 +17,6 @@
     * pre match routine
     * Doubles only
     
-* General: Think of fancy names for the games
-* Game Description
-  * Every training game should have a short text description
-  * Every training game should have a target. Why to play?
-  * Nice to have: Explanation Video on Youtube ;) AI generated ofc
 * Random Checkout
 * Bobs 27
 * 170
@@ -41,6 +36,7 @@
 * Fading Screens
 
 ## Idea Backlog
+* Explanation video per training game, e.g. on YouTube (AI generated ofc)
 * Routine Im- & Export ( for easy sharing) ( prio: medium)
 * Heatmap per training game, configurable per game (Random Checkout i.e. does not need one) (prio: medium)
 * Local Multiplayer games
@@ -59,6 +55,7 @@
 
 
 ## Done ✅
+* Game names & descriptions: every game has a catchy name (Loose Arm, Clockwork, Double Trouble, Plan B, Ton Machine, Checkout Ladder) with its usual name under it, a short description and a "Why play" goal, in the add game dialog, before a game and on the break screen
 * The dart boxes have a fixed height, so filling or highlighting one no longer shifts the board; the backdrop also realigns when the column above the board changes
 * Animations, first batch (docs/animations-plan.md)
   * Global fx module (src/lib/fx/): queued overlay stamps played once per key, element effects via `use:useFx`

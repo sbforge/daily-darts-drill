@@ -11,6 +11,12 @@ export const scoring: GameDef = {
   get blurb() {
     return t("scoring.blurb");
   },
+  get classic() {
+    return t("scoring.classic");
+  },
+  get goal() {
+    return t("scoring.goal");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,

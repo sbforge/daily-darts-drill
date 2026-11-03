@@ -11,6 +11,12 @@ export const simpleDoubles: GameDef = {
   get blurb() {
     return t("simpleDoubles.blurb");
   },
+  get classic() {
+    return t("simpleDoubles.classic");
+  },
+  get goal() {
+    return t("simpleDoubles.goal");
+  },
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,

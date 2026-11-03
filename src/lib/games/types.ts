@@ -84,7 +84,12 @@ export interface ComputeContext {
 export interface GameDef {
   id: string;
   name: string;
+  /** The usual name of the drill, shown under the name so it is easy to recognise. */
+  classic: string;
+  /** What the game is: a short description of how it is played. */
   blurb: string;
+  /** Why to play it: what it trains. */
+  goal: string;
   needsDarts: boolean; // false: can run without an Autodarts connection
   hasResult: boolean;
   defaultMinutes: number;
