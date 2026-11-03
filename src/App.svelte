@@ -43,6 +43,7 @@
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
+  import { discoverBoards, type FoundBoard } from "./lib/discovery";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
@@ -71,6 +72,9 @@
   let throwPhase = $state<ThrowPhase>(null);
   let startError = $state(false);
   let recent = $state<string[]>([]);
+  // The search in the settings: null before the first search.
+  let searching = $state(false);
+  let found = $state<FoundBoard[] | null>(null);
 
   // routines
   let routines = $state<Routine[]>([]);
@@ -79,7 +83,17 @@
   // history
   let history = $state<db.HistorySession[]>([]);
   let lastPlayed = $state<Record<string, string>>({});
-  let pendingSessionDelete = $state<string | null>(null);
+  // The history shows the sessions of a period, by default the last month, and all of them, the routines or the quick games.
+  let historyFrom = $state(dayInput(monthsAgo(1)));
+  let historyTo = $state(dayInput(new Date()));
+  let historyKind = $state<"all" | "routines" | "quick">("all");
+  const shownHistory = $derived(
+    historyKind === "all" ? history : history.filter((s) => s.quick === (historyKind === "quick")),
+  );
+  let detailSession = $state<db.HistorySession | null>(null);
+  let detailDialog = $state<HTMLDialogElement>();
+  let deleteTarget = $state<db.HistorySession | null>(null);
+  let deleteDialog = $state<HTMLDialogElement>();
   // The performance index, calculated from all stored results each time they change.
   // The raw results, read from the database whenever they change; the index is worked out from them for the picked period.
   let dpiResults = $state<ResultRecord[]>([]);
@@ -163,7 +177,7 @@
   }
 
   function refreshHistory() {
-    db.loadSessions().then((h) => (history = h), failed);
+    loadHistory();
     db.loadLastPlayed().then((l) => (lastPlayed = l), failed);
     refreshDpi();
   }
@@ -413,7 +427,11 @@
     client.start().catch(() => (startError = true));
   }
 
-  // ---- reset and calibrate, beside the Autodarts status in the footer
+  // ---- start / stop, reset and calibrate, beside the Autodarts status in the footer
+
+  // "noCamera" and "blocked" are a running detection with a problem, so they can be stopped too.
+  const canStartDetection = $derived(conn === "connected" && board === "stopped");
+  const canStopDetection = $derived(conn === "connected" && (board === "running" || board === "noCamera" || board === "blocked"));
 
   // Reset only does something while darts are detected; calibrating waits until the client is settled.
   const canReset = $derived(conn === "connected" && board === "running");
@@ -435,6 +453,20 @@
       () => noteBoard(t("board.resetDone"), false),
       () => noteBoard(t("board.resetFailed"), true),
     );
+  }
+
+  /** Starts the detection when it is stopped, stops it when it runs. */
+  function toggleDetection() {
+    if (canStartDetection)
+      client.start().then(
+        () => noteBoard(t("board.startDone"), false),
+        () => noteBoard(t("board.startFailed"), true),
+      );
+    else if (canStopDetection)
+      client.stop().then(
+        () => noteBoard(t("board.stopDone"), false),
+        () => noteBoard(t("board.stopFailed"), true),
+      );
   }
 
   /** Starts the auto-calibration of the cameras. */
@@ -580,6 +612,48 @@
 
   // ---- history
 
+  /** A date as the value of a date input: the local day, YYYY-MM-DD. */
+  function dayInput(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function monthsAgo(n: number): Date {
+    const d = new Date();
+    d.setMonth(d.getMonth() - n);
+    return d;
+  }
+
+  /** From the start of the first day to the end of the last one, local time. */
+  function loadHistory() {
+    const from = new Date(`${historyFrom}T00:00`);
+    const to = new Date(`${historyTo}T00:00`);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return;
+    to.setDate(to.getDate() + 1);
+    db.loadSessions(from.toISOString(), to.toISOString()).then((h) => (history = h), failed);
+  }
+
+  function sessionName(s: db.HistorySession): string {
+    // The stored routine name is in the language of the day it was played; a quick game follows the current one.
+    return s.quick ? t("quick.name") : s.routineName;
+  }
+
+  function showDetails(s: db.HistorySession) {
+    detailSession = s;
+    detailDialog?.showModal();
+  }
+
+  function askDelete(s: db.HistorySession) {
+    deleteTarget = s;
+    deleteDialog?.showModal();
+  }
+
+  function confirmDelete() {
+    const id = deleteTarget?.id;
+    deleteDialog?.close();
+    if (id) db.deleteSession(id).then(refreshHistory, failed);
+  }
+
   /** The time cap, or for a quick game without one how long it was played. */
   function playedLine(r: db.HistoryRow): string {
     if (r.minutes > 0) return t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes });
@@ -658,15 +732,6 @@
     }
   }
 
-  function deleteSession(id: string) {
-    if (pendingSessionDelete !== id) {
-      pendingSessionDelete = id;
-      return;
-    }
-    pendingSessionDelete = null;
-    db.deleteSession(id).then(refreshHistory, failed);
-  }
-
   // ---- connection settings
 
   function saveSettings(ev: Event) {
@@ -677,6 +742,7 @@
     if (!Number.isInteger(port) || port < 1 || port > 65535)
       return (formError = t("settings.portInvalid"));
     formError = "";
+    dropCandidate();
     config = { host, port };
     draft = { ...config };
     db.saveConfig(config).catch(failed);
@@ -687,31 +753,88 @@
     draft = { ...DEFAULT_CONFIG };
   }
 
+  async function searchBoards() {
+    searching = true;
+    formError = "";
+    try {
+      found = await discoverBoards();
+    } catch {
+      found = [];
+    }
+    searching = false;
+    if (found.length === 1) pickBoard(found[0]);
+  }
+
+  function pickBoard(b: FoundBoard) {
+    draft = { host: b.host, port: b.port };
+  }
+
+  // ---- auto discovery on start
+
+  /** A board found on start that we try instead of the saved one; saved only once it connects. */
+  let candidate: Config | null = null;
+  let candidateTimer: ReturnType<typeof setTimeout> | undefined;
+  const AUTO_DISCOVER_AFTER_MS = 4000;
+  const CANDIDATE_TIMEOUT_MS = 8000;
+
+  async function autoDiscover() {
+    const boards = await discoverBoards().catch(() => [] as FoundBoard[]);
+    if (conn === "connected" || !boards.length) return;
+    const b = boards[0];
+    if (b.host === config.host && b.port === config.port) return;
+    candidate = { host: b.host, port: b.port };
+    client.connect(b.host, b.port);
+    // It doesn't answer either: back to the saved connection, which stays as it is.
+    candidateTimer = setTimeout(() => {
+      if (!candidate) return;
+      candidate = null;
+      client.connect(config.host, config.port);
+    }, CANDIDATE_TIMEOUT_MS);
+  }
+
+  function dropCandidate() {
+    candidate = null;
+    clearTimeout(candidateTimer);
+  }
+
+  function onConnState(s: ConnState) {
+    conn = s;
+    if (s !== "connected" || !candidate) return;
+    config = candidate;
+    draft = { ...config };
+    dropCandidate();
+    db.saveConfig(config).catch(failed);
+  }
+
   function changeLanguage(l: Locale) {
     setLocale(l);
     db.setSetting("language", l).catch(failed);
   }
 
   onMount(() => {
-    client = new AutodartsClient({ onState: (s) => (conn = s), onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
+    client = new AutodartsClient({ onState: onConnState, onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
     (async () => {
       try {
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
         setLocale(isLocale(lang) ? lang : getLocale());
+        const saved = await db.hasConfig();
         config = await db.loadConfig();
         draft = { ...config };
         routines = await db.loadRoutines();
         const last = await db.getSetting("selected_routine");
         selectedId = routines.find((r) => r.id === last)?.id ?? routines[0].id;
         ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
-        history = await db.loadSessions();
+        loadHistory();
         lastPlayed = await db.loadLastPlayed();
         await loadRange();
         refreshDpi();
         ready = true;
         client.connect(config.host, config.port);
+        // First start: look for a board right away. Later: only if the saved one doesn't answer.
+        if (!saved) autoDiscover();
+        else setTimeout(() => conn !== "connected" && autoDiscover(), AUTO_DISCOVER_AFTER_MS);
       } catch (e) {
         dbError = e instanceof Error ? e.message : String(e);
       }
@@ -828,99 +951,156 @@
       <p class="hint">{t("db.loading")}</p>
     </section>
   {:else if view === "settings"}
-    <section class="narrow">
-      <h2>{t("settings.connTitle")}</h2>
-      <p class="lede">{t("settings.connLede")}</p>
-      <form onsubmit={saveSettings}>
-        <label>
-          {t("settings.host")}
-          <input type="text" bind:value={draft.host} autocomplete="off" spellcheck="false" />
-        </label>
-        <label>
-          {t("settings.port")}
-          <input type="number" min="1" max="65535" bind:value={draft.port} />
-        </label>
-        <p class="url">{autodartsUrl(draft.host.trim() || "…", draft.port || 0)}</p>
-        {#if formError}<p class="error" role="alert">{formError}</p>{/if}
-        {#if conn !== "connected" && !formError}
-          <p class="hint">
-            {t("settings.unreachable")}
-          </p>
-        {/if}
-        <div class="row">
-          <button type="submit" class="primary">{t("settings.save")}</button>
-          <button type="button" class="ghost" onclick={useDefaults}>{t("settings.reset")}</button>
-        </div>
-      </form>
+    <section class="settings">
+      <h2>{t("settings.title")}</h2>
+      <p class="lede">{t("settings.lede")}</p>
+      <div class="settings-grid">
+        <section class="group wide" aria-labelledby="conn-title">
+          <div class="group-head">
+            <h3 id="conn-title">{t("settings.connTitle")}</h3>
+            <span class="conn" data-state={conn}><span class="dot"></span>{connLabel}</span>
+          </div>
+          <p class="lede">{t("settings.connLede")}</p>
+          {#if conn === "connected" && board !== "unknown"}
+            <p class="detection" data-board={board}>
+              {t("settings.detection", { status: boardLabel })}
+              {#if canStartDetection}
+                <button type="button" class="primary small" onclick={toggleDetection}>{t("board.start")}</button>
+              {/if}
+            </p>
+          {/if}
+          <div class="conn-split">
+            <form onsubmit={saveSettings}>
+              <div class="fields">
+                <label class="host">
+                  {t("settings.host")}
+                  <input type="text" bind:value={draft.host} autocomplete="off" spellcheck="false" />
+                </label>
+                <label class="port">
+                  {t("settings.port")}
+                  <input type="number" min="1" max="65535" bind:value={draft.port} />
+                </label>
+              </div>
+              <div class="url-line">
+                <p class="url">{autodartsUrl(draft.host.trim() || "…", draft.port || 0)}</p>
+                <button type="button" class="link" onclick={useDefaults}>{t("settings.reset")}</button>
+              </div>
+              {#if formError}<p class="error" role="alert">{formError}</p>{/if}
+              {#if conn !== "connected" && !formError}
+                <p class="hint">{t("settings.unreachable")}</p>
+              {/if}
+              <div class="row">
+                <button type="submit" class="primary">{t("settings.save")}</button>
+                <button type="button" class="ghost" onclick={searchBoards} disabled={searching}>
+                  {t(searching ? "settings.searching" : "settings.search")}
+                </button>
+              </div>
+              {#if found && !searching}
+                {#if found.length === 0}
+                  <p class="hint">{t("settings.foundNone")}</p>
+                {:else if found.length === 1}
+                  <p class="hint">{t("settings.foundOne", { name: found[0].name })}</p>
+                {:else}
+                  <p class="hint">{t("settings.foundMany")}</p>
+                  <div class="row found">
+                    {#each found as b (b.id)}
+                      <button
+                        type="button"
+                        class="ghost small"
+                        class:picked={draft.host === b.host && draft.port === b.port}
+                        onclick={() => pickBoard(b)}
+                      >
+                        {b.name} · {b.host}:{b.port}{b.cams ? ` · ${t("settings.cams", { n: b.cams })}` : ""}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              {/if}
+            </form>
+            <!-- The connection check: darts thrown now show up here. -->
+            <div class="recent-box">
+              <h4>{t("settings.recentTitle")}</h4>
+              {#if recent.length}
+                <p class="recent">{recent.join("  ")}</p>
+              {:else}
+                <p class="hint">{t("settings.recentEmpty")}</p>
+              {/if}
+            </div>
+          </div>
+        </section>
 
-      <h3>{t("settings.recentTitle")}</h3>
-      {#if recent.length}
-        <p class="recent">{recent.join("  ")}</p>
-      {:else}
-        <p class="hint">{t("settings.recentEmpty")}</p>
-      {/if}
+        <section class="group" aria-labelledby="lang-title">
+          <h3 id="lang-title">{t("settings.languageTitle")}</h3>
+          <label>
+            {t("settings.language")}
+            <Select
+              value={getLocale()}
+              options={LOCALES.map((l) => ({ value: l.id, label: l.name, icon: l.flag }))}
+              onchange={(id) => changeLanguage(id)}
+            />
+          </label>
+        </section>
 
-      <h3>{t("settings.languageTitle")}</h3>
-      <label>
-        {t("settings.language")}
-        <Select
-          value={getLocale()}
-          options={LOCALES.map((l) => ({ value: l.id, label: l.name }))}
-          onchange={(id) => changeLanguage(id)}
-        />
-      </label>
-
-      <h3>{t("settings.statsTitle")}</h3>
-      <label>
-        {t("settings.sample")}
-        <input type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
-      </label>
-      <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
+        <section class="group" aria-labelledby="stats-title">
+          <h3 id="stats-title">{t("settings.statsTitle")}</h3>
+          <label>
+            {t("settings.sample")}
+            <input class="short" type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
+          </label>
+          <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
+        </section>
+      </div>
     </section>
   {:else if view === "history"}
     <section class="history">
       <h2>{t("history.title")}</h2>
-      {#if history.length === 0}
-        <p class="hint">{t("history.empty")}</p>
+      <div class="history-filters">
+        <label>
+          {t("history.from")}
+          <input type="date" bind:value={historyFrom} max={historyTo} onchange={loadHistory} />
+        </label>
+        <label>
+          {t("history.to")}
+          <input type="date" bind:value={historyTo} min={historyFrom} onchange={loadHistory} />
+        </label>
+        <div class="toggle" role="tablist" aria-label={t("history.kind")}>
+          {#each [["all", "history.kindAll"], ["routines", "history.kindRoutines"], ["quick", "history.kindQuick"]] as const as [kind, key]}
+            <button role="tab" aria-selected={historyKind === kind} onclick={() => (historyKind = kind)}>{t(key)}</button>
+          {/each}
+        </div>
+      </div>
+      {#if shownHistory.length === 0}
+        <p class="hint">{t(history.length === 0 && dpiResults.length === 0 ? "history.empty" : "history.emptyFiltered")}</p>
       {/if}
-      {#each history as s (s.id)}
-        <div class="session">
-          <div class="session-head">
-            <div>
-              <!-- The stored routine name is in the language of the day it was played; a quick game follows the current one. -->
-              <strong>{s.quick ? t("quick.name") : s.routineName}</strong>
-              <span class="plan-meta">{dateTime(s.startedAt)}</span>
+      <ul class="sessions">
+        {#each shownHistory as s (s.id)}
+          <li class="session">
+            <div class="session-title">
+              <strong>{sessionName(s)}</strong>
               {#if s.status === "aborted"}
                 <span class="badge">{t("history.aborted")}</span>
               {:else if s.status === "running"}
                 <span class="badge live">{t("history.running")}</span>
               {/if}
+              <span class="plan-meta">
+                {dateTime(s.startedAt)} · {t(s.rows.length === 1 ? "history.game" : "history.games", { n: s.rows.length })}
+              </span>
+            </div>
+            <!-- Its own column, so the labels line up whatever the name. -->
+            <span class="session-dpi">
               {#if dpi?.bySession.has(s.id)}
                 <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
               {/if}
-            </div>
-            <button class="ghost small danger" onclick={() => deleteSession(s.id)}>
-              {pendingSessionDelete === s.id ? t("common.confirmDelete") : t("common.delete")}
+            </span>
+            <button class="ghost small" onclick={() => showDetails(s)}>{t("history.details")}</button>
+            <button class="icon delete" aria-label={t("history.delete")} title={t("history.delete")} onclick={() => askDelete(s)}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="currentColor" d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9Zm-2 3h10v13H7V6Zm2 2v9h2V8H9Zm4 0v9h2V8h-2Z" />
+              </svg>
             </button>
-          </div>
-          {#if s.status !== "aborted"}
-            <ul class="plan">
-              {#each s.rows as r (r.id)}
-                {@const g = gameById(r.gameId)}
-                <li>
-                  <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
-                  <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
-                  <span class="plan-meta">
-                    {playedLine(r)}{#if dpi?.byResult.has(r.id)} · {t("dpi.short")} {num(dpi.byResult.get(r.id)!)}{/if}
-                  </span>
-                  <span class="plan-desc">{g.describe(r.settings)}</span>
-                  <span class="plan-desc strong">{g.summary(r.values)}</span>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
-      {/each}
+          </li>
+        {/each}
+      </ul>
     </section>
   {:else if view === "stats"}
     {#snippet arrow(tr: Trend)}
@@ -1407,6 +1587,74 @@
   </div>
 </dialog>
 
+<!-- The games of one session. Escape, the backdrop or the button closes it. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm details"
+  bind:this={detailDialog}
+  aria-labelledby="details-title"
+  onclick={(e) => {
+    if (e.target === detailDialog) detailDialog.close();
+  }}
+  onclose={() => (detailSession = null)}
+>
+  {#if detailSession}
+    {@const s = detailSession}
+    <h3 id="details-title">{sessionName(s)}</h3>
+    <p class="lede">
+      {dateTime(s.startedAt)}
+      {#if dpi?.bySession.has(s.id)}
+        <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
+      {/if}
+    </p>
+    {#if s.rows.length === 0}
+      <p class="hint">{t("history.noGames")}</p>
+    {:else}
+      <ul class="plan">
+        {#each s.rows as r (r.id)}
+          {@const g = gameById(r.gameId)}
+          <li>
+            <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
+            <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
+            <span class="plan-meta">
+              {#if dpi?.byResult.has(r.id)}
+                <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.byResult.get(r.id)!)}</span>
+              {/if}
+            </span>
+            <span class="plan-desc">{playedLine(r)} · {g.describe(r.settings)}</span>
+            <span class="plan-desc strong">{g.summary(r.values)}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
+  <div class="foot">
+    <button class="primary" onclick={() => detailDialog?.close()}>{t("history.close")}</button>
+  </div>
+</dialog>
+
+<!-- Deleting a session changes the index, so it is asked for. Escape or the backdrop aborts. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm"
+  bind:this={deleteDialog}
+  aria-labelledby="delete-title"
+  onclick={(e) => {
+    if (e.target === deleteDialog) deleteDialog.close();
+  }}
+  onclose={() => (deleteTarget = null)}
+>
+  <h3 id="delete-title">{t("history.deleteTitle")}</h3>
+  {#if deleteTarget}
+    <p class="lede">{t("history.deleteBody", { name: sessionName(deleteTarget), date: dateTime(deleteTarget.startedAt) })}</p>
+  {/if}
+  <p class="hint">{t("history.deleteDpi")}</p>
+  <div class="foot">
+    <button class="ghost" onclick={() => deleteDialog?.close()}>{t("common.cancel")}</button>
+    <button class="primary destructive" onclick={confirmDelete}>{t("history.deleteConfirm")}</button>
+  </div>
+</dialog>
+
 <footer>
   <div class="meta">
     <span>D³ v{__APP_VERSION__}</span>
@@ -1438,6 +1686,22 @@
   </div>
   {#if conn === "connected"}
     <div class="board-actions" role="group" aria-label={t("board.actions")}>
+      <button
+        class="icon"
+        class:go={canStartDetection}
+        aria-label={t(canStopDetection ? "board.stop" : "board.start")}
+        title={t(canStopDetection ? "board.stop" : "board.start")}
+        disabled={!canStartDetection && !canStopDetection}
+        onclick={toggleDetection}
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          {#if canStopDetection}
+            <path fill="currentColor" d="M7 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
+          {:else}
+            <path fill="currentColor" d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.8-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z" />
+          {/if}
+        </svg>
+      </button>
       <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={resetBoard}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" />
@@ -1598,6 +1862,7 @@
   /* Pulled up against the status, so the buttons read as part of it. */
   .board-actions { position: relative; display: flex; gap: 0.15rem; margin-left: -0.65rem; }
   .board-actions button.icon { width: 1.9rem; height: 1.9rem; }
+  .board-actions button.icon.go { color: var(--accent); }
   .confirm-bubble.up { top: auto; bottom: calc(100% + 0.6rem); right: -0.6rem; }
   .confirm-bubble.up::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: #ff9b8f; }
   .confirm-bubble.ok { border-color: var(--accent); background: #0f2a31; color: #d4f6fc; }
@@ -1621,7 +1886,6 @@
   .settings-line { margin: 0 0 1rem; }
   .wait-hint button { margin-left: 0.5rem; vertical-align: baseline; }
 
-  .narrow { max-width: 34rem; }
   .pause-field { max-width: 22rem; }
   .pause-field input { max-width: 8rem; }
   .pause-field .hint { margin: 0; }
@@ -1689,6 +1953,8 @@
       border-radius: 6px;
       padding: 0.55rem 0.7rem;
     }
+    .found { margin-top: 0.5rem; }
+    .found .picked { border-color: var(--chalk); }
     .row { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; align-items: center; }
     button.primary, button.ghost {
       font: inherit;
@@ -1839,10 +2105,52 @@
 
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
-  .history { max-width: 44rem; }
-  .session { margin-bottom: 2rem; }
-  .session-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
-  .session-head .plan-meta { margin-left: 0.75rem; }
+  .narrow { max-width: 34rem; }
+  .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+  .group { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .group.wide { grid-column: 1 / -1; }
+  .group h3 { margin: 0 0 0.75rem; }
+  .group > :last-child, .group label:last-child { margin-bottom: 0; }
+  .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+  .group-head h3 { margin-bottom: 0.35rem; }
+  .group .lede { margin-bottom: 1.25rem; }
+  .detection { display: flex; align-items: center; gap: 0.75rem; margin: -0.5rem 0 1.25rem; color: var(--dim); }
+  .detection[data-board="stopped"] { color: var(--dart); }
+  .conn-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1.5rem; }
+  .fields { display: grid; grid-template-columns: minmax(0, 1fr) 7rem; gap: 0 0.75rem; }
+  .fields label { margin-bottom: 0.5rem; }
+  .group .row { margin-top: 0.75rem; }
+  .url-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 1rem; }
+  .url-line .url { margin: 0; }
+  button.link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 0.85rem; cursor: pointer; }
+  button.link:hover { text-decoration: underline; }
+  .recent-box { padding: 1rem 1.25rem; border: 1px dashed var(--line); border-radius: 8px; align-self: start; }
+  .recent-box h4 { margin: 0 0 0.5rem; }
+  .recent-box p { margin: 0; }
+  input.short { width: 7rem; }
+  @media (max-width: 760px) {
+    .conn-split, .settings-grid { grid-template-columns: 1fr; }
+  }
+  .history-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1rem; margin-bottom: 1.5rem; }
+  .history-filters label { margin: 0; }
+  .history-filters .toggle { margin-left: auto; }
+  .sessions { padding: 0; margin: 0; list-style: none; border-top: 1px solid var(--line); }
+  /* Not a table, but the DPI label, the details button and the bin each keep their own column. */
+  .session {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6.5rem auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .session-title .plan-meta { display: block; font-size: 0.9rem; text-align: left; margin-top: 0.15rem; }
+  .session-title .badge { margin-left: 0.5rem; }
+  .session-dpi .badge, .details .plan-meta .badge { margin-left: 0; }
+  .details { width: min(36rem, calc(100vw - 2rem)); }
+  .details .plan { max-height: 60vh; overflow-y: auto; }
+  .details .lede .badge { margin-left: 0.5rem; }
+  button.primary.destructive { background: #ff9b8f; border-color: #ff9b8f; color: #1b0c0a; }
   .plan-desc.strong { color: var(--chalk); font-weight: 600; }
   .badge {
     margin-left: 0.75rem;

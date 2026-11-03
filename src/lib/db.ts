@@ -128,6 +128,11 @@ export async function loadConfig(): Promise<Config> {
   return { host: host || DEFAULT_CONFIG.host, port: port || DEFAULT_CONFIG.port };
 }
 
+/** False until a connection was saved, i.e. on the first start. */
+export async function hasConfig(): Promise<boolean> {
+  return (await getSetting("autodarts_host")) !== null;
+}
+
 export async function saveConfig(config: Config): Promise<void> {
   await setSetting("autodarts_host", config.host);
   await setSetting("autodarts_port", String(config.port));
@@ -359,12 +364,13 @@ export interface HistorySession {
   rows: HistoryRow[];
 }
 
-export async function loadSessions(limit = 100): Promise<HistorySession[]> {
+/** The sessions started from `from` (inclusive) to `to` (exclusive), both ISO timestamps, newest first. */
+export async function loadSessions(from: string, to: string): Promise<HistorySession[]> {
   const d = conn();
   const sessions = await d.select<any[]>(
     `SELECT id, routine_id, routine_name, started_at, finished_at, status FROM sessions
-     ORDER BY started_at DESC LIMIT $1`,
-    [limit],
+     WHERE started_at >= $1 AND started_at < $2 ORDER BY started_at DESC`,
+    [from, to],
   );
   if (!sessions.length) return [];
 

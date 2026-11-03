@@ -13,7 +13,8 @@
     id: buttonId,
   }: {
     value: V;
-    options: { value: V; label: string }[];
+    /** An icon is an image URL shown before the label, e.g. a flag. */
+    options: { value: V; label: string; icon?: string }[];
     onchange?: (value: V) => void;
     /** Accessible name when the select is not inside a <label>. */
     label?: string;
@@ -129,7 +130,9 @@
   onkeydown={keys}
   onkeyup={() => setTimeout(() => (keyClick = false))}
 >
-  <span class="value">{current?.label ?? ""}</span>
+  <span class="value">
+    {#if current?.icon}<img class="icon" src={current.icon} alt="" />{/if}{current?.label ?? ""}
+  </span>
   <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
     <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
   </svg>
@@ -149,7 +152,7 @@
         onpointermove={() => (active = i)}
         onclick={() => choose(o)}
       >
-        {o.label}
+        {#if o.icon}<img class="icon" src={o.icon} alt="" />{/if}{o.label}
       </li>
     {/each}
   </ul>
@@ -173,7 +176,8 @@
   }
   .select:hover { border-color: var(--dim); }
   .select[aria-expanded="true"] { border-color: var(--accent); }
-  .value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .value { display: flex; align-items: center; gap: 0.5rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .icon { flex: none; width: 1.35rem; height: 0.9rem; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.15); }
   svg { flex: none; color: var(--dim); transition: transform 0.15s; }
   .select[aria-expanded="true"] svg { transform: rotate(180deg); color: var(--accent); }
 

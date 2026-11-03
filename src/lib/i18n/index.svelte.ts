@@ -2,6 +2,8 @@
 // every other language must translate all of them (checked by the type of each dictionary).
 import { en, type Key } from "./en";
 import { de } from "./de";
+import flagDe from "../../assets/flags/de.svg";
+import flagGb from "../../assets/flags/gb.svg";
 
 export type { Key };
 export type Locale = "en" | "de";
@@ -9,9 +11,9 @@ export type Locale = "en" | "de";
 const DICTS: Record<Locale, Record<Key, string>> = { en, de };
 
 /** Each language is named in its own language, so it can be found whatever is selected. */
-export const LOCALES: { id: Locale; name: string }[] = [
-  { id: "en", name: "English" },
-  { id: "de", name: "Deutsch" },
+export const LOCALES: { id: Locale; name: string; flag: string }[] = [
+  { id: "en", name: "English", flag: flagGb },
+  { id: "de", name: "Deutsch", flag: flagDe },
 ];
 
 export function isLocale(v: unknown): v is Locale {
