@@ -1,12 +1,13 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
 import { doubleField, doubleOptions, pct } from "./shared";
-import type { BoardField, GameDef } from "./types";
+import type { BoardField, GameDef, GameResult } from "./types";
 
 interface Round {
   outcome: "success" | "fail" | "pending";
   at: number; // dart number that decided the round
   remaining: number;
+  bust?: boolean; // went past the rest or left 1: no score
 }
 
 /**
@@ -29,7 +30,7 @@ function evalRound(turn: Dart[], target: number): Round {
     else if (i === 2 && rem % 2 === 1 && rem > 1) hit = d.kind === "bull";
     if (hit) return { outcome: "success", at: i + 1, remaining: 0 };
     rem -= d.score;
-    if (rem <= 1) return { outcome: "fail", at: i + 1, remaining: rem };
+    if (rem <= 1) return { outcome: "fail", at: i + 1, remaining: rem, bust: true };
   }
   return { outcome: turn.length >= 3 ? "fail" : "pending", at: turn.length, remaining: rem };
 }
@@ -67,11 +68,13 @@ export const complexDoubles: GameDef = {
     const target = Number(s.double);
     let rounds = 0;
     let successes = 0;
+    let noScore: GameResult["noScore"];
     const by = [0, 0, 0];
 
     turns.forEach((turn, ti) => {
       const open = ctx.open && ti === turns.length - 1;
       const r = evalRound(turn, target);
+      if (r.bust && ti === turns.length - 1) noScore = { turn: ti, darts: r.at };
       if (r.outcome === "success") {
         rounds++;
         successes++;
@@ -111,6 +114,7 @@ export const complexDoubles: GameDef = {
       ],
       focus,
       targets,
+      noScore,
       done: false,
     };
   },

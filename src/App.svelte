@@ -95,6 +95,8 @@
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
   const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
+  // After a bust the turn is over: darts of the shown turn from here on don't count, its empty boxes are closed.
+  const bustAt = $derived(session && result?.noScore?.turn === session.shownTurn ? result.noScore.darts : 3);
   const canStart = $derived(!!def && (detecting || !def.needsDarts));
   // A game with darts can't go on without the detection, so it waits paused until Autodarts is back.
   const waiting = $derived(phase === "running" && !!def?.needsDarts && !detecting);
@@ -316,6 +318,22 @@
 
   $effect(() => {
     if (phase === "running" && result?.done) finish(false);
+  });
+
+  // A bust in a checkout game shows "No Score" for a moment. The game names the busted turn,
+  // so a correction that makes a turn bust shows it too, and a bust right after another one as well.
+  const NO_SCORE_MS = 2000;
+  let noScoreAt = $state<number | null>(null);
+  let seenNoScore: number | undefined;
+  let noScoreTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    const n = phase === "running" ? result?.noScore?.turn : undefined;
+    if (n !== undefined && n !== seenNoScore) {
+      clearTimeout(noScoreTimer);
+      noScoreAt = n;
+      noScoreTimer = setTimeout(() => (noScoreAt = null), NO_SCORE_MS);
+    }
+    seenNoScore = n;
   });
 
   $effect(() => {
@@ -872,6 +890,7 @@
               <button
                 class="dart-box filled"
                 class:done={!session.current.length}
+                class:void={i >= bustAt}
                 class:editing={session.edit === i}
                 class:fixed={d.method === "manual"}
                 aria-pressed={session.edit === i}
@@ -879,7 +898,7 @@
                 onclick={() => session?.toggleEdit(i)}
               >{dartLabel(d)}</button>
             {:else}
-              <div class="dart-box">–</div>
+              <div class="dart-box" class:closed={i >= bustAt} title={i >= bustAt ? t("run.noScoreHint") : undefined}>{i >= bustAt ? "✕" : "–"}</div>
             {/if}
           {/each}
         </div>
@@ -896,6 +915,17 @@
           />
         </div>
       </div>
+
+      <!-- Over the whole game, but clicks pass through, so the busted dart can still be corrected. -->
+      {#if noScoreAt !== null}
+        {#key noScoreAt}
+          <div class="no-score" role="status" style:--no-score-ms="{NO_SCORE_MS}ms">
+            <div class="stamp">
+              <span class="word">{t("run.noScore")}</span>
+            </div>
+          </div>
+        {/key}
+      {/if}
     </section>
   {:else if phase === "summary" && run}
     <section class="narrow">
@@ -1265,7 +1295,57 @@
   .plan-desc { color: var(--dim); font-size: 0.9rem; grid-column: 1 / -1; }
 
   /* Game info and board share the view half and half; the game info is centred in its half. */
-  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+  .stage { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+
+  /* The bust overlay: the stamp slams in, holds, and fades out within the time it is shown. */
+  .no-score {
+    position: absolute;
+    inset: -1rem;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    border-radius: 1rem;
+    background: radial-gradient(closest-side, rgba(6, 13, 18, 0.85), rgba(6, 13, 18, 0.45));
+    animation: no-score-fade var(--no-score-ms) ease-out both;
+  }
+  .no-score .stamp {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem 2.5rem;
+    border: 4px solid #ff6b5b;
+    border-radius: 0.9rem;
+    color: #ff6b5b;
+    background: rgba(13, 27, 35, 0.92);
+    box-shadow: 0 0 2.5rem rgba(255, 107, 91, 0.35);
+    transform: rotate(-6deg);
+    animation: no-score-stamp var(--no-score-ms) cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+  .no-score .word {
+    font-size: clamp(3rem, 9vw, 6rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  @keyframes no-score-fade {
+    from { opacity: 0; }
+    10% { opacity: 1; }
+    80% { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes no-score-stamp {
+    from { opacity: 0; transform: rotate(-14deg) scale(2.2); }
+    14% { opacity: 1; transform: rotate(-4deg) scale(0.94); }
+    22% { transform: rotate(-6deg) scale(1); }
+    30%, 34% { transform: rotate(-6deg) translateX(-4px); }
+    32%, 36% { transform: rotate(-6deg) translateX(4px); }
+    40% { transform: rotate(-6deg) translateX(0); }
+    80% { opacity: 1; transform: rotate(-6deg) scale(1); }
+    to { opacity: 0; transform: rotate(-6deg) scale(1.08); }
+  }
   .stage .panel { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .clock { font-size: 4.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock.paused { color: var(--dart); opacity: 0.75; }
@@ -1369,6 +1449,9 @@
     border-radius: 50%;
     background: var(--accent);
   }
+  /* Thrown after a bust, or never to be thrown: the turn is over. */
+  .dart-box.void:not(.editing) { color: var(--dim); border-color: var(--line); border-style: dashed; text-decoration: line-through; }
+  .dart-box.closed { color: #ff6b5b; opacity: 0.55; border-style: dashed; font-size: 1.2rem; }
   .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
   .pick-hint { max-width: 400px; width: 100%; min-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
   .pick-hint.show { visibility: visible; }
