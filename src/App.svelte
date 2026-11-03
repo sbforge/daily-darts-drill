@@ -83,7 +83,17 @@
   // history
   let history = $state<db.HistorySession[]>([]);
   let lastPlayed = $state<Record<string, string>>({});
-  let pendingSessionDelete = $state<string | null>(null);
+  // The history shows the sessions of a period, by default the last month, and all of them, the routines or the quick games.
+  let historyFrom = $state(dayInput(monthsAgo(1)));
+  let historyTo = $state(dayInput(new Date()));
+  let historyKind = $state<"all" | "routines" | "quick">("all");
+  const shownHistory = $derived(
+    historyKind === "all" ? history : history.filter((s) => s.quick === (historyKind === "quick")),
+  );
+  let detailSession = $state<db.HistorySession | null>(null);
+  let detailDialog = $state<HTMLDialogElement>();
+  let deleteTarget = $state<db.HistorySession | null>(null);
+  let deleteDialog = $state<HTMLDialogElement>();
   // The performance index, calculated from all stored results each time they change.
   // The raw results, read from the database whenever they change; the index is worked out from them for the picked period.
   let dpiResults = $state<ResultRecord[]>([]);
@@ -167,7 +177,7 @@
   }
 
   function refreshHistory() {
-    db.loadSessions().then((h) => (history = h), failed);
+    loadHistory();
     db.loadLastPlayed().then((l) => (lastPlayed = l), failed);
     refreshDpi();
   }
@@ -584,6 +594,48 @@
 
   // ---- history
 
+  /** A date as the value of a date input: the local day, YYYY-MM-DD. */
+  function dayInput(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function monthsAgo(n: number): Date {
+    const d = new Date();
+    d.setMonth(d.getMonth() - n);
+    return d;
+  }
+
+  /** From the start of the first day to the end of the last one, local time. */
+  function loadHistory() {
+    const from = new Date(`${historyFrom}T00:00`);
+    const to = new Date(`${historyTo}T00:00`);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return;
+    to.setDate(to.getDate() + 1);
+    db.loadSessions(from.toISOString(), to.toISOString()).then((h) => (history = h), failed);
+  }
+
+  function sessionName(s: db.HistorySession): string {
+    // The stored routine name is in the language of the day it was played; a quick game follows the current one.
+    return s.quick ? t("quick.name") : s.routineName;
+  }
+
+  function showDetails(s: db.HistorySession) {
+    detailSession = s;
+    detailDialog?.showModal();
+  }
+
+  function askDelete(s: db.HistorySession) {
+    deleteTarget = s;
+    deleteDialog?.showModal();
+  }
+
+  function confirmDelete() {
+    const id = deleteTarget?.id;
+    deleteDialog?.close();
+    if (id) db.deleteSession(id).then(refreshHistory, failed);
+  }
+
   /** The time cap, or for a quick game without one how long it was played. */
   function playedLine(r: db.HistoryRow): string {
     if (r.minutes > 0) return t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes });
@@ -660,15 +712,6 @@
     } catch {
       /* a broken setting keeps the default */
     }
-  }
-
-  function deleteSession(id: string) {
-    if (pendingSessionDelete !== id) {
-      pendingSessionDelete = id;
-      return;
-    }
-    pendingSessionDelete = null;
-    db.deleteSession(id).then(refreshHistory, failed);
   }
 
   // ---- connection settings
@@ -765,7 +808,7 @@
         const last = await db.getSetting("selected_routine");
         selectedId = routines.find((r) => r.id === last)?.id ?? routines[0].id;
         ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
-        history = await db.loadSessions();
+        loadHistory();
         lastPlayed = await db.loadLastPlayed();
         await loadRange();
         refreshDpi();
@@ -966,47 +1009,53 @@
   {:else if view === "history"}
     <section class="history">
       <h2>{t("history.title")}</h2>
-      {#if history.length === 0}
-        <p class="hint">{t("history.empty")}</p>
+      <div class="history-filters">
+        <label>
+          {t("history.from")}
+          <input type="date" bind:value={historyFrom} max={historyTo} onchange={loadHistory} />
+        </label>
+        <label>
+          {t("history.to")}
+          <input type="date" bind:value={historyTo} min={historyFrom} onchange={loadHistory} />
+        </label>
+        <div class="toggle" role="tablist" aria-label={t("history.kind")}>
+          {#each [["all", "history.kindAll"], ["routines", "history.kindRoutines"], ["quick", "history.kindQuick"]] as const as [kind, key]}
+            <button role="tab" aria-selected={historyKind === kind} onclick={() => (historyKind = kind)}>{t(key)}</button>
+          {/each}
+        </div>
+      </div>
+      {#if shownHistory.length === 0}
+        <p class="hint">{t(history.length === 0 && dpiResults.length === 0 ? "history.empty" : "history.emptyFiltered")}</p>
       {/if}
-      {#each history as s (s.id)}
-        <div class="session">
-          <div class="session-head">
-            <div>
-              <!-- The stored routine name is in the language of the day it was played; a quick game follows the current one. -->
-              <strong>{s.quick ? t("quick.name") : s.routineName}</strong>
-              <span class="plan-meta">{dateTime(s.startedAt)}</span>
+      <ul class="sessions">
+        {#each shownHistory as s (s.id)}
+          <li class="session">
+            <div class="session-title">
+              <strong>{sessionName(s)}</strong>
               {#if s.status === "aborted"}
                 <span class="badge">{t("history.aborted")}</span>
               {:else if s.status === "running"}
                 <span class="badge live">{t("history.running")}</span>
               {/if}
+              <span class="plan-meta">
+                {dateTime(s.startedAt)} · {t(s.rows.length === 1 ? "history.game" : "history.games", { n: s.rows.length })}
+              </span>
+            </div>
+            <!-- Its own column, so the labels line up whatever the name. -->
+            <span class="session-dpi">
               {#if dpi?.bySession.has(s.id)}
                 <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
               {/if}
-            </div>
-            <button class="ghost small danger" onclick={() => deleteSession(s.id)}>
-              {pendingSessionDelete === s.id ? t("common.confirmDelete") : t("common.delete")}
+            </span>
+            <button class="ghost small" onclick={() => showDetails(s)}>{t("history.details")}</button>
+            <button class="icon delete" aria-label={t("history.delete")} title={t("history.delete")} onclick={() => askDelete(s)}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="currentColor" d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9Zm-2 3h10v13H7V6Zm2 2v9h2V8H9Zm4 0v9h2V8h-2Z" />
+              </svg>
             </button>
-          </div>
-          {#if s.status !== "aborted"}
-            <ul class="plan">
-              {#each s.rows as r (r.id)}
-                {@const g = gameById(r.gameId)}
-                <li>
-                  <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
-                  <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
-                  <span class="plan-meta">
-                    {playedLine(r)}{#if dpi?.byResult.has(r.id)} · {t("dpi.short")} {num(dpi.byResult.get(r.id)!)}{/if}
-                  </span>
-                  <span class="plan-desc">{g.describe(r.settings)}</span>
-                  <span class="plan-desc strong">{g.summary(r.values)}</span>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
-      {/each}
+          </li>
+        {/each}
+      </ul>
     </section>
   {:else if view === "stats"}
     {#snippet arrow(tr: Trend)}
@@ -1493,6 +1542,74 @@
   </div>
 </dialog>
 
+<!-- The games of one session. Escape, the backdrop or the button closes it. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm details"
+  bind:this={detailDialog}
+  aria-labelledby="details-title"
+  onclick={(e) => {
+    if (e.target === detailDialog) detailDialog.close();
+  }}
+  onclose={() => (detailSession = null)}
+>
+  {#if detailSession}
+    {@const s = detailSession}
+    <h3 id="details-title">{sessionName(s)}</h3>
+    <p class="lede">
+      {dateTime(s.startedAt)}
+      {#if dpi?.bySession.has(s.id)}
+        <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
+      {/if}
+    </p>
+    {#if s.rows.length === 0}
+      <p class="hint">{t("history.noGames")}</p>
+    {:else}
+      <ul class="plan">
+        {#each s.rows as r (r.id)}
+          {@const g = gameById(r.gameId)}
+          <li>
+            <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
+            <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
+            <span class="plan-meta">
+              {#if dpi?.byResult.has(r.id)}
+                <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.byResult.get(r.id)!)}</span>
+              {/if}
+            </span>
+            <span class="plan-desc">{playedLine(r)} · {g.describe(r.settings)}</span>
+            <span class="plan-desc strong">{g.summary(r.values)}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
+  <div class="foot">
+    <button class="primary" onclick={() => detailDialog?.close()}>{t("history.close")}</button>
+  </div>
+</dialog>
+
+<!-- Deleting a session changes the index, so it is asked for. Escape or the backdrop aborts. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm"
+  bind:this={deleteDialog}
+  aria-labelledby="delete-title"
+  onclick={(e) => {
+    if (e.target === deleteDialog) deleteDialog.close();
+  }}
+  onclose={() => (deleteTarget = null)}
+>
+  <h3 id="delete-title">{t("history.deleteTitle")}</h3>
+  {#if deleteTarget}
+    <p class="lede">{t("history.deleteBody", { name: sessionName(deleteTarget), date: dateTime(deleteTarget.startedAt) })}</p>
+  {/if}
+  <p class="hint">{t("history.deleteDpi")}</p>
+  <div class="foot">
+    <button class="ghost" onclick={() => deleteDialog?.close()}>{t("common.cancel")}</button>
+    <button class="primary destructive" onclick={confirmDelete}>{t("history.deleteConfirm")}</button>
+  </div>
+</dialog>
+
 <footer>
   <div class="meta">
     <span>D³ v{__APP_VERSION__}</span>
@@ -1928,9 +2045,26 @@
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
   .history { max-width: 44rem; }
-  .session { margin-bottom: 2rem; }
-  .session-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
-  .session-head .plan-meta { margin-left: 0.75rem; }
+  .history-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1rem; margin-bottom: 1.5rem; }
+  .history-filters label { margin: 0; }
+  .history-filters .toggle { margin-left: auto; }
+  .sessions { padding: 0; margin: 0; list-style: none; border-top: 1px solid var(--line); }
+  /* Not a table, but the DPI label, the details button and the bin each keep their own column. */
+  .session {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6.5rem auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .session-title .plan-meta { display: block; font-size: 0.9rem; text-align: left; margin-top: 0.15rem; }
+  .session-title .badge { margin-left: 0.5rem; }
+  .session-dpi .badge, .details .plan-meta .badge { margin-left: 0; }
+  .details { width: min(36rem, calc(100vw - 2rem)); }
+  .details .plan { max-height: 60vh; overflow-y: auto; }
+  .details .lede .badge { margin-left: 0.5rem; }
+  button.primary.destructive { background: #ff9b8f; border-color: #ff9b8f; color: #1b0c0a; }
   .plan-desc.strong { color: var(--chalk); font-weight: 600; }
   .badge {
     margin-left: 0.75rem;
