@@ -20,6 +20,7 @@
     type RoutineItem,
   } from "./lib/store";
   import * as db from "./lib/db";
+  import { overview, type DpiOverview, type Trend } from "./lib/dpi";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
@@ -31,7 +32,7 @@
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
-  import { LOCALES, dateTime, getLocale, isLocale, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
+  import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
     gameId: string;
@@ -67,6 +68,8 @@
   let history = $state<db.HistorySession[]>([]);
   let lastPlayed = $state<Record<string, string>>({});
   let pendingSessionDelete = $state<string | null>(null);
+  // The performance index, calculated from all stored results each time they change.
+  let dpi = $state<DpiOverview | null>(null);
 
   // running a routine
   let run = $state<{
@@ -136,6 +139,11 @@
   function refreshHistory() {
     db.loadSessions().then((h) => (history = h), failed);
     db.loadLastPlayed().then((l) => (lastPlayed = l), failed);
+    refreshDpi();
+  }
+
+  function refreshDpi() {
+    db.loadResults().then((r) => (dpi = overview(r)), failed);
   }
 
   // ---- live events
@@ -553,6 +561,27 @@
     return t("history.playedNoCap", { n: played });
   }
 
+  /** Changes below 2% read as steady. */
+  const STEADY = 2;
+
+  /** Encouraging feedback on the trend, also when it goes down. */
+  function trendText(tr: Trend): string {
+    if (tr.kind === "notEnough") return tr.missing ? t("dpi.notEnough", { n: tr.missing }) : t("dpi.notEnoughYet");
+    const p = num(Math.abs(tr.percent), 1);
+    if (Math.abs(tr.percent) < STEADY) return t("dpi.trendSteady");
+    return t(tr.percent > 0 ? "dpi.trendUp" : "dpi.trendDown", { p });
+  }
+
+  function trendShort(tr: Trend): string {
+    if (tr.kind === "notEnough") return "–";
+    return `${tr.percent >= 0 ? "+" : "−"}${num(Math.abs(tr.percent), 1)}%`;
+  }
+
+  function trendDir(tr: Trend): "up" | "down" | "steady" | "none" {
+    if (tr.kind === "notEnough") return "none";
+    return Math.abs(tr.percent) < STEADY ? "steady" : tr.percent > 0 ? "up" : "down";
+  }
+
   function deleteSession(id: string) {
     if (pendingSessionDelete !== id) {
       pendingSessionDelete = id;
@@ -603,6 +632,7 @@
         ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
         history = await db.loadSessions();
         lastPlayed = await db.loadLastPlayed();
+        refreshDpi();
         ready = true;
         client.connect(config.host, config.port);
       } catch (e) {
@@ -763,6 +793,38 @@
   {:else if view === "history"}
     <section class="history">
       <h2>{t("history.title")}</h2>
+      <div class="dpi">
+        <h3>{t("dpi.title")}</h3>
+        {#if dpi && dpi.overall.current !== null}
+          <div class="dpi-overall">
+            <div class="dpi-score">
+              <span class="big">{num(dpi.overall.current)}</span>
+              <span class="cap">{t("dpi.of")}</span>
+            </div>
+            <div>
+              <p class="plan-meta">
+                {dpi.overall.count === 1 ? t("dpi.basedOnOne") : t("dpi.basedOn", { n: dpi.overall.count })}
+              </p>
+              <p class="trend" data-dir={trendDir(dpi.overall.trend)}>{trendText(dpi.overall.trend)}</p>
+            </div>
+          </div>
+          <ul class="dpi-games" aria-label={t("dpi.games")}>
+            {#each dpi.games as g (g.gameId)}
+              <li>
+                <span class="plan-name">{gameById(g.gameId).name}</span>
+                <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
+                <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
+                <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend)}>
+                  {trendShort(g.performance.trend)}
+                </span>
+              </li>
+            {/each}
+          </ul>
+          <p class="hint">{t("dpi.explain", { v: dpi.version })}</p>
+        {:else}
+          <p class="hint">{t("dpi.empty")}</p>
+        {/if}
+      </div>
       {#if history.length === 0}
         <p class="hint">{t("history.empty")}</p>
       {/if}
@@ -778,6 +840,9 @@
               {:else if s.status === "running"}
                 <span class="badge live">{t("history.running")}</span>
               {/if}
+              {#if dpi?.bySession.has(s.id)}
+                <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
+              {/if}
             </div>
             <button class="ghost small danger" onclick={() => deleteSession(s.id)}>
               {pendingSessionDelete === s.id ? t("common.confirmDelete") : t("common.delete")}
@@ -790,7 +855,9 @@
                 <li>
                   <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
                   <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
-                  <span class="plan-meta">{playedLine(r)}</span>
+                  <span class="plan-meta">
+                    {playedLine(r)}{#if dpi?.byResult.has(r.id)} · {t("dpi.short")} {num(dpi.byResult.get(r.id)!)}{/if}
+                  </span>
                   <span class="plan-desc">{g.describe(r.settings)}</span>
                   <span class="plan-desc strong">{g.summary(r.values)}</span>
                 </li>
@@ -1546,6 +1613,24 @@
     color: var(--dim);
   }
   .badge.live { color: var(--dart); border-color: var(--dart); }
+  .badge.dpi-badge { color: var(--accent); border-color: var(--accent); }
+
+  .dpi { margin-bottom: 2.5rem; padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .dpi h3 { margin: 0 0 0.75rem; }
+  .dpi-overall { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+  .dpi-score { display: flex; align-items: baseline; gap: 0.5rem; }
+  .dpi-score .big { color: var(--accent); }
+  .dpi-overall p { margin: 0.2rem 0; }
+  .trend { font-weight: 600; }
+  .trend[data-dir="up"] { color: var(--ok); }
+  .trend[data-dir="steady"] { color: var(--chalk); }
+  .trend[data-dir="down"] { color: var(--dart); }
+  .trend[data-dir="none"] { color: var(--dim); font-weight: 400; }
+  .trend.small { min-width: 4.5rem; text-align: right; cursor: help; font-variant-numeric: tabular-nums; }
+  .dpi-games { list-style: none; margin: 1rem 0 0.75rem; padding: 0; border-top: 1px solid var(--line); }
+  .dpi-games li { display: flex; align-items: baseline; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+  .dpi-games .plan-meta { flex: 1; }
+  .dpi-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 
   .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
   .board, .darts { max-width: 400px; width: 100%; }

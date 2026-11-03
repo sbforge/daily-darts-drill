@@ -2,6 +2,7 @@
 // Tables: settings, routines, sessions, game_results, darts.
 import Database from "@tauri-apps/plugin-sql";
 import type { Dart } from "./autodarts";
+import type { ResultRecord } from "./dpi";
 import type { Settings } from "./games";
 import { cleanItems, DEFAULT_CONFIG, pauseSeconds, starterRoutine, type Config, type Routine, type RoutineItem } from "./store";
 
@@ -397,4 +398,32 @@ export async function loadSessions(limit = 100): Promise<HistorySession[]> {
         values: JSON.parse(g.values_json),
       })),
   }));
+}
+
+/**
+ * Every stored game result, unlimited, for the performance index. Runs still in progress don't count yet.
+ * Only the raw values are read: the index itself is never stored, see dpi.ts.
+ */
+export async function loadResults(): Promise<ResultRecord[]> {
+  const rows = await conn().select<any[]>(
+    `SELECT g.id, g.session_id, g.game_id, g.started_at, g.settings_json, g.values_json
+     FROM game_results g JOIN sessions s ON s.id = g.session_id
+     WHERE s.status != 'running' ORDER BY g.started_at`,
+  );
+  return rows.flatMap((g) => {
+    try {
+      return [
+        {
+          id: g.id,
+          sessionId: g.session_id,
+          gameId: g.game_id,
+          startedAt: g.started_at,
+          settings: JSON.parse(g.settings_json),
+          values: JSON.parse(g.values_json),
+        },
+      ];
+    } catch {
+      return []; // a broken row is left out instead of blocking the index
+    }
+  });
 }

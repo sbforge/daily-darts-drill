@@ -18,13 +18,6 @@
     * Especially expectation management: why did I build this, how do I want to train?
 
 
-## Total Training Progress Index
-* Have a single number ( However it is defined) to have the possibility to compare training over all training routines or per game? or in total?
-* needs to be calculated somehow from different Game Results (Avg, Acc%, success/m ?)
-* When to calculate it?
-  * after every routine / game ?
-  * show in a nice graph
-
 ## Training Games
 * Routines: Predefined training routines
   * deletable?
@@ -133,3 +126,10 @@
   * Reset (`POST /api/reset`) clears the darts like a takeout by hand; only while the detection runs. A running game takes it as the end of the turn
   * Calibrate (`POST /api/config/calibration/auto`) starts the auto-calibration right away
   * A bubble over the buttons says whether it worked
+* D³ Performance Index (DPI), 0–100, always calculated from the saved results (src/lib/dpi.ts), never stored
+  * Every metric normalized between a baseline (0) and a target (100), clamped; a game's index is the weighted average of its metrics
+  * Central, versioned config: metrics, baselines, targets and weights per game; Around the clock has a scale per ring; too short a game doesn't count
+  * Overall index per session: game indices averaged per skill area (scoring, doubles, checkout, accuracy, consistency), the areas weighted, so a game played often doesn't dominate
+  * Current level: average of the latest 10 sessions (overall) or results (per game)
+  * Trend: latest 10 against the 10 before, shown from 5 in each; encouraging also when it goes down
+  * History: index panel at the top (overall, per game with trend), DPI per session and per game; deleting a session recalculates it
