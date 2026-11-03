@@ -3,7 +3,7 @@
 ## Next (in priority order)
 1. Buy me a coffee: add the real link (placeholder URL for now)
 2. Fix GitHub Actions asset creation
-3. Update README.md for version 0.1
+3. README.md: write the "Why I built this" section (placeholder for now)
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -53,6 +53,7 @@
 
 
 ## Done ✅
+* README for version 0.1: purpose, features with screenshots, supported autoscorers, install, data location
 * About page (question mark in the header): the project, links (GitHub, issues, Autodarts, coffee), the MIT license
   * SBOM popup: every Rust crate and bundled npm package with version and license, generated at build time as CycloneDX
   * GitHub link moved there from the footer
