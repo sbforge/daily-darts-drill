@@ -24,7 +24,11 @@
     DEFAULT_RANGE,
     DEFAULT_SAMPLE,
     MAX_SAMPLE,
+    gameIndex,
+    hasIndex,
+    metricScores,
     overview,
+    sessionIndex,
     withSample,
     trendStep,
     type Performance,
@@ -32,7 +36,8 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
-  import { GAMES, gameById, type StatLine } from "./lib/games";
+  import { GAMES, gameById, type Settings, type StatLine } from "./lib/games";
+  import { en } from "./lib/i18n/en";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
@@ -57,6 +62,10 @@
     completed: boolean;
     hasResult: boolean;
     lines: StatLine[];
+    settings: Settings;
+    values: Record<string, number>;
+    startedAt: string;
+    finishedAt: string;
   }
 
   let ready = $state(false);
@@ -280,6 +289,8 @@
     if (phase !== "running" || !session || !run || !item || !def) return;
     const res = session.result;
     const turns = $state.snapshot(session.allTurns);
+    const settings = $state.snapshot(session.settings);
+    const finishedAt = new Date().toISOString();
     session.finish();
     paused = false;
     run.results.push({
@@ -289,6 +300,10 @@
       completed: res.done,
       hasResult: def.hasResult,
       lines: res.lines,
+      settings,
+      values: res.values,
+      startedAt: gameStartedAt,
+      finishedAt,
     });
     if (def.hasResult) {
       db.saveGameResult({
@@ -299,11 +314,11 @@
         position: run.index,
         gameId: def.id,
         gameName: def.name,
-        settings: $state.snapshot(session.settings),
+        settings,
         minutes: item.minutes,
         endedEarly: early,
         startedAt: gameStartedAt,
-        finishedAt: new Date().toISOString(),
+        finishedAt,
         values: res.values,
         turns,
       }).then(refreshHistory, failed);
@@ -328,7 +343,7 @@
     run.index++;
     if (run.index >= run.routine.items.length) {
       db.endSession(sessionInfo(run), "completed").then(refreshHistory, failed);
-      phase = "summary";
+      showSummary();
     } else if (pauseSeconds(run.routine) > 0) {
       now = Date.now();
       breakEndsAt = now + pauseSeconds(run.routine) * 1000;
@@ -346,6 +361,58 @@
   function startOrWait() {
     if (canStart) startGame();
     else phase = "ready";
+  }
+
+  // ---- the summary at the end of a routine or quick game
+
+  // The closing sentences ("finish.1", ...), one picked at random when the summary opens.
+  const CLOSINGS = Object.keys(en).filter((k) => k.startsWith("finish.")) as Key[];
+  let closing = $state<Key>("finish.1");
+  // The game shown in detail beside the list.
+  let summaryPick = $state(0);
+
+  function showSummary() {
+    closing = CLOSINGS[Math.floor(Math.random() * CLOSINGS.length)];
+    // The warm-up has nothing to show, so the first game with a result opens.
+    summaryPick = Math.max(0, run?.results.findIndex((r) => r.hasResult) ?? 0);
+    phase = "summary";
+  }
+
+  // Worked out from the run itself, so the summary doesn't wait for the database.
+  const runIndices = $derived(run?.results.map((r) => gameIndex(r.gameId, r.settings, r.values)) ?? []);
+  const runIndex = $derived(
+    run ? sessionIndex(run.results.map((r, i) => ({ id: String(i), sessionId: run!.sessionId, ...r }))) : null,
+  );
+
+  const sameSettings = (a: Settings, b: Settings) =>
+    [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => String(a[k]) === String(b[k]));
+
+  /**
+   * The latest earlier results of the picked game, played with the same settings: what it is compared with.
+   * Results too short to count for the index are left out, they would pull the average down for nothing.
+   */
+  const summaryEarlier = $derived.by(() => {
+    const r = run?.results[summaryPick];
+    if (!run || !r) return [];
+    const id = run.sessionId;
+    return dpiResults
+      .filter((x) => x.sessionId !== id && x.gameId === r.gameId && sameSettings(x.settings, r.settings))
+      .filter((x) => !hasIndex(x.gameId) || gameIndex(x.gameId, x.settings, x.values) !== null)
+      .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+      .slice(-statsSample);
+  });
+
+  const average = (list: number[]) => (list.length ? list.reduce((s, n) => s + n, 0) / list.length : null);
+
+  const summaryEarlierIndex = $derived(
+    average(summaryEarlier.map((x) => gameIndex(x.gameId, x.settings, x.values)).filter((n) => n !== null)),
+  );
+
+  /** A line's earlier average in the same form ("12.5", "40%"); empty when the line isn't a plain number. */
+  function lineAverage(l: StatLine): string {
+    if (!/^[\d.,]+%?$/.test(l.value)) return "";
+    const a = average(summaryEarlier.map((x) => Number(x.values[l.stored ?? l.key])).filter(Number.isFinite));
+    return a === null ? "" : `${num(a, 1)}${l.value.endsWith("%") ? "%" : ""}`;
   }
 
   function closeRun() {
@@ -717,7 +784,7 @@
   }
 
   /** The time cap, or for a quick game without one how long it was played. */
-  function playedLine(r: db.HistoryRow): string {
+  function playedLine(r: Pick<db.HistoryRow, "minutes" | "endedEarly" | "startedAt" | "finishedAt">): string {
     if (r.minutes > 0) return t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes });
     const played = Math.max(1, Math.round((Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 60_000));
     return t("history.playedNoCap", { n: played });
@@ -1659,30 +1726,116 @@
       {/if}
     </section>
   {:else if phase === "summary" && run}
-    <section class="narrow">
-      <h2>{t(run.quick ? "quick.finished" : "summary.title")}</h2>
-      {#if !run.quick}<p class="lede">{run.routine.name}</p>{/if}
-      {#each run.results as r, i (i)}
-        <div class="result">
-          <h3>{gameById(r.gameId).name}</h3>
-          {#if r.hasResult}
-            <dl class="stats">
-              {#each r.lines as l (l.key)}
-                <div><dt>{l.label}</dt><dd class:strong={l.hero}>{l.value}</dd></div>
-              {/each}
-            </dl>
-          {:else}
-            <p class="hint">{t("summary.noResult")}</p>
-          {/if}
+    {@const picked = run.results[summaryPick]}
+    <section class="summary">
+      <div class="summary-head">
+        <div class="summary-title">
+          <h2>{t(run.quick ? "quick.finished" : "summary.title")}</h2>
+          <p class="lede">{run.quick && picked ? gameById(picked.gameId).name : run.routine.name}</p>
         </div>
-      {/each}
-      {#if run.results.some((r) => r.hasResult)}<p class="hint">{t("summary.saved")}</p>{/if}
-      <div class="row">
-        {#if run.quick}
-          <button class="ghost" onclick={playAgain}>{t("quick.again")}</button>
+        {#if !run.quick && runIndex !== null}
+          <div class="dpi-score" title={t("dpi.helpOpen")}>
+            <span class="cap">{t("summary.total")}</span>
+            <span class="big">{num(runIndex)}</span>
+            <span class="cap">{t("dpi.of")}</span>
+          </div>
         {/if}
-        <button class="primary" onclick={closeRun}>{t("summary.done")}</button>
+        <div class="row summary-actions">
+          {#if run.quick}
+            <button class="ghost" onclick={playAgain}>{t("quick.again")}</button>
+          {/if}
+          <button class="primary" onclick={closeRun}>{t("summary.done")}</button>
+        </div>
       </div>
+      <p class="closing">{t(closing)}</p>
+
+      <div class="summary-split" class:single={run.quick}>
+        {#if !run.quick}
+          <ul class="dpi dpi-games summary-games" aria-label={t("summary.games")}>
+            {#each run.results as r, i (i)}
+              {@const g = gameById(r.gameId)}
+              <li>
+                <button class="dpi-game" aria-pressed={i === summaryPick} onclick={() => (summaryPick = i)}>
+                  <span class="game-label">
+                    <span class="plan-name">{g.name}</span>
+                    <span class="plan-meta">{g.describe(r.settings)}</span>
+                  </span>
+                  <span class="dpi-value" title={t("dpi.short")}>{runIndices[i] === null ? "–" : num(runIndices[i]!)}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if picked}
+          {@const g = gameById(picked.gameId)}
+          {@const idx = runIndices[summaryPick]}
+          {@const scores = picked.hasResult ? metricScores(picked.gameId, picked.settings, picked.values) : null}
+          <div class="dpi summary-detail">
+            <h3>{g.name}</h3>
+            <p class="hint played">
+              {g.describe(picked.settings)} · {playedLine({ ...picked, endedEarly: picked.early })}{#if picked.completed} · {t("summary.completed")}{/if}
+            </p>
+            {#if !picked.hasResult}
+              <p class="hint">{t("summary.noResult")}</p>
+            {:else}
+              {#if scores}
+                <div class="dpi-overall summary-index">
+                  <div class="dpi-score">
+                    <span class="cap">{t("dpi.short")}</span>
+                    <span class="big">{idx === null ? "–" : num(idx)}</span>
+                    <span class="cap">{t("dpi.of")}</span>
+                  </div>
+                  <p class="hint">
+                    {#if idx === null}
+                      {t("summary.tooShort")}
+                    {:else if summaryEarlierIndex !== null}
+                      {t("summary.indexAverage", { n: num(summaryEarlierIndex) })}
+                    {:else}
+                      {t("summary.firstIndex")}
+                    {/if}
+                  </p>
+                </div>
+                <h4>{t("summary.breakdown")}</h4>
+                <ul class="metrics">
+                  {#each scores.metrics as m (m.key)}
+                    <li>
+                      <span class="metric-name">
+                        {t(metricOf(m.key).label)}
+                        {#if scores.metrics.length > 1}<span class="cap">· {t("summary.share", { n: num(m.weight * 100) })}</span>{/if}
+                      </span>
+                      <span class="metric-value">{metricFormat(m.key)(m.value)}</span>
+                      <span class="meter" aria-hidden="true"><span style:width="{m.score}%"></span></span>
+                      <span class="metric-points">{t("summary.points", { n: num(m.score) })}</span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+              <h4>{t("summary.stats")}</h4>
+              <table class="compare">
+                <thead>
+                  <tr>
+                    <th scope="col"><span class="sr-only">{t("summary.stat")}</span></th>
+                    <th scope="col">{t("summary.today")}</th>
+                    {#if summaryEarlier.length}<th scope="col">{t("summary.average", { n: summaryEarlier.length })}</th>{/if}
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each picked.lines as l (l.key)}
+                    <tr>
+                      <th scope="row">{l.label}</th>
+                      <td class:strong={l.hero}>{l.value}</td>
+                      {#if summaryEarlier.length}<td class="avg">{lineAverage(l) || "–"}</td>{/if}
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+              {#if !summaryEarlier.length}<p class="hint">{t("summary.noEarlier")}</p>{/if}
+            {/if}
+          </div>
+        {/if}
+      </div>
+      {#if run.results.some((r) => r.hasResult)}<p class="hint">{t("summary.saved")}</p>{/if}
     </section>
   {/if}
 </main>
@@ -2283,8 +2436,43 @@
   .stats div { display: flex; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
   dt { color: var(--dim); }
   dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-  dd.strong { color: var(--dart); }
-  .result h3 { margin-top: 1.75rem; }
+
+  /* The summary: the actions and the total up top, the games on the left, the picked one beside them. */
+  .summary-head { display: flex; align-items: center; gap: 1rem 2rem; flex-wrap: wrap; }
+  .summary-title { flex: 1 1 16rem; }
+  .summary-title h2 { margin: 0; }
+  .summary-title .lede { margin: 0.25rem 0 0; }
+  .summary-head .dpi-score .big { color: var(--accent); }
+  .summary-actions { margin: 0; }
+  .closing { margin: 1rem 0 1.5rem; padding-left: 1rem; border-left: 3px solid var(--accent); font-size: 1.35rem; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+  .summary-split { display: grid; gap: 1.25rem 2rem; align-items: start; }
+  .summary-games { margin: 0; padding: 0.5rem; }
+  .summary-games li:last-child { border-bottom: 0; }
+  .summary-detail { min-width: 0; }
+  .summary-detail h3 { margin-bottom: 0.25rem; }
+  .summary-detail .played { margin: 0 0 1rem; }
+  .summary-detail h4 { margin: 1.25rem 0 0.5rem; }
+  .summary-index { margin-bottom: 0; }
+  .summary-index .big { color: var(--accent); }
+  .summary-index .hint { margin: 0; }
+  .metrics { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .metrics li { display: grid; grid-template-columns: minmax(8rem, 1fr) auto minmax(5rem, 1.2fr) 5.5rem; align-items: center; gap: 0.75rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
+  .metric-name { color: var(--dim); }
+  .metric-value, .metric-points { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .metric-points { color: var(--accent); }
+  .meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .meter span { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+  .compare { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .compare th, .compare td { padding: 0.5rem 0; border-bottom: 1px solid var(--line); text-align: right; }
+  .compare thead th { color: var(--dim); font-size: 0.85rem; font-weight: 400; border-top: 1px solid var(--line); }
+  .compare th[scope="row"] { color: var(--dim); font-weight: 400; text-align: left; }
+  .compare td { font-weight: 600; padding-left: 1rem; }
+  .compare td.strong { color: var(--dart); }
+  .compare td.avg { color: var(--dim); font-weight: 400; }
+  @media (min-width: 720px) {
+    .summary-split { grid-template-columns: minmax(14rem, 2fr) 3fr; }
+    .summary-split.single { grid-template-columns: minmax(0, 46rem); }
+  }
 
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }

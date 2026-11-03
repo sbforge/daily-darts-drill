@@ -3,14 +3,6 @@
 
 
 ## Next (in priority order)
-0. overhault routine result screen
-  * show training game as list on the left. make it selectable
-  * detailed statistics on the right side of the screen
-  * per game: show DPI in the list
-  * show total DPI for routine
-  * Motivation Sentence at the end that the player finished the routine
-    * let generate like 20 different options
-  * Move the Done button somewhere to the top, so the user dont need to scroll down
 1. Fix GitHub Actions asset creation
 2. README.md: write the "Why I built this" section (placeholder for now)
     * Especially expectation management: why did I build this, how do I want to train?
@@ -67,6 +59,12 @@
 
 
 ## Done ✅
+* Routine result screen overhaul
+  * Games of the routine as a selectable list on the left with their DPI, the picked one in detail on the right
+  * Total DPI of the routine and the Done button at the top, no scrolling needed
+  * Details: settings and time played, the game's DPI with a breakdown per metric, every stat next to your average (same settings, latest "Results per comparison", too short games left out)
+  * One of 20 closing sentences (English, German) picked at random
+  * A quick game shows the detail only, with "Play again" beside Done
 * Bugs from manual testing
   * The dart boxes clear with the takeout
   * Around the clock completed before the time cap starts over; accuracy, darts and hits carry on, completed rounds are counted (a game without a time cap still ends)

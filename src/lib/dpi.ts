@@ -139,6 +139,40 @@ export function hasIndex(gameId: string, config = DPI_CONFIG): boolean {
   return !!gameConfig(gameId, config);
 }
 
+/** One metric of a result: the measured value, its index points and its share of the game index. */
+export interface MetricScore {
+  key: string;
+  value: number;
+  score: number;
+  weight: number;
+}
+
+/**
+ * The metrics behind the game index of one result, or null when the game has none.
+ * `counts` is false when the result is too short to count; the scores are still worked out.
+ */
+export function metricScores(
+  gameId: string,
+  settings: Settings,
+  values: Record<string, number>,
+  config = DPI_CONFIG,
+): { counts: boolean; metrics: MetricScore[] } | null {
+  const g = gameConfig(gameId, config);
+  if (!g) return null;
+  const sample = g.sample.keys.reduce((s, k) => s + (Number(values[k]) || 0), 0);
+  const metrics = (g.bySetting && g.bySetting.metrics[String(settings[g.bySetting.key])]) ?? g.metrics;
+  const total = metrics.reduce((s, m) => s + m.weight, 0) || 1;
+  return {
+    counts: sample >= g.sample.min,
+    metrics: metrics.map((m) => ({
+      key: m.key,
+      value: Number(values[m.key]) || 0,
+      score: normalize(Number(values[m.key]), m),
+      weight: m.weight / total,
+    })),
+  };
+}
+
 /** The game index of one result, or null when the game has none or the result is too short to count. */
 export function gameIndex(
   gameId: string,
@@ -146,12 +180,8 @@ export function gameIndex(
   values: Record<string, number>,
   config = DPI_CONFIG,
 ): number | null {
-  const g = gameConfig(gameId, config);
-  if (!g) return null;
-  const sample = g.sample.keys.reduce((s, k) => s + (Number(values[k]) || 0), 0);
-  if (sample < g.sample.min) return null;
-  const metrics = (g.bySetting && g.bySetting.metrics[String(settings[g.bySetting.key])]) ?? g.metrics;
-  return weighted(metrics.map((m) => ({ score: normalize(Number(values[m.key]), m), weight: m.weight })));
+  const s = metricScores(gameId, settings, values, config);
+  return s?.counts ? weighted(s.metrics) : null;
 }
 
 /** One stored game result, the raw input of the index. */

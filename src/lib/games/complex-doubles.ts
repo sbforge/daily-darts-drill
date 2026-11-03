@@ -108,7 +108,7 @@ export const complexDoubles: GameDef = {
     return {
       values: { successRate: rate, rounds, successes, firstDart: by[0], secondDart: by[1], thirdDart: by[2] },
       lines: [
-        { key: "rate", label: t("game.successRate"), value: `${num(rate, 1)}%`, hero: true },
+        { key: "rate", stored: "successRate", label: t("game.successRate"), value: `${num(rate, 1)}%`, hero: true },
         { key: "rounds", label: t("complexDoubles.rounds"), value: String(rounds) },
         { key: "successes", label: t("complexDoubles.successes"), value: String(successes) },
       ],

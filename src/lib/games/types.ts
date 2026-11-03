@@ -18,6 +18,8 @@ export interface StatLine {
   label: string;
   value: string;
   hero?: boolean;
+  /** The stored value this line shows, to compare it with earlier results. Defaults to `key`. */
+  stored?: string;
 }
 
 /** A field of the board. Segment fields have a number; the bulls have none. */

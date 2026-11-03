@@ -140,8 +140,8 @@ export const oneTwentyOne: GameDef = {
           : []),
         { key: "checkouts", label: t("121.checkouts"), value: String(checkouts) },
         { key: "fails", label: t("121.fails"), value: String(fails) },
-        { key: "best", label: t("121.best"), value: best ? String(best) : t("game.noneYet") },
-        { key: "rate", label: t("game.successRate"), value: attempts ? `${num(rate)}%` : t("game.noneYet") },
+        { key: "best", stored: "highestCheckout", label: t("121.best"), value: best ? String(best) : t("game.noneYet") },
+        { key: "rate", stored: "successRate", label: t("game.successRate"), value: attempts ? `${num(rate)}%` : t("game.noneYet") },
       ],
       // The rest score is what to aim at right now; the checkout it belongs to is in the label.
       focus: { label: t("121.restOf", { n: target }), value: String(remaining) },
