@@ -46,6 +46,7 @@ export const de: Record<Key, string> = {
   "common.untitled": "Ohne Namen",
   "common.fieldInfo": "Info zu „{name}“",
   "error.save": "Speichern in der Datenbank fehlgeschlagen: {msg}",
+  "run.fullscreen": "Vollbild (F11)",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",

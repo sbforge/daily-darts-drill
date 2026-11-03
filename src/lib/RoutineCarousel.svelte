@@ -299,14 +299,14 @@
   .carousel {
     position: relative;
     flex: 1;
-    min-height: 26rem;
+    min-height: 19rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
     border-radius: 12px;
     touch-action: pan-y;
     user-select: none;
-    --h: clamp(20rem, calc(var(--ch) - 4.5rem), 36rem);
+    --h: clamp(16rem, calc(var(--ch) - 4.5rem), 36rem);
     --w: min(calc(var(--h) * 0.68), calc(var(--cw) * 0.7));
     --card-h: min(var(--h), calc(var(--w) / 0.68));
     /* How far each neighbour sits from the front card; wider screens spread them out. */

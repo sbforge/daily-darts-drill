@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use serde::Serialize;
+use tauri::Manager;
 
 /// The service type the Autodarts client announces on the local network.
 const AUTODARTS_SERVICE: &str = "_autodarts-board._tcp.local.";
@@ -66,6 +67,27 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
+        // Size, position and maximised state are remembered, so the player sets the window up once at the oche.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .setup(|app| {
+            // The first start fits the screen: on a small one (a 1366 x 768 laptop at 125 %) the 1100 x 760 window
+            // would be taller than the screen and can't be made smaller, so it opens maximised instead.
+            // Once the window state plugin has saved a state, that state wins.
+            let saved = app.path().app_config_dir().map(|d| d.join(".window-state.json").exists()).unwrap_or(false);
+            if !saved {
+                if let Some(win) = app.get_webview_window("main") {
+                    if let Ok(Some(monitor)) = win.current_monitor() {
+                        let area = monitor.work_area();
+                        let scale = monitor.scale_factor();
+                        let (w, h) = (area.size.width as f64 / scale, area.size.height as f64 / scale);
+                        if w < 1100.0 || h < 760.0 {
+                            let _ = win.maximize();
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![discover_boards])
         .run(tauri::generate_context!())
         .expect("error while running D³ – Daily Darts Drill");

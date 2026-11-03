@@ -44,6 +44,7 @@ export const en = {
   "common.untitled": "Untitled",
   "common.fieldInfo": "About “{name}”",
   "error.save": "Could not save to the database: {msg}",
+  "run.fullscreen": "Fullscreen (F11)",
   "db.title": "Can’t open the database",
   "db.hintBefore": "D³ keeps all settings, routines and results in a local SQLite database. Start the app with",
   "db.hintAfter": "or use the installed app. Opening the page in a normal browser does not work.",

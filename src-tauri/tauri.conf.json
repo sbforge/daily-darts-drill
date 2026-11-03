@@ -15,8 +15,8 @@
         "title": "D³ – Daily Darts Drill",
         "width": 1100,
         "height": 760,
-        "minWidth": 880,
-        "minHeight": 620
+        "minWidth": 900,
+        "minHeight": 540
       }
     ],
     "security": {
