@@ -59,6 +59,8 @@ export const en = {
 
   // history
   "history.title": "History",
+  "history.sessions": "Sessions",
+  "history.stats": "Statistics",
   "history.empty": "No results yet. Finish a game and it shows up here.",
   "history.aborted": "Aborted",
   "history.running": "In progress",

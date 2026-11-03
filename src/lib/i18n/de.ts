@@ -62,6 +62,8 @@ export const de: Record<Key, string> = {
 
   // history
   "history.title": "Verlauf",
+  "history.sessions": "Einheiten",
+  "history.stats": "Statistik",
   "history.empty": "Noch keine Ergebnisse. Beende ein Spiel, dann erscheint es hier.",
   "history.aborted": "Abgebrochen",
   "history.running": "Läuft",
