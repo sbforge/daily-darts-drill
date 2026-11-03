@@ -46,13 +46,18 @@ export const de: Record<Key, string> = {
   "common.untitled": "Ohne Namen",
   "common.fieldInfo": "Info zu „{name}“",
   "error.save": "Speichern in der Datenbank fehlgeschlagen: {msg}",
+  "db.migrationHint": 'Es wurde nichts verändert: die Aktualisierung deiner Daten wurde zurückgerollt. Bitte hänge die Log-Datei an, wenn du das meldest.',
+  "db.newerTitle": 'Deine Daten stammen von einer neueren D³-Version',
+  "db.newerHint": 'Diese D³-Version kann sie nicht öffnen und hat nichts verändert. Installiere die neueste D³-Version erneut; deine Daten sind unberührt.',
+  "db.backupAt": 'Ein Backup von vor dem Update liegt in {path}',
+  "backup.openFolder": 'Backup-Ordner öffnen',
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",
   "db.hintAfter": "oder nutze die installierte App. In einem normalen Browser funktioniert die Seite nicht.",
 
   // settings
-  "loading.data": "Deine Daten werden geöffnet…",
+  "loading.data": "Deine Daten werden aktualisiert und geöffnet…",
   "loading.routines": "Deine Routinen werden geladen…",
   "loading.history": "Dein Verlauf wird geladen…",
   "loading.stats": "Deine Statistik wird berechnet…",

@@ -44,12 +44,17 @@ export const en = {
   "common.untitled": "Untitled",
   "common.fieldInfo": "About “{name}”",
   "error.save": "Could not save to the database: {msg}",
+  "db.migrationHint": 'Nothing was changed: the update to your data was rolled back. Please attach the log file when you report this.',
+  "db.newerTitle": 'Your data was written by a newer version of D³',
+  "db.newerHint": 'This version of D³ can’t open it, and it hasn’t changed anything. Install the newest D³ again; your data is untouched.',
+  "db.backupAt": 'A backup from before the update is in {path}',
+  "backup.openFolder": 'Open backup folder',
   "db.title": "Can’t open the database",
   "db.hintBefore": "D³ keeps all settings, routines and results in a local SQLite database. Start the app with",
   "db.hintAfter": "or use the installed app. Opening the page in a normal browser does not work.",
 
   // settings
-  "loading.data": "Opening your data…",
+  "loading.data": "Updating and opening your data…",
   "loading.routines": "Loading your routines…",
   "loading.history": "Loading your history…",
   "loading.stats": "Calculating your statistics…",

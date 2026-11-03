@@ -39,6 +39,7 @@
   } from "./lib/dpi";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
+  import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
   import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
   import { Session } from "./lib/session.svelte";
@@ -79,6 +80,7 @@
   let loadDone = $state(0);
   let loadLabel = $state<Key>("loading.data");
   let dbError = $state("");
+  let updateBackup = $state("");
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
@@ -1003,6 +1005,8 @@
     };
     (async () => {
       try {
+        const startup = await startupReport();
+        updateBackup = startup.updateBackup ?? "";
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
@@ -1172,11 +1176,18 @@
 <main>
   {#if dbError}
     <section class="narrow">
-      <h2>{t("db.title")}</h2>
+      <h2>{t(isNewerDatabase(dbError) ? "db.newerTitle" : "db.title")}</h2>
       <p class="error" role="alert">{dbError}</p>
-      <p class="hint">
-        {t("db.hintBefore")} <code>npm run tauri dev</code> {t("db.hintAfter")}
-      </p>
+      {#if isNewerDatabase(dbError)}
+        <p class="hint">{t("db.newerHint")}</p>
+      {:else}
+        <p class="hint">{t("db.migrationHint")}</p>
+        {#if updateBackup}<p class="hint">{t("db.backupAt", { path: updateBackup })}</p>{/if}
+        <p class="hint">
+          {t("db.hintBefore")} <code>npm run tauri dev</code> {t("db.hintAfter")}
+        </p>
+      {/if}
+      <button type="button" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
     </section>
   {:else if !ready}
     <!-- The loading screen covers the window, see below. -->

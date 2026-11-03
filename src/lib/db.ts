@@ -1,5 +1,5 @@
 // All persistence lives here: one SQLite file managed by the Tauri SQL plugin.
-// Tables: settings, routines, sessions, game_results, darts.
+// Tables: settings, routines, sessions, game_results, darts. The schema lives in src-tauri/migrations.
 import Database from "@tauri-apps/plugin-sql";
 import type { Dart } from "./autodarts";
 import type { ResultRecord } from "./dpi";
@@ -21,74 +21,9 @@ function conn(): Database {
   return db;
 }
 
-const SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS settings (
-     key TEXT PRIMARY KEY,
-     value TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS routines (
-     id TEXT PRIMARY KEY,
-     name TEXT NOT NULL,
-     description TEXT NOT NULL DEFAULT '',
-     pause_seconds INTEGER NOT NULL DEFAULT 0,
-     position INTEGER NOT NULL,
-     items_json TEXT NOT NULL,
-     updated_at TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS sessions (
-     id TEXT PRIMARY KEY,
-     routine_id TEXT,
-     routine_name TEXT NOT NULL,
-     started_at TEXT NOT NULL,
-     finished_at TEXT,
-     status TEXT NOT NULL DEFAULT 'completed')`,
-  `CREATE TABLE IF NOT EXISTS game_results (
-     id TEXT PRIMARY KEY,
-     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-     position INTEGER NOT NULL,
-     game_id TEXT NOT NULL,
-     game_name TEXT NOT NULL,
-     settings_json TEXT NOT NULL,
-     minutes INTEGER NOT NULL,
-     ended_early INTEGER NOT NULL,
-     started_at TEXT NOT NULL,
-     finished_at TEXT NOT NULL,
-     values_json TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS darts (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     game_result_id TEXT NOT NULL REFERENCES game_results(id) ON DELETE CASCADE,
-     turn_index INTEGER NOT NULL,
-     dart_index INTEGER NOT NULL,
-     kind TEXT NOT NULL,
-     number INTEGER,
-     zone TEXT,
-     score INTEGER NOT NULL,
-     x REAL NOT NULL,
-     y REAL NOT NULL,
-     radius REAL NOT NULL,
-     bouncer INTEGER NOT NULL,
-     failed INTEGER NOT NULL,
-     method TEXT)`,
-  `CREATE INDEX IF NOT EXISTS idx_results_game ON game_results(game_id, started_at)`,
-  `CREATE INDEX IF NOT EXISTS idx_darts_result ON darts(game_result_id)`,
-];
-
 export async function openDb(): Promise<void> {
+  // Opening the database runs the migrations (src-tauri/migrations), each in its own transaction.
   db = await Database.load("sqlite:darttrainer.db");
-  for (const sql of SCHEMA) await db.execute(sql);
-
-  // Databases from earlier versions have no status column on sessions.
-  const cols = await db.select<{ name: string }[]>("SELECT name FROM pragma_table_info('sessions')");
-  if (!cols.some((c) => c.name === "status")) {
-    await db.execute("ALTER TABLE sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'");
-  }
-  // ...and no description column on routines.
-  const routineCols = await db.select<{ name: string }[]>("SELECT name FROM pragma_table_info('routines')");
-  if (!routineCols.some((c) => c.name === "description")) {
-    await db.execute("ALTER TABLE routines ADD COLUMN description TEXT NOT NULL DEFAULT ''");
-  }
-  // ...and no pause between games, so those routines keep going straight on.
-  if (!routineCols.some((c) => c.name === "pause_seconds")) {
-    await db.execute("ALTER TABLE routines ADD COLUMN pause_seconds INTEGER NOT NULL DEFAULT 0");
-  }
 
   // A routine that was still running when the app closed counts as aborted: no scores kept.
   const stale = await db.select<{ id: string }[]>("SELECT id FROM sessions WHERE status = 'running'");
