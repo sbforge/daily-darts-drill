@@ -2,43 +2,107 @@
 
 ## Next (in priority order)
 1. Game detail screens: every training game gets its own detail screen
+    * General:
+      * Every parameter of a training game should get a description what that option does. Info Icon in Settings screen or small description below the corresponding field
     * 121
       * Show rest score
       * Show current stage
       * Show darts left
       * Safehouse
-      * Make skips (+1 +2 +3, optional)
+        * Can be de-/activated
+        * Safehouse means: Whenever you hit manage to checkout with the first 3 darts. You can now longer fall below that score.
+      * Skips (+2 +3)
+        * Raname that option to "fast-foward"
+        * Should be optional
     * Complex Doubles
+      * Rename ( See fancy Names )
       * Show current target
+    * Around the clock:
+      * Add Single Bull or Bull as final field (any of them)
 2. Manual score correction in the score boxes above the dartboard
+    * click the box to edit
+    * if possible, react to a click to the dartboard visualization.
+      * if score is corrected the calculation for that turn has to be recalcualated
+      * scores can be edited any time
+        * when all 3 darts are thrown
+        * when only a part of the turn is over... i.e. 2 darts thrown.. the first one get's corrected before the player continues.
 3. Autodarts client status (pause, offline, ...)
     * Auto reconnect
+    * Pause the routine while disconnected
 4. Show current Autodarts status (throw, takeout, takeout in progress, error?)
 5. Single training game (play one game without a routine)
+    * add quickgame option to the training screen
+      * button on the top left
+    * Show Popup with available training games (like in the "add game" function when editing a routine)
 6. History graph per training game
     * Track result progress (per game)
-7. Reset & calibrate button (need to debug the Autodarts command for that)
-8. Settings: Autodarts auto discovery of IP & port
-9. Heatmap per training game, configurable per game (Random Checkout i.e. does not need one)
-10. Show camera information (FPS, etc.)
-11. Buy me a coffee: add the real link (placeholder URL for now)
+7. Reset & calibrate button (Request: see debug folder)
+8. Loading Screen
+  * Show at least X seconds ;) I want the App Logo show at least for some seconds
+  * Maybe in real: load modules with progress bar+
+9. About Screen
+  * Some Information about the project
+  * related links
+  * Library Licenses? Check THAT!
+  * SBOM
+9. Settings: Autodarts auto discovery of IP & port
+10. Buy me a coffee: add the real link (placeholder URL for now)
+11. Fix Github Actions Asset creation
+12. Update Readme.MD with version 0.1
+  * especially expectation management: why did i build this.. how do i want to train?
 
-## More Training Games
-* Segment Training
+
+## Total Training Progress Index
+* Have a single number ( However it is defined) to have the possibility to compare training over all training routines or per game? or in total?
+* needs to be calculated somehow from different Game Results (Avg, Acc%, success/m ?)
+* When to calculate it?
+  * after every routine / game ?
+  * show in a nice graph
+
+## Training Games
+* Routines: Predefined training routines
+  * deletable?
+  * recoverable?
+* General: Think of fancy names for the games
+* Game Description
+  * Every training game should have a short text description
+  * Every training game should have a target. Why to play?
+  * Nice to have: Explanation Video on Youtube ;) AI generated ofc
 * Random Checkout
 * Bobs 27
-* Bull-x
+* 170
+* Bull-X
+  * If bull was hit on first dart -> the other two darts also need to be thrown at the bullseye
   * Bull, if miss, then double
   * Bull, if miss, then treble
-  * Bull, if miss, then try shanghai
+  * Bull, if miss, then shanghai
 * Catch 40
+* Solo 501
+  * just for good measure
 
-## Ideation
-* Sound effects (settings / optional)
-* Multi-User support?
-* Replace Dartboard view with live feed
-* Routine Week planner
-* AI Trainer Suggestions ( for the very far future ;)
+## Design & Artwork
+* Create Artwork for every Training game
+* Change Dartboard on caroussel to real artwork instead of png
+* Animations
+* Fading Screens
+
+## Idea Backlog
+* Routine Im- & Export ( for easy sharing) ( prio: medium)
+* Heatmap per training game, configurable per game (Random Checkout i.e. does not need one)  Prio: medium
+* Local Multiplayer games
+  * why should we build that instead of using the official autodarts platform? IDK yet.. is AD platform latency a reason? ( prio: very low - got a solution for that)
+* Sound effects (settings / optional) (prio low)
+* Multi-User support? (prio: low)
+* Replace Dartboard view with live feed ( Prio: very low )
+* Routine Week planner ( prio: low)
+* Show camera information (FPS, etc.) ( prio: low, why should i need that if i got the autodarts state)
+* AI Trainer Suggestions ( for the very far future ; Would love to have it.. Not important enough for now)
+
+## Open Questions
+* How to handle updates
+  * Especially database schema changes
+  * Do I need migrations once a stable version was shipped?
+
 
 ## Done ✅
 * Score boxes above the dartboard
