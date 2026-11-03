@@ -132,4 +132,6 @@
   * Overall index per session: game indices averaged per skill area (scoring, doubles, checkout, accuracy, consistency), the areas weighted, so a game played often doesn't dominate
   * Current level: average of the latest 10 sessions (overall) or results (per game)
   * Trend: latest 10 against the 10 before, shown from 5 in each; encouraging also when it goes down
-  * History has two sub screens, Sessions and Statistics; Statistics shows the index (overall, per game with trend), Sessions the DPI per session and per game; deleting a session recalculates it
+  * Own "Statistics" page in the navigation: the index (overall, per game with trend) and a chart of the index over time
+    * Overall or one game; a dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values; also as a table
+  * History shows the DPI per session and per game; deleting a session recalculates it

@@ -197,11 +197,27 @@ export function performance(series: number[], config = DPI_CONFIG): Performance 
   return { current: now, count: current.length, trend };
 }
 
+/** One point of a chart: the index of a session or result, and the current level (rolling average) at that point. */
+export interface DpiPoint {
+  at: string;
+  value: number;
+  level: number;
+}
+
+/** Each index with the average of the latest `window` up to and including it, oldest first. */
+export function withLevel(series: { at: string; value: number }[], config = DPI_CONFIG): DpiPoint[] {
+  return series.map((p, i) => {
+    const last = series.slice(Math.max(0, i + 1 - config.window), i + 1);
+    return { ...p, level: last.reduce((s, q) => s + q.value, 0) / last.length };
+  });
+}
+
 export interface DpiOverview {
   version: number;
   overall: Performance;
+  overallSeries: DpiPoint[];
   /** Per game, in the order of the config; games without any counting result are left out. */
-  games: { gameId: string; area: SkillArea; performance: Performance }[];
+  games: { gameId: string; area: SkillArea; performance: Performance; series: DpiPoint[] }[];
   /** Game index per result id and overall index per session id, for the history list. */
   byResult: Map<string, number>;
   bySession: Map<string, number>;
@@ -220,18 +236,34 @@ export function overview(results: ResultRecord[], config = DPI_CONFIG): DpiOverv
   const sessions = new Map<string, ResultRecord[]>();
   for (const r of sorted) sessions.set(r.sessionId, [...(sessions.get(r.sessionId) ?? []), r]);
   const bySession = new Map<string, number>();
+  const overallSeries: { at: string; value: number }[] = [];
   for (const [id, list] of sessions) {
     const idx = sessionIndex(list, config);
-    if (idx !== null) bySession.set(id, idx);
+    if (idx === null) continue;
+    bySession.set(id, idx);
+    overallSeries.push({ at: list[0].startedAt, value: idx });
   }
 
   const games = config.games
-    .map((g) => ({
-      gameId: g.gameId,
-      area: g.area,
-      performance: performance(sorted.filter((r) => r.gameId === g.gameId && byResult.has(r.id)).map((r) => byResult.get(r.id)!), config),
-    }))
+    .map((g) => {
+      const series = sorted
+        .filter((r) => r.gameId === g.gameId && byResult.has(r.id))
+        .map((r) => ({ at: r.startedAt, value: byResult.get(r.id)! }));
+      return {
+        gameId: g.gameId,
+        area: g.area,
+        performance: performance(series.map((p) => p.value), config),
+        series: withLevel(series, config),
+      };
+    })
     .filter((g) => g.performance.count > 0);
 
-  return { version: config.version, overall: performance([...bySession.values()], config), games, byResult, bySession };
+  return {
+    version: config.version,
+    overall: performance(overallSeries.map((p) => p.value), config),
+    overallSeries: withLevel(overallSeries, config),
+    games,
+    byResult,
+    bySession,
+  };
 }

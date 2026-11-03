@@ -26,6 +26,7 @@
   import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
+  import DpiChart from "./lib/DpiChart.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
@@ -47,7 +48,7 @@
   let ready = $state(false);
   let dbError = $state("");
   let saveError = $state("");
-  type View = "train" | "routines" | "history" | "settings";
+  type View = "train" | "routines" | "history" | "stats" | "settings";
   let view = $state<View>("train");
 
   // connection settings
@@ -68,10 +69,11 @@
   let history = $state<db.HistorySession[]>([]);
   let lastPlayed = $state<Record<string, string>>({});
   let pendingSessionDelete = $state<string | null>(null);
-  // History has two sub screens: the played sessions and the statistics drawn from them.
-  let historyTab = $state<"sessions" | "stats">("sessions");
   // The performance index, calculated from all stored results each time they change.
   let dpi = $state<DpiOverview | null>(null);
+  // Which index the statistics chart shows: "overall" or a game id.
+  let statsSeries = $state("overall");
+  const statsGame = $derived(dpi?.games.find((g) => g.gameId === statsSeries) ?? null);
 
   // running a routine
   let run = $state<{
@@ -672,6 +674,9 @@
     <button class="tab" aria-current={view === "history" ? "page" : undefined} onclick={() => go("history")}>
       {t("nav.history")}
     </button>
+    <button class="tab" aria-current={view === "stats" ? "page" : undefined} onclick={() => go("stats")}>
+      {t("nav.stats")}
+    </button>
   </nav>
   {#if inRun}
     <div class="run-controls" role="group" aria-label={t("run.controls")}>
@@ -794,92 +799,105 @@
     </section>
   {:else if view === "history"}
     <section class="history">
-      <div class="history-head">
-        <h2>{t("history.title")}</h2>
-        <div class="subtabs" role="tablist" aria-label={t("history.title")}>
-          <button role="tab" aria-selected={historyTab === "sessions"} onclick={() => (historyTab = "sessions")}>
-            {t("history.sessions")}
-          </button>
-          <button role="tab" aria-selected={historyTab === "stats"} onclick={() => (historyTab = "stats")}>
-            {t("history.stats")}
-          </button>
-        </div>
-      </div>
-      {#if historyTab === "stats"}
-        <div class="dpi">
-          <h3>{t("dpi.title")}</h3>
-          {#if dpi && dpi.overall.current !== null}
-            <div class="dpi-overall">
-              <div class="dpi-score">
-                <span class="big">{num(dpi.overall.current)}</span>
-                <span class="cap">{t("dpi.of")}</span>
-              </div>
-              <div>
-                <p class="plan-meta">
-                  {dpi.overall.count === 1 ? t("dpi.basedOnOne") : t("dpi.basedOn", { n: dpi.overall.count })}
-                </p>
-                <p class="trend" data-dir={trendDir(dpi.overall.trend)}>{trendText(dpi.overall.trend)}</p>
-              </div>
+      <h2>{t("history.title")}</h2>
+      {#if history.length === 0}
+        <p class="hint">{t("history.empty")}</p>
+      {/if}
+      {#each history as s (s.id)}
+        <div class="session">
+          <div class="session-head">
+            <div>
+              <!-- The stored routine name is in the language of the day it was played; a quick game follows the current one. -->
+              <strong>{s.quick ? t("quick.name") : s.routineName}</strong>
+              <span class="plan-meta">{dateTime(s.startedAt)}</span>
+              {#if s.status === "aborted"}
+                <span class="badge">{t("history.aborted")}</span>
+              {:else if s.status === "running"}
+                <span class="badge live">{t("history.running")}</span>
+              {/if}
+              {#if dpi?.bySession.has(s.id)}
+                <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
+              {/if}
             </div>
-            <ul class="dpi-games" aria-label={t("dpi.games")}>
-              {#each dpi.games as g (g.gameId)}
+            <button class="ghost small danger" onclick={() => deleteSession(s.id)}>
+              {pendingSessionDelete === s.id ? t("common.confirmDelete") : t("common.delete")}
+            </button>
+          </div>
+          {#if s.status !== "aborted"}
+            <ul class="plan">
+              {#each s.rows as r (r.id)}
+                {@const g = gameById(r.gameId)}
                 <li>
-                  <span class="plan-name">{gameById(g.gameId).name}</span>
-                  <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
-                  <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
-                  <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend)}>
-                    {trendShort(g.performance.trend)}
+                  <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
+                  <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
+                  <span class="plan-meta">
+                    {playedLine(r)}{#if dpi?.byResult.has(r.id)} · {t("dpi.short")} {num(dpi.byResult.get(r.id)!)}{/if}
                   </span>
+                  <span class="plan-desc">{g.describe(r.settings)}</span>
+                  <span class="plan-desc strong">{g.summary(r.values)}</span>
                 </li>
               {/each}
             </ul>
-            <p class="hint">{t("dpi.explain", { v: dpi.version })}</p>
-          {:else}
-            <p class="hint">{t("dpi.empty")}</p>
           {/if}
         </div>
-      {:else}
-        {#if history.length === 0}
-          <p class="hint">{t("history.empty")}</p>
-        {/if}
-        {#each history as s (s.id)}
-          <div class="session">
-            <div class="session-head">
-              <div>
-                <!-- The stored routine name is in the language of the day it was played; a quick game follows the current one. -->
-                <strong>{s.quick ? t("quick.name") : s.routineName}</strong>
-                <span class="plan-meta">{dateTime(s.startedAt)}</span>
-                {#if s.status === "aborted"}
-                  <span class="badge">{t("history.aborted")}</span>
-                {:else if s.status === "running"}
-                  <span class="badge live">{t("history.running")}</span>
-                {/if}
-                {#if dpi?.bySession.has(s.id)}
-                  <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
-                {/if}
-              </div>
-              <button class="ghost small danger" onclick={() => deleteSession(s.id)}>
-                {pendingSessionDelete === s.id ? t("common.confirmDelete") : t("common.delete")}
-              </button>
+      {/each}
+    </section>
+  {:else if view === "stats"}
+    <section class="history">
+      <h2>{t("stats.title")}</h2>
+      <div class="dpi">
+        <h3>{t("dpi.title")}</h3>
+        {#if dpi && dpi.overall.current !== null}
+          <div class="dpi-overall">
+            <div class="dpi-score">
+              <span class="big">{num(dpi.overall.current)}</span>
+              <span class="cap">{t("dpi.of")}</span>
             </div>
-            {#if s.status !== "aborted"}
-              <ul class="plan">
-                {#each s.rows as r (r.id)}
-                  {@const g = gameById(r.gameId)}
-                  <li>
-                    <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
-                    <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
-                    <span class="plan-meta">
-                      {playedLine(r)}{#if dpi?.byResult.has(r.id)} · {t("dpi.short")} {num(dpi.byResult.get(r.id)!)}{/if}
-                    </span>
-                    <span class="plan-desc">{g.describe(r.settings)}</span>
-                    <span class="plan-desc strong">{g.summary(r.values)}</span>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
+            <div>
+              <p class="plan-meta">
+                {dpi.overall.count === 1 ? t("dpi.basedOnOne") : t("dpi.basedOn", { n: dpi.overall.count })}
+              </p>
+              <p class="trend" data-dir={trendDir(dpi.overall.trend)}>{trendText(dpi.overall.trend)}</p>
+            </div>
           </div>
-        {/each}
+          <ul class="dpi-games" aria-label={t("dpi.games")}>
+            {#each dpi.games as g (g.gameId)}
+              <li>
+                <span class="plan-name">{gameById(g.gameId).name}</span>
+                <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
+                <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
+                <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend)}>
+                  {trendShort(g.performance.trend)}
+                </span>
+              </li>
+            {/each}
+          </ul>
+          <p class="hint">{t("dpi.explain", { v: dpi.version })}</p>
+        {:else}
+          <p class="hint">{t("dpi.empty")}</p>
+        {/if}
+      </div>
+      {#if dpi && dpi.overallSeries.length}
+        <div class="dpi">
+          <div class="chart-head">
+            <h3>{t("dpi.chartTitle")}</h3>
+            <label class="chart-pick">
+              {t("dpi.chartShow")}
+              <Select
+                bind:value={statsSeries}
+                options={[
+                  { value: "overall", label: t("dpi.overall") },
+                  ...dpi.games.map((g) => ({ value: g.gameId, label: gameById(g.gameId).name })),
+                ]}
+              />
+            </label>
+          </div>
+          <DpiChart
+            points={statsGame ? statsGame.series : dpi.overallSeries}
+            pointLabel={statsGame ? t("dpi.pointGame") : t("dpi.pointSession")}
+            window={10}
+          />
+        </div>
       {/if}
     </section>
   {:else if view === "routines"}
@@ -1630,14 +1648,11 @@
   .badge.live { color: var(--dart); border-color: var(--dart); }
   .badge.dpi-badge { color: var(--accent); border-color: var(--accent); }
 
-  .history-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-  .history-head h2 { margin: 0; }
-  .subtabs { display: flex; gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
-  .subtabs button { padding: 0.35rem 1rem; border: none; border-radius: 999px; background: none; color: var(--dim); font: inherit; cursor: pointer; }
-  .subtabs button:hover { color: var(--chalk); }
-  .subtabs button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
   .dpi { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .dpi h3 { margin: 0 0 0.75rem; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .chart-head h3 { margin: 0; }
+  .chart-pick { display: flex; align-items: center; gap: 0.6rem; color: var(--dim); }
   .dpi-overall { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
   .dpi-score { display: flex; align-items: baseline; gap: 0.5rem; }
   .dpi-score .big { color: var(--accent); }

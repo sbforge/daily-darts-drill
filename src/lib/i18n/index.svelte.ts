@@ -49,3 +49,8 @@ export function num(n: number, digits = 0): string {
 export function dateTime(iso: string): string {
   return new Date(iso).toLocaleString(state.locale);
 }
+
+/** Only the day, for chart axes. */
+export function date(iso: string): string {
+  return new Date(iso).toLocaleDateString(state.locale);
+}
