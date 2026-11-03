@@ -43,6 +43,7 @@
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
+  import { discoverBoards, type FoundBoard } from "./lib/discovery";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
@@ -71,6 +72,9 @@
   let throwPhase = $state<ThrowPhase>(null);
   let startError = $state(false);
   let recent = $state<string[]>([]);
+  // The search in the settings: null before the first search.
+  let searching = $state(false);
+  let found = $state<FoundBoard[] | null>(null);
 
   // routines
   let routines = $state<Routine[]>([]);
@@ -677,6 +681,7 @@
     if (!Number.isInteger(port) || port < 1 || port > 65535)
       return (formError = t("settings.portInvalid"));
     formError = "";
+    dropCandidate();
     config = { host, port };
     draft = { ...config };
     db.saveConfig(config).catch(failed);
@@ -687,19 +692,73 @@
     draft = { ...DEFAULT_CONFIG };
   }
 
+  async function searchBoards() {
+    searching = true;
+    formError = "";
+    try {
+      found = await discoverBoards();
+    } catch {
+      found = [];
+    }
+    searching = false;
+    if (found.length === 1) pickBoard(found[0]);
+  }
+
+  function pickBoard(b: FoundBoard) {
+    draft = { host: b.host, port: b.port };
+  }
+
+  // ---- auto discovery on start
+
+  /** A board found on start that we try instead of the saved one; saved only once it connects. */
+  let candidate: Config | null = null;
+  let candidateTimer: ReturnType<typeof setTimeout> | undefined;
+  const AUTO_DISCOVER_AFTER_MS = 4000;
+  const CANDIDATE_TIMEOUT_MS = 8000;
+
+  async function autoDiscover() {
+    const boards = await discoverBoards().catch(() => [] as FoundBoard[]);
+    if (conn === "connected" || !boards.length) return;
+    const b = boards[0];
+    if (b.host === config.host && b.port === config.port) return;
+    candidate = { host: b.host, port: b.port };
+    client.connect(b.host, b.port);
+    // It doesn't answer either: back to the saved connection, which stays as it is.
+    candidateTimer = setTimeout(() => {
+      if (!candidate) return;
+      candidate = null;
+      client.connect(config.host, config.port);
+    }, CANDIDATE_TIMEOUT_MS);
+  }
+
+  function dropCandidate() {
+    candidate = null;
+    clearTimeout(candidateTimer);
+  }
+
+  function onConnState(s: ConnState) {
+    conn = s;
+    if (s !== "connected" || !candidate) return;
+    config = candidate;
+    draft = { ...config };
+    dropCandidate();
+    db.saveConfig(config).catch(failed);
+  }
+
   function changeLanguage(l: Locale) {
     setLocale(l);
     db.setSetting("language", l).catch(failed);
   }
 
   onMount(() => {
-    client = new AutodartsClient({ onState: (s) => (conn = s), onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
+    client = new AutodartsClient({ onState: onConnState, onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
     (async () => {
       try {
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
         setLocale(isLocale(lang) ? lang : getLocale());
+        const saved = await db.hasConfig();
         config = await db.loadConfig();
         draft = { ...config };
         routines = await db.loadRoutines();
@@ -712,6 +771,9 @@
         refreshDpi();
         ready = true;
         client.connect(config.host, config.port);
+        // First start: look for a board right away. Later: only if the saved one doesn't answer.
+        if (!saved) autoDiscover();
+        else setTimeout(() => conn !== "connected" && autoDiscover(), AUTO_DISCOVER_AFTER_MS);
       } catch (e) {
         dbError = e instanceof Error ? e.message : String(e);
       }
@@ -849,8 +911,32 @@
         {/if}
         <div class="row">
           <button type="submit" class="primary">{t("settings.save")}</button>
+          <button type="button" class="ghost" onclick={searchBoards} disabled={searching}>
+            {t(searching ? "settings.searching" : "settings.search")}
+          </button>
           <button type="button" class="ghost" onclick={useDefaults}>{t("settings.reset")}</button>
         </div>
+        {#if found && !searching}
+          {#if found.length === 0}
+            <p class="hint">{t("settings.foundNone")}</p>
+          {:else if found.length === 1}
+            <p class="hint">{t("settings.foundOne", { name: found[0].name })}</p>
+          {:else}
+            <p class="hint">{t("settings.foundMany")}</p>
+            <div class="row found">
+              {#each found as b (b.id)}
+                <button
+                  type="button"
+                  class="ghost small"
+                  class:picked={draft.host === b.host && draft.port === b.port}
+                  onclick={() => pickBoard(b)}
+                >
+                  {b.name} · {b.host}:{b.port}{b.cams ? ` · ${t("settings.cams", { n: b.cams })}` : ""}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        {/if}
       </form>
 
       <h3>{t("settings.recentTitle")}</h3>
@@ -1689,6 +1775,8 @@
       border-radius: 6px;
       padding: 0.55rem 0.7rem;
     }
+    .found { margin-top: 0.5rem; }
+    .found .picked { border-color: var(--chalk); }
     .row { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; align-items: center; }
     button.primary, button.ghost {
       font: inherit;

@@ -9,10 +9,9 @@
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-3. Settings: Autodarts auto discovery of IP & port
-4. Buy me a coffee: add the real link (placeholder URL for now)
-5. Fix GitHub Actions asset creation
-6. Update README.md for version 0.1
+3. Buy me a coffee: add the real link (placeholder URL for now)
+4. Fix GitHub Actions asset creation
+5. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -62,6 +61,9 @@
 
 
 ## Done ✅
+* Autodarts auto discovery (mDNS)
+  * "Search network" in the settings fills in host & port
+  * Searches by itself on the first start and when the saved client doesn't answer; saved only once it connects
 * Score boxes above the dartboard
 * Removed the camera feed placeholder
 * i18n (English, German) and language selection

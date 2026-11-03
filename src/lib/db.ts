@@ -128,6 +128,11 @@ export async function loadConfig(): Promise<Config> {
   return { host: host || DEFAULT_CONFIG.host, port: port || DEFAULT_CONFIG.port };
 }
 
+/** False until a connection was saved, i.e. on the first start. */
+export async function hasConfig(): Promise<boolean> {
+  return (await getSetting("autodarts_host")) !== null;
+}
+
 export async function saveConfig(config: Config): Promise<void> {
   await setSetting("autodarts_host", config.host);
   await setSetting("autodarts_port", String(config.port));

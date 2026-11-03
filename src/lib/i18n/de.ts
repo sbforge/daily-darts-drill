@@ -54,6 +54,12 @@ export const de: Record<Key, string> = {
   "settings.portInvalid": "Der Port muss eine ganze Zahl zwischen 1 und 65535 sein.",
   "settings.unreachable":
     "Autodarts ist noch nicht erreichbar. Prüfe, ob es läuft und ob Host und Port zu deinem Setup passen. Es wird automatisch erneut versucht.",
+  "settings.search": "Netzwerk durchsuchen",
+  "settings.searching": "Suche läuft…",
+  "settings.foundNone": "Kein Autodarts-Client im Netzwerk gefunden. Gib Host und Port von Hand ein.",
+  "settings.foundOne": "{name} gefunden und die Adresse eingetragen. Speichere, um dich zu verbinden.",
+  "settings.foundMany": "Mehrere Autodarts-Clients gefunden. Wähle einen aus und speichere, um dich zu verbinden.",
+  "settings.cams": "{n} Kameras",
   "settings.save": "Speichern und verbinden",
   "settings.reset": "Auf localhost:3180 zurücksetzen",
   "settings.recentTitle": "Zuletzt erkannte Würfe",

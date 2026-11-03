@@ -51,6 +51,12 @@ export const en = {
   "settings.portInvalid": "Port must be a whole number between 1 and 65535.",
   "settings.unreachable":
     "Can’t reach Autodarts yet. Check that it is running and that host and port match your setup. Retrying automatically.",
+  "settings.search": "Search network",
+  "settings.searching": "Searching…",
+  "settings.foundNone": "No Autodarts client found on the network. Enter host and port by hand.",
+  "settings.foundOne": "Found {name} and filled in its address. Save to connect.",
+  "settings.foundMany": "Several Autodarts clients found. Pick one, then save to connect.",
+  "settings.cams": "{n} cams",
   "settings.save": "Save and connect",
   "settings.reset": "Reset to localhost:3180",
   "settings.recentTitle": "Last throws seen",
