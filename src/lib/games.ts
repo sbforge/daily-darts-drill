@@ -6,6 +6,8 @@ export type Settings = Record<string, string | number>;
 export interface Field {
   key: string;
   label: string;
+  /** What the option does, shown behind the info icon next to the field. */
+  info: string;
   kind: "select" | "number";
   options?: { value: string | number; label: string }[];
   min?: number;
@@ -40,7 +42,7 @@ export interface ComputeContext {
  * to its state and stats. It replays all darts every time, so corrections
  * in Autodarts are handled for free and results can always be recomputed.
  *
- * Texts (name, blurb, field labels) are getters, so they follow the selected language.
+ * Texts (name, blurb, field labels and infos) are getters, so they follow the selected language.
  */
 export interface GameDef {
   id: string;
@@ -135,6 +137,9 @@ export const aroundTheClock: GameDef = {
       get label() {
         return t("atc.direction");
       },
+      get info() {
+        return t("atc.directionInfo");
+      },
       kind: "select",
       options: [opt("cw", () => t("atc.cw")), opt("ccw", () => t("atc.ccw"))],
     },
@@ -143,6 +148,9 @@ export const aroundTheClock: GameDef = {
       get label() {
         return t("atc.zone");
       },
+      get info() {
+        return t("atc.zoneInfo");
+      },
       kind: "select",
       options: ZONES.map((z) => opt(z, () => t(`atc.${z}`))),
     },
@@ -150,6 +158,9 @@ export const aroundTheClock: GameDef = {
       key: "finish",
       get label() {
         return t("atc.finish");
+      },
+      get info() {
+        return t("atc.finishInfo");
       },
       kind: "select",
       options: [opt("bull", () => t("dart.bull")), opt("singleBull", () => t("dart.singleBull"))],
@@ -230,6 +241,9 @@ export const simpleDoubles: GameDef = {
       get label() {
         return t("game.double");
       },
+      get info() {
+        return t("simpleDoubles.doubleInfo");
+      },
       kind: "select",
       options: doubleOptions,
     },
@@ -304,6 +318,9 @@ export const complexDoubles: GameDef = {
       key: "double",
       get label() {
         return t("game.double");
+      },
+      get info() {
+        return t("complexDoubles.doubleInfo");
       },
       kind: "select",
       options: doubleOptions.filter((o) => o.value !== 25),
@@ -431,6 +448,9 @@ export const oneTwentyOne: GameDef = {
       key: "start",
       get label() {
         return t("121.start");
+      },
+      get info() {
+        return t("121.startInfo");
       },
       kind: "number",
       min: 2,

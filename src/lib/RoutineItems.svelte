@@ -6,9 +6,9 @@
   import { flip } from "svelte/animate";
   import { SvelteSet } from "svelte/reactivity";
   import AddGameDialog from "./AddGameDialog.svelte";
+  import GameField from "./GameField.svelte";
   import { gameById, type GameDef } from "./games";
   import { t } from "./i18n/index.svelte";
-  import Select from "./Select.svelte";
   import type { RoutineItem } from "./store";
 
   let { items, totalSeconds }: { items: RoutineItem[]; totalSeconds: number } = $props();
@@ -213,14 +213,7 @@
           {#if g.fields.length}
             <div class="fields">
               {#each g.fields as f (f.key)}
-                <label>
-                  {f.label}
-                  {#if f.kind === "select"}
-                    <Select bind:value={it.settings[f.key]} options={f.options ?? []} />
-                  {:else}
-                    <input type="number" min={f.min} max={f.max} bind:value={it.settings[f.key]} />
-                  {/if}
-                </label>
+                <GameField field={f} bind:value={it.settings[f.key]} />
               {/each}
             </div>
           {:else}
@@ -307,5 +300,5 @@
   .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; padding-top: 0.5rem; }
   .body-foot { display: flex; justify-content: flex-end; }
   .item { --field-bg: var(--bg); }
-  .item input { background: var(--bg); }
+  .item :global(input) { background: var(--bg); }
 </style>

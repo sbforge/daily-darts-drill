@@ -10,12 +10,15 @@
     options,
     onchange,
     label,
+    id: buttonId,
   }: {
     value: V;
     options: { value: V; label: string }[];
     onchange?: (value: V) => void;
     /** Accessible name when the select is not inside a <label>. */
     label?: string;
+    /** For a <label for> outside the select. */
+    id?: string;
   } = $props();
 
   const id = $props.id();
@@ -113,6 +116,7 @@
 
 <button
   bind:this={trigger}
+  id={buttonId}
   type="button"
   class="select"
   role="combobox"
@@ -132,7 +136,7 @@
 </button>
 
 {#if open}
-  <!-- The list sits inside the field's <label>; cancelling the click keeps the label from reopening it. -->
+  <!-- Inside a field's <label>, cancelling the click keeps the label from reopening the list. -->
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
   <ul bind:this={list} id="{id}-list" role="listbox" onclick={(e) => e.preventDefault()}>
     {#each options as o, i (o.value)}

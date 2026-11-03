@@ -1,9 +1,9 @@
 <script lang="ts">
   // Modal for adding a game to a routine: pick the game, set its time cap and settings, add it.
   // Uses the native <dialog>, which brings focus trapping, Escape to close and the backdrop.
-  import { GAMES, gameById } from "./games";
+  import GameField from "./GameField.svelte";
+  import { GAMES, gameById, type Field } from "./games";
   import { t } from "./i18n/index.svelte";
-  import Select from "./Select.svelte";
   import { newItem, type RoutineItem } from "./store";
 
   let { onadd }: { onadd: (item: RoutineItem) => void } = $props();
@@ -12,6 +12,19 @@
   let gameId = $state(GAMES[0].id);
   let draft = $state<RoutineItem>(newItem(GAMES[0].id));
   const g = $derived(gameById(draft.gameId));
+
+  const timeCap: Field = {
+    key: "minutes",
+    get label() {
+      return t("routines.timeCap");
+    },
+    get info() {
+      return t("routines.timeCapInfo");
+    },
+    kind: "number",
+    min: 1,
+    max: 120,
+  };
 
   export function open() {
     pick(gameId);
@@ -53,19 +66,9 @@
     </fieldset>
 
     <div class="fields">
-      <label>
-        {t("routines.timeCap")}
-        <input type="number" min="1" max="120" bind:value={draft.minutes} />
-      </label>
-      {#each g.fields as f (f.key)}
-        <label>
-          {f.label}
-          {#if f.kind === "select"}
-            <Select bind:value={draft.settings[f.key]} options={f.options ?? []} />
-          {:else}
-            <input type="number" min={f.min} max={f.max} bind:value={draft.settings[f.key]} />
-          {/if}
-        </label>
+      <GameField field={timeCap} bind:value={draft.minutes} />
+      {#each g.fields as f (`${g.id}-${f.key}`)}
+        <GameField field={f} bind:value={draft.settings[f.key]} />
       {/each}
     </div>
 
@@ -116,7 +119,7 @@
 
   .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; }
   .fields { --field-bg: var(--bg); }
-  .fields input { background: var(--bg); }
+  .fields :global(input) { background: var(--bg); }
   .foot { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>

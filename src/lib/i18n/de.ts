@@ -18,6 +18,7 @@ export const de: Record<Key, string> = {
   "common.confirmDelete": "Zum Löschen erneut klicken",
   "common.minutes": "{n} Min.",
   "common.untitled": "Ohne Namen",
+  "common.fieldInfo": "Info zu „{name}“",
   "error.save": "Speichern in der Datenbank fehlgeschlagen: {msg}",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
@@ -68,6 +69,7 @@ export const de: Record<Key, string> = {
   "routines.collapseAll": "Alle zuklappen",
   "routines.noSettings": "Für dieses Spiel gibt es nichts einzustellen.",
   "routines.timeCap": "Zeitlimit (Minuten)",
+  "routines.timeCapInfo": "So lange läuft dieses Spiel höchstens. Ist die Zeit um, geht die Routine zum nächsten Spiel weiter, auch wenn dieses noch nicht beendet ist.",
   "routines.gameToAdd": "Spiel zum Hinzufügen",
   "routines.addGame": "Spiel hinzufügen",
   "routines.duplicate": "Routine duplizieren",
@@ -167,14 +169,17 @@ export const de: Record<Key, string> = {
   "atc.blurb":
     "Triff jede Zahl in der Reihenfolge der Scheibe und beende mit dem Bull. Nur Treffer bringen dich weiter.",
   "atc.direction": "Richtung",
+  "atc.directionInfo": "Die Reihenfolge, in der du um das Board gehst. Im Uhrzeigersinn beginnt bei 1 und folgt dem Board über 18, 4, 13 … bis zur 20. Gegen den Uhrzeigersinn beginnt bei 1 und geht über 20, 5, 12 … bis zur 18.",
   "atc.cw": "Im Uhrzeigersinn",
   "atc.ccw": "Gegen den Uhrzeigersinn",
   "atc.zone": "Zu treffendes Segment",
+  "atc.zoneInfo": "Welcher Teil einer Zahl als Treffer zählt. Inneres Single ist die große Fläche zwischen Bull und Triple, äußeres Single die zwischen Triple und Double. Andere Treffer auf der Zahl bringen dich nicht weiter.",
   "atc.outerSingle": "Äußeres Single",
   "atc.innerSingle": "Inneres Single",
   "atc.triple": "Triple",
   "atc.double": "Double",
   "atc.finish": "Abschluss auf",
+  "atc.finishInfo": "Das letzte Ziel nach allen 20 Zahlen. Bull verlangt das Bullseye, Single Bull den grünen Ring darum.",
   "atc.inText.outerSingle": "äußeres Single",
   "atc.inText.innerSingle": "inneres Single",
   "atc.inText.triple": "Triple",
@@ -191,6 +196,7 @@ export const de: Record<Key, string> = {
   // simple doubles
   "simpleDoubles.name": "Einfache Doubles",
   "simpleDoubles.blurb": "Wirf auf ein Double. Nur dieses Double zählt als Treffer.",
+  "simpleDoubles.doubleInfo": "Das Double, auf das du das ganze Spiel wirfst. Nur dieses Double zählt als Treffer, jeder andere Dart ist ein Fehlwurf.",
   "simpleDoubles.summary": "{accuracy} % Trefferquote ({hits} von {darts} Darts)",
 
   // complex doubles
@@ -198,6 +204,7 @@ export const de: Record<Key, string> = {
   "complexDoubles.blurb":
     "Checke das Double mit drei Darts aus. Single-Treffer werden abgezogen, das nächste Ziel ergibt sich aus dem Rest. Bleibt nach Dart 2 eine ungerade Zahl, ist das Bull das Ziel.",
   "complexDoubles.describe": "Ziel D{n}",
+  "complexDoubles.doubleInfo": "Das Double, mit dem jede Runde beginnt. Jede Runde ist ein Checkout über den doppelten Wert (D16 = 32) mit drei Darts. Bull gibt es hier nicht.",
   "complexDoubles.summary": "{rate} % Erfolg ({successes} von {rounds} Runden)",
   "complexDoubles.thisRound": "Diese Runde",
   "complexDoubles.success": "Erfolg",
@@ -224,6 +231,7 @@ export const de: Record<Key, string> = {
   "121.blurb":
     "Checke innerhalb von 9 Darts aus. Ein Checkout mit Dart 1-3 erhöht den nächsten Checkout um 3, mit Dart 4-6 um 2, mit Dart 7-9 um 1. Ein verpasster Checkout senkt ihn um 1.",
   "121.start": "Start-Checkout",
+  "121.startInfo": "Der Checkout, mit dem das Spiel beginnt (2-170). Von dort geht es mit jedem Checkout nach oben und mit jedem Fehlversuch nach unten. Üblich ist der Start bei 121.",
   "121.describe": "Start bei {n}, 9 Darts pro Checkout",
   "121.summary": "Höchster Checkout {best}, {checkouts} geschafft, {fails} verpasst",
   "121.remaining": "Rest",
