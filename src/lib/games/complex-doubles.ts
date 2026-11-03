@@ -1,7 +1,7 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
 import { doubleField, doubleOptions, pct } from "./shared";
-import type { BoardField, GameDef } from "./types";
+import type { BoardField, GameDef, GameResult } from "./types";
 
 interface Round {
   outcome: "success" | "fail" | "pending";
@@ -68,13 +68,13 @@ export const complexDoubles: GameDef = {
     const target = Number(s.double);
     let rounds = 0;
     let successes = 0;
-    let noScore: number | undefined;
+    let noScore: GameResult["noScore"];
     const by = [0, 0, 0];
 
     turns.forEach((turn, ti) => {
       const open = ctx.open && ti === turns.length - 1;
       const r = evalRound(turn, target);
-      if (r.bust && ti === turns.length - 1) noScore = ti;
+      if (r.bust && ti === turns.length - 1) noScore = { turn: ti, darts: r.at };
       if (r.outcome === "success") {
         rounds++;
         successes++;

@@ -95,6 +95,8 @@
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
   const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
+  // After a bust the turn is over: darts of the shown turn from here on don't count, its empty boxes are closed.
+  const bustAt = $derived(session && result?.noScore?.turn === session.shownTurn ? result.noScore.darts : 3);
   const canStart = $derived(!!def && (detecting || !def.needsDarts));
   // A game with darts can't go on without the detection, so it waits paused until Autodarts is back.
   const waiting = $derived(phase === "running" && !!def?.needsDarts && !detecting);
@@ -325,7 +327,7 @@
   let seenNoScore: number | undefined;
   let noScoreTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
-    const n = phase === "running" ? result?.noScore : undefined;
+    const n = phase === "running" ? result?.noScore?.turn : undefined;
     if (n !== undefined && n !== seenNoScore) {
       clearTimeout(noScoreTimer);
       noScoreAt = n;
@@ -888,6 +890,7 @@
               <button
                 class="dart-box filled"
                 class:done={!session.current.length}
+                class:void={i >= bustAt}
                 class:editing={session.edit === i}
                 class:fixed={d.method === "manual"}
                 aria-pressed={session.edit === i}
@@ -895,7 +898,7 @@
                 onclick={() => session?.toggleEdit(i)}
               >{dartLabel(d)}</button>
             {:else}
-              <div class="dart-box">–</div>
+              <div class="dart-box" class:closed={i >= bustAt} title={i >= bustAt ? t("run.noScoreHint") : undefined}>{i >= bustAt ? "✕" : "–"}</div>
             {/if}
           {/each}
         </div>
@@ -1448,6 +1451,9 @@
     border-radius: 50%;
     background: var(--accent);
   }
+  /* Thrown after a bust, or never to be thrown: the turn is over. */
+  .dart-box.void:not(.editing) { color: var(--dim); border-color: var(--line); border-style: dashed; text-decoration: line-through; }
+  .dart-box.closed { color: #ff6b5b; opacity: 0.55; border-style: dashed; font-size: 1.2rem; }
   .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
   .pick-hint { max-width: 400px; width: 100%; min-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
   .pick-hint.show { visibility: visible; }

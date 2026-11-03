@@ -125,4 +125,5 @@
 * Throw / takeout status as an icon left of the dart boxes while playing (target: throw, hand: take out, moving hand: takeout in progress)
 * "No Score" (bust) rule in the checkout games (121, Plan B): past the rest, a rest of 1, or 0 without a double ends the turn at once with no score
   * 121: the busted turn uses all three darts right away, the rest goes back to the start of the turn
+  * The turn is over at the bust: its empty boxes are closed, a dart Autodarts still detects is struck through and doesn't count, a dart set by hand starts the next turn
   * Animated "No Score" overlay for 2 s on a bust, also when a correction makes a turn bust; still with reduced motion

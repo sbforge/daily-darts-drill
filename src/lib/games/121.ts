@@ -1,6 +1,6 @@
 import { num, t } from "../i18n/index.svelte";
 import { opt, pct } from "./shared";
-import type { GameDef } from "./types";
+import type { GameDef, GameResult } from "./types";
 
 const DARTS_PER_ATTEMPT = 9;
 const STAGES = DARTS_PER_ATTEMPT / 3;
@@ -76,13 +76,14 @@ export const oneTwentyOne: GameDef = {
     let best = 0;
     let safehouse = 0; // the highest checkout made with darts 1-3; a miss never drops below it
     let openUsed = 0; // darts of the turn still on the board that count in this attempt
-    let noScore: number | undefined;
+    let noScore: GameResult["noScore"];
 
     turns.forEach((turn, ti) => {
       const open = ctx.open && ti === turns.length - 1;
       const turnStart = remaining;
       let ended: "none" | "bust" | "out" = "none";
       let outSlot = 0;
+      let bustAt = 0;
 
       // A plain loop (not forEach) so TS sees the assignments to `ended`.
       for (let i = 0; i < turn.length; i++) {
@@ -94,6 +95,7 @@ export const oneTwentyOne: GameDef = {
         } else if (rem <= 1) {
           // Past the rest, a rest of 1, or 0 without a double: no double can finish from there.
           ended = "bust";
+          bustAt = i + 1;
           remaining = turnStart;
         } else {
           remaining = rem;
@@ -103,7 +105,7 @@ export const oneTwentyOne: GameDef = {
       }
 
       // A bust is no score: the rest goes back to the start of the turn, which ends right there.
-      if (ended === "bust" && ti === turns.length - 1) noScore = ti;
+      if (ended === "bust" && ti === turns.length - 1) noScore = { turn: ti, darts: bustAt };
       if (ended === "out") {
         checkouts++;
         best = Math.max(best, target);
