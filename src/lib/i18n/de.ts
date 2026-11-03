@@ -243,8 +243,6 @@ export const de: Record<Key, string> = {
   "121.describe": "Start bei {n}, 9 Darts pro Checkout",
   "121.summary": "Höchster Checkout {best}, {checkouts} geschafft, {fails} verpasst",
   "121.restOf": "Rest von {n}",
-  "121.stage": "Stufe",
-  "121.stageValueStep": "{n} von {total}, +{step}",
   "121.dartsLeftN": "Verbleibende Darts: {n}",
   "121.checkouts": "Geschaffte Checkouts",
   "121.fails": "Verpasst",

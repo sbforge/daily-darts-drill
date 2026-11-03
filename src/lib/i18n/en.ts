@@ -240,8 +240,6 @@ export const en = {
   "121.describe": "Start at {n}, 9 darts per checkout",
   "121.summary": "Highest checkout {best}, {checkouts} made, {fails} failed",
   "121.restOf": "Rest of {n}",
-  "121.stage": "Stage",
-  "121.stageValueStep": "{n} of {total}, +{step}",
   "121.dartsLeftN": "Darts left: {n}",
   "121.checkouts": "Checkouts made",
   "121.fails": "Failed",

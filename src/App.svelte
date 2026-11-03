@@ -1151,17 +1151,32 @@
   .plan-meta { color: var(--dim); text-align: right; }
   .plan-desc { color: var(--dim); font-size: 0.9rem; grid-column: 1 / -1; }
 
-  .stage { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 2.5rem; align-items: start; }
+  /* Game info and board share the view half and half; the game info is centred in its half. */
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+  .stage .panel { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .clock { font-size: 4.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock.waiting { color: var(--dim); }
   .clock.paused { color: var(--dart); opacity: 0.75; }
   .note { color: var(--dim); margin: 0.5rem 0 1.5rem; }
-  .focus { display: flex; flex-direction: column; margin-bottom: 1.25rem; }
-  .focus .big { font-size: 3.6rem; line-height: 1.05; }
-  .hero { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 1.25rem; }
+  /* The current score, the one number to read at a glance from the oche. */
+  .focus {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: min(100%, 18rem);
+    margin: 0.5rem 0 1.5rem;
+    padding: 1rem 2.5rem 1.25rem;
+    border: 1px solid var(--petrol);
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: 0 0 0 4px rgb(26 159 174 / 0.12);
+  }
+  .focus .big { font-size: 6.5rem; line-height: 1; }
+  .hero { display: flex; align-items: baseline; justify-content: center; gap: 0.75rem; margin-bottom: 1.25rem; }
   .big { font-size: 3.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .cap { color: var(--dim); }
   .stats { margin: 0; border-top: 1px solid var(--line); }
+  .stage .stats { width: min(100%, 24rem); text-align: left; }
   .stats div { display: flex; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
   dt { color: var(--dim); }
   dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }

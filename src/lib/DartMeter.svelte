@@ -29,7 +29,7 @@
 </div>
 
 <style>
-  .meter { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1.25rem; }
+  .meter { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; margin-bottom: 1.25rem; }
   .cap { color: var(--dim); }
   .row { display: flex; gap: 1rem; }
   .group { display: flex; gap: 0.35rem; }

@@ -120,21 +120,12 @@ export const oneTwentyOne: GameDef = {
     const lastOpen = ctx.open && turns.length ? turns[turns.length - 1].length : 0;
     const used = slotBase + lastOpen;
     const dartsLeft = Math.max(0, DARTS_PER_ATTEMPT - used);
-    // The stage of the next dart: darts 1-3, 4-6 or 7-9.
-    const stage = Math.min(STAGES, Math.floor(used / 3) + 1);
     const attempts = checkouts + fails;
     const rate = pct(checkouts, attempts);
 
     return {
       values: { highestCheckout: best, checkouts, fails, nextCheckout: target, successRate: rate },
       lines: [
-        {
-          key: "stage",
-          label: t("121.stage"),
-          value: fastForward
-            ? t("121.stageValueStep", { n: stage, total: STAGES, step: step(stage * 3, true) })
-            : t("game.xOfY", { n: stage, total: STAGES }),
-        },
         ...(useSafehouse
           ? [{ key: "safehouse", label: t("121.safehouse"), value: safehouse ? String(safehouse) : t("game.noneYet") }]
           : []),
@@ -145,7 +136,7 @@ export const oneTwentyOne: GameDef = {
       ],
       // The rest score is what to aim at right now; the checkout it belongs to is in the label.
       focus: { label: t("121.restOf", { n: target }), value: String(remaining) },
-      // Grouped by stage, so the stage can be read off the icons too.
+      // Grouped into turns of three darts.
       darts: { label: t("121.dartsLeftN", { n: dartsLeft }), total: DARTS_PER_ATTEMPT, used, group: 3 },
       done: false,
     };
