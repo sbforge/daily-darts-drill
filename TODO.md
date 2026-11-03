@@ -1,39 +1,36 @@
 # Todos
 
 ## Next (in priority order)
-1. Game detail screens: every training game gets its own detail screen
-    * Around the clock:
-      * Add Single Bull or Bull as final field (any of them)
-2. Manual score correction in the score boxes above the dartboard
+1. Manual score correction in the score boxes above the dartboard
     * click the box to edit
     * if possible, react to a click to the dartboard visualization.
       * if score is corrected the calculation for that turn has to be recalculated
       * scores can be edited any time
         * when all 3 darts are thrown
         * when only a part of the turn is over... i.e. 2 darts thrown.. the first one gets corrected before the player continues.
-3. Autodarts client status (pause, offline, ...)
+2. Autodarts client status (pause, offline, ...)
     * Auto reconnect
     * Pause the routine while disconnected
-4. Show current Autodarts status (throw, takeout, takeout in progress, error?)
-5. Single training game (play one game without a routine)
+3. Show current Autodarts status (throw, takeout, takeout in progress, error?)
+4. Single training game (play one game without a routine)
     * add quickgame option to the training screen
       * button on the top left
     * Show Popup with available training games (like in the "add game" function when editing a routine)
-6. History graph per training game
+5. History graph per training game
     * Track result progress (per game)
-7. Reset & calibrate button (Request: see debug folder)
-8. Loading Screen
+6. Reset & calibrate button (Request: see debug folder)
+7. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-9. About Screen
+8. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-10. Settings: Autodarts auto discovery of IP & port
-11. Buy me a coffee: add the real link (placeholder URL for now)
-12. Fix GitHub Actions asset creation
-13. Update README.md for version 0.1
+9. Settings: Autodarts auto discovery of IP & port
+10. Buy me a coffee: add the real link (placeholder URL for now)
+11. Fix GitHub Actions asset creation
+12. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -116,10 +113,12 @@
   * Games start automatically after the countdown and the pause
   * Random motivational quote on loading, countdown, break and paused game
 * Buy me a coffee link (placeholder)
+* Game view: board and game info 50/50, current score or target in a framed box, clock starts when the game opens
 * Game settings: info icon with a description for every setting
 * Games split into one module each (src/lib/games/)
 * 121
-  * Rest score as the big number, current stage and darts left in the stats
+  * Rest score in the score box, darts left as 9 dart icons
   * Safehouse (optional)
   * Skips renamed to fast-forward (optional)
+* Around the clock: finish on bull, single bull or any bull; T/D shown on treble and double targets
 * Complex doubles renamed to "Plan B", current target in the score box, "Won with dart n" stats removed

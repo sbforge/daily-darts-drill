@@ -13,6 +13,25 @@ function zoneInText(zone: string): string {
   return ZONES.includes(zone as Zone) ? t(`atc.inText.${zone as Zone}`) : "";
 }
 
+const FINISHES = ["bull", "singleBull", "anyBull"] as const;
+type Finish = (typeof FINISHES)[number];
+
+/** The finish setting, with anything unknown read as the bull. */
+function finishOf(v: unknown): Finish {
+  return FINISHES.includes(v as Finish) ? (v as Finish) : "bull";
+}
+
+function hitsFinish(d: Dart, finish: Finish): boolean {
+  if (finish === "bull") return d.kind === "bull";
+  if (finish === "singleBull") return d.kind === "outerBull";
+  return d.kind === "bull" || d.kind === "outerBull";
+}
+
+/** A number as it reads on the board for the zone: T18 and D18, singles just 18. */
+function targetText(n: number, zone: string): string {
+  return zone === "triple" ? `T${n}` : zone === "double" ? `D${n}` : String(n);
+}
+
 function hitsZone(d: Dart, n: number, zone: string): boolean {
   if (d.number !== n) return false;
   switch (zone) {
@@ -71,21 +90,21 @@ export const aroundTheClock: GameDef = {
         return t("atc.finishInfo");
       },
       kind: "select",
-      options: [opt("bull", () => t("dart.bull")), opt("singleBull", () => t("dart.singleBull"))],
+      options: FINISHES.map((f) => opt(f, () => t(`atc.finish.${f}`))),
     },
   ],
   describe: (s) =>
     t("atc.describe", {
       direction: t(s.direction === "ccw" ? "atc.ccw" : "atc.cw"),
       zone: zoneInText(String(s.zone)),
-      finish: t(s.finish === "singleBull" ? "atc.inText.singleBull" : "atc.inText.bull"),
+      finish: t(`atc.inText.${finishOf(s.finish)}`),
     }),
   summary: (v) => t("atc.summary", { accuracy: num(v.accuracy, 1), progress: v.progress }),
   compute(turns, s) {
     const order = s.direction === "ccw" ? COUNTER : CLOCKWISE;
     const zone = String(s.zone);
     const total = order.length + 1; // numbers, then the bull
-    const finishKind = s.finish === "singleBull" ? "outerBull" : "bull";
+    const finish = finishOf(s.finish);
 
     let step = 0;
     let hits = 0;
@@ -93,7 +112,7 @@ export const aroundTheClock: GameDef = {
     for (const d of turns.flat()) {
       if (step >= total) break;
       attempts++;
-      const hit = step < order.length ? hitsZone(d, order[step], zone) : d.kind === finishKind;
+      const hit = step < order.length ? hitsZone(d, order[step], zone) : hitsFinish(d, finish);
       if (hit) {
         hits++;
         step++;
@@ -102,8 +121,7 @@ export const aroundTheClock: GameDef = {
 
     const done = step >= total;
     const accuracy = pct(hits, attempts);
-    const next =
-      step < order.length ? String(order[step]) : t(s.finish === "singleBull" ? "dart.singleBull" : "dart.bull");
+    const next = step < order.length ? targetText(order[step], zone) : t(`atc.target.${finish}`);
 
     return {
       values: { accuracy, darts: attempts, hits, progress: step },
