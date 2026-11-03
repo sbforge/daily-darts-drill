@@ -258,8 +258,48 @@ def g_scoring():
         b += dart(x, y + 20, a, .95)
     return b
 
+
+# ---- the v1 games
+def _label(text, x, y, size, anchor="start"):
+    return f'<text x="{x}" y="{y}" fill="{CHALK}" {FONT} font-size="{size}" letter-spacing="-3" text-anchor="{anchor}">{text}</text>'
+def _bar(x, y, w=150):
+    return f'<rect x="{x}" y="{y}" width="{w}" height="8" rx="4" fill="{ACCENT}" filter="url(#glow)"/>'
+
+def g_catch_40():
+    b = board(650, 270, 440, rot=0, hot={(20, "double"), (20, "treble")}, dim=.55, numbers=False)
+    b += dart(560, 120, 20, 1.0)
+    b += _label("61–100", 60, 290, 110) + _bar(64, 316)
+    return b
+def g_wild_card():
+    b = board(650, 270, 440, rot=18, hot={(7, "double"), (16, "double"), (11, "treble")}, dim=.5, numbers=False)
+    b += _label("?", 120, 330, 260) + _bar(64, 360, 120)
+    return b
+def g_bobs_27():
+    i = ORDER.index(14)
+    b = board(400, 960, 640, rot=-i * 18, hot={(14, "double")}, dim=.6)
+    b += dart(400, 960 - 640 * .975, 32, 1.0)
+    b += _label("27", 70, 120, 120)
+    return b
+def g_bull_x():
+    b = board(400, 250, 300, rot=0, hot={(0, "bull"), (0, "obull")}, dim=.5, numbers=False)
+    b += dart(402, 252, 18, 1.0)
+    b += _label("×", 650, 330, 220, "middle")
+    return b
+def g_big_fish():
+    b = board(650, 270, 440, rot=0, hot={(0, "bull"), (20, "treble")}, dim=.55, numbers=False)
+    b += dart(652, 268, 24, 1.0)
+    b += _label("170", 60, 290, 150) + _bar(64, 316)
+    return b
+def g_solo_leg():
+    b = board(650, 270, 440, rot=0, hot={(20, "double")}, dim=.55, numbers=False)
+    b += _label("501", 60, 290, 150) + _bar(64, 316)
+    return b
+
 if __name__ == "__main__":
     backdrop(); app_icon(); hero(); singles(); routine_card()
     card(g_warm_up, "warm-up", ((.5, .5, AMBER, .16),))
     card(g_121, "121"); card(g_atc, "around-the-clock")
     card(g_simple_doubles, "simple-doubles"); card(g_complex_doubles, "complex-doubles"); card(g_scoring, "scoring")
+    for fn, name in ((g_catch_40, "catch-40"), (g_wild_card, "wild-card"), (g_bobs_27, "bobs-27"), (g_bull_x, "bull-x"),
+                     (g_big_fish, "big-fish"), (g_solo_leg, "solo-leg")):
+        card(fn, name)
