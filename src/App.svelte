@@ -40,6 +40,7 @@
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
+  import { checkForUpdate, initUpdates, installUpdate, later, RELEASES_URL, setAutoCheck, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
   import { chooseExportFile, lastBackup } from "./lib/backend";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
   import { pickMoments } from "./lib/fx/moments";
@@ -1049,6 +1050,10 @@
         const saved = await db.hasConfig();
         config = await db.loadConfig();
         draft = { ...config };
+        initUpdates(
+          { get: db.getSetting, set: db.setSetting, busy: () => phase !== "idle", backup: db.exportTo },
+          __APP_VERSION__,
+        ).catch((e) => log.warn(`updates: ${e}`));
         loaded("loading.routines");
         routines = await db.loadRoutines();
         const last = await db.getSetting("selected_routine");
@@ -1065,6 +1070,7 @@
         await new Promise((r) => setTimeout(r, MIN_LOADING_MS - (performance.now() - started)));
         ready = true;
         client.connect(config.host, config.port);
+        checkForUpdate({ manual: false });
         // First start: look for a board right away. Later: only if the saved one doesn't answer.
         if (!saved) autoDiscover();
         else setTimeout(() => conn !== "connected" && autoDiscover(), AUTO_DISCOVER_AFTER_MS);
@@ -1192,6 +1198,7 @@
     aria-current={view === "settings" ? "page" : undefined}
     onclick={() => go("settings")}
   >
+    {#if updateAvailable()}<span class="badge" aria-label={t("updates.badge")}></span>{/if}
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path
         fill="currentColor"
@@ -1203,6 +1210,12 @@
 
 {#if saveError}
   <p class="banner" role="alert">{saveError}</p>
+{/if}
+{#if updates.updatedTo}
+  <p class="banner ok" role="status">
+    {t("updates.updated", { v: updates.updatedTo })}
+    <button class="link" onclick={() => (updates.updatedTo = "")}>{t("updates.dismiss")}</button>
+  </p>
 {/if}
 {#if backupError}
   <p class="banner" role="alert">
@@ -1335,6 +1348,54 @@
             />
           </label>
           <p class="hint">{t("settings.animationsHint")}</p>
+        </section>
+
+        <section class="group wide" aria-labelledby="updates-title">
+          <h3 id="updates-title">{t("updates.title")}</h3>
+          <p>{t("updates.current", { v: __APP_VERSION__ })}</p>
+          <label>
+            {t("updates.auto")}
+            <Select
+              value={updates.autoCheck ? "on" : "off"}
+              options={[
+                { value: "on", label: t("updates.autoOn") },
+                { value: "off", label: t("updates.autoOff") },
+              ]}
+              onchange={(v) => setAutoCheck(v === "on")}
+            />
+          </label>
+          <p class="hint">{t("updates.privacy")}</p>
+          <div class="row">
+            <button class="ghost" disabled={updates.status === "checking" || updates.status === "downloading" || updates.status === "installing"} onclick={() => checkForUpdate({ manual: true })}>
+              {t(updates.status === "checking" ? "updates.checking" : "updates.check")}
+            </button>
+          </div>
+          {#if updates.status === "upToDate"}
+            <p class="hint" role="status">{t("updates.upToDate", { v: __APP_VERSION__ })}</p>
+          {:else if updates.status === "error"}
+            <p class="error" role="alert">{t("updates.error")}</p>
+            <p class="hint">{updates.error}</p>
+            <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+          {:else if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
+            <h4>{t("updates.available", { v: updates.version })}</h4>
+            {#if updates.notes}<pre class="notes">{updates.notes}</pre>{/if}
+            {#if updates.status === "available"}
+              {#if updates.blocker}
+                <p class="hint">{t(updates.blocker === "macos-not-installed" ? "updates.blockedMac" : "updates.blockedLinux")}</p>
+                <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+              {:else}
+                <div class="row">
+                  <button class="primary" disabled={phase !== "idle"} onclick={installUpdate}>{t("updates.now")}</button>
+                  <button class="ghost" onclick={later}>{t("updates.later")}</button>
+                  <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
+                </div>
+                {#if phase !== "idle"}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
+              {/if}
+            {:else}
+              <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
+              <p class="hint">{t(updates.status === "installing" ? "updates.installing" : "updates.downloading")}{updates.total ? ` ${Math.round((updates.done / updates.total) * 100)}%` : ""}</p>
+            {/if}
+          {/if}
         </section>
 
         <section class="group" aria-labelledby="data-title">
@@ -2588,6 +2649,11 @@
     .summary-split.single { grid-template-columns: minmax(0, 46rem); }
   }
 
+  .badge { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  button.icon { position: relative; }
+  .banner.ok { background: #1f4a2c; color: #d8f5e0; }
+  .notes { white-space: pre-wrap; font: inherit; font-size: 0.85rem; max-height: 10rem; overflow: auto; background: var(--panel); padding: 0.6rem; border-radius: 6px; }
+  progress { width: 100%; }
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
   .narrow { max-width: 34rem; }
