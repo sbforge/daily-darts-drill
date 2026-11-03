@@ -19,6 +19,9 @@ export const de: Record<Key, string> = {
   "board.stopped": "gestoppt",
   "board.noCamera": "keine Kamera",
   "board.blocked": "blockiert",
+  "phase.throw": "Werfen",
+  "phase.takeout": "Darts herausziehen",
+  "phase.takeoutInProgress": "Darts werden gezogen…",
 
   // general
   "common.delete": "Löschen",

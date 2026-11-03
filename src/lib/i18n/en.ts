@@ -17,6 +17,9 @@ export const en = {
   "board.stopped": "stopped",
   "board.noCamera": "no camera",
   "board.blocked": "blocked",
+  "phase.throw": "Throw",
+  "phase.takeout": "Take out your darts",
+  "phase.takeoutInProgress": "Takeout in progress…",
 
   // general
   "common.delete": "Delete",

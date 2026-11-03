@@ -144,9 +144,16 @@ export type BoardStatus =
   | "noCamera"
   | "blocked";
 
+/**
+ * Where a running detection is in the turn: waiting for darts, waiting for the takeout,
+ * or seeing the hand pull them. null while the detection doesn't run or the status is new to us.
+ */
+export type ThrowPhase = "throw" | "takeout" | "takeoutInProgress" | null;
+
 export interface ClientHandlers {
   onState(state: ConnState): void;
   onBoard(status: BoardStatus): void;
+  onPhase(phase: ThrowPhase): void;
   onEvent(event: DartEvent): void;
 }
 
@@ -166,6 +173,16 @@ export function boardStatus(state: any, blocker: string, calibrating: boolean): 
   return "running";
 }
 
+/**
+ * `state.status` while running: "throw" until the third dart, then "takeout", and
+ * "takeoutInProgress" while the hand pulls the darts (also after a manual reset).
+ */
+export function throwPhase(state: any): ThrowPhase {
+  if (!state?.running) return null;
+  const status = state.status;
+  return status === "throw" || status === "takeout" || status === "takeoutInProgress" ? status : null;
+}
+
 export class AutodartsClient {
   private handlers: ClientHandlers;
   private ws: WebSocket | null = null;
@@ -179,6 +196,7 @@ export class AutodartsClient {
   private blocker = "none";
   private calibrating = false;
   private status: BoardStatus = "unknown";
+  private phase: ThrowPhase = null;
 
   constructor(handlers: ClientHandlers) {
     this.handlers = handlers;
@@ -203,6 +221,7 @@ export class AutodartsClient {
     }
     this.handlers.onState("disconnected");
     this.setStatus("unknown");
+    this.setPhase(null);
   }
 
   private open() {
@@ -212,6 +231,7 @@ export class AutodartsClient {
     this.blocker = "none";
     this.calibrating = false;
     this.setStatus("unknown");
+    this.setPhase(null);
 
     let ws: WebSocket;
     try {
@@ -243,6 +263,7 @@ export class AutodartsClient {
       if (this.ws !== ws) return;
       this.ws = null;
       this.setStatus("unknown");
+      this.setPhase(null);
       this.scheduleRetry();
     };
   }
@@ -299,7 +320,15 @@ export class AutodartsClient {
   }
 
   private updateStatus() {
-    this.setStatus(this.lastState ? boardStatus(this.lastState, this.blocker, this.calibrating) : "unknown");
+    const status = this.lastState ? boardStatus(this.lastState, this.blocker, this.calibrating) : "unknown";
+    this.setStatus(status);
+    this.setPhase(status === "running" ? throwPhase(this.lastState) : null);
+  }
+
+  private setPhase(phase: ThrowPhase) {
+    if (phase === this.phase) return;
+    this.phase = phase;
+    this.handlers.onPhase(phase);
   }
 
   private setStatus(status: BoardStatus) {
