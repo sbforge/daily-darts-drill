@@ -18,13 +18,6 @@
     * Especially expectation management: why did I build this, how do I want to train?
 
 
-## Total Training Progress Index
-* Have a single number ( However it is defined) to have the possibility to compare training over all training routines or per game? or in total?
-* needs to be calculated somehow from different Game Results (Avg, Acc%, success/m ?)
-* When to calculate it?
-  * after every routine / game ?
-  * show in a nice graph
-
 ## Training Games
 * Routines: Predefined training routines
   * deletable?
@@ -133,3 +126,17 @@
   * Reset (`POST /api/reset`) clears the darts like a takeout by hand; only while the detection runs. A running game takes it as the end of the turn
   * Calibrate (`POST /api/config/calibration/auto`) starts the auto-calibration right away
   * A bubble over the buttons says whether it worked
+* D³ Performance Index (DPI), 0–100, always calculated from the saved results (src/lib/dpi.ts), never stored
+  * Every metric normalized between a baseline (0) and a target (100), clamped; a game's index is the weighted average of its metrics
+  * Central, versioned config: metrics, baselines, targets and weights per game; Around the clock has a scale per ring; too short a game doesn't count
+  * Overall index per session: game indices averaged per skill area (scoring, doubles, checkout, accuracy, consistency), the areas weighted, so a game played often doesn't dominate
+  * Current level: average of the latest 10 sessions (overall) or results (per game)
+  * Trend: latest 10 against the 10 before, shown from 5 in each; encouraging also when it goes down
+  * Own "Statistics" page in the navigation: the index (overall, per game with trend) and a chart of the index over time
+    * Toggle between the overall index and the game index; the game index lists every game, a click picks the one charted
+    * A dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values
+    * Trend as a diagonal arrow (green up, red down, grey sideways for steady) and the change in %, with an encouraging line in seven steps: steady below 2%, slight below 5%, strong from 15%
+    * Uses the full width; on a wide window the game list sits beside the picked game's chart
+    * The encouraging line is the hero beside the score, the arrow and the change sit under it
+    * Info button beside the title: how the index works, in words
+  * History shows the DPI per session and per game; deleting a session recalculates it

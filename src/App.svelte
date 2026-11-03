@@ -20,18 +20,20 @@
     type RoutineItem,
   } from "./lib/store";
   import * as db from "./lib/db";
+  import { overview, trendStep, type DpiOverview, type Performance, type Trend } from "./lib/dpi";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
+  import DpiChart from "./lib/DpiChart.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
-  import { LOCALES, dateTime, getLocale, isLocale, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
+  import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
     gameId: string;
@@ -46,7 +48,7 @@
   let ready = $state(false);
   let dbError = $state("");
   let saveError = $state("");
-  type View = "train" | "routines" | "history" | "settings";
+  type View = "train" | "routines" | "history" | "stats" | "settings";
   let view = $state<View>("train");
 
   // connection settings
@@ -67,6 +69,13 @@
   let history = $state<db.HistorySession[]>([]);
   let lastPlayed = $state<Record<string, string>>({});
   let pendingSessionDelete = $state<string | null>(null);
+  // The performance index, calculated from all stored results each time they change.
+  let dpi = $state<DpiOverview | null>(null);
+  let dpiHelp = $state<HTMLDialogElement>();
+  // Statistics shows either the overall index or the index of one game (the picked one, else the first).
+  let statsView = $state<"overall" | "games">("overall");
+  let statsGameId = $state("");
+  const statsGame = $derived(dpi?.games.find((g) => g.gameId === statsGameId) ?? dpi?.games[0] ?? null);
 
   // running a routine
   let run = $state<{
@@ -136,6 +145,11 @@
   function refreshHistory() {
     db.loadSessions().then((h) => (history = h), failed);
     db.loadLastPlayed().then((l) => (lastPlayed = l), failed);
+    refreshDpi();
+  }
+
+  function refreshDpi() {
+    db.loadResults().then((r) => (dpi = overview(r)), failed);
   }
 
   // ---- live events
@@ -553,6 +567,23 @@
     return t("history.playedNoCap", { n: played });
   }
 
+  /** Encouraging feedback on the trend, whichever way it goes. The arrow and the number show the direction. */
+  function trendText(tr: Trend): string {
+    if (tr.kind === "notEnough") return tr.missing ? t("dpi.notEnough", { n: tr.missing }) : t("dpi.notEnoughYet");
+    return t(`dpi.trend.${trendStep(tr.percent)}`);
+  }
+
+  /** The change without its sign: the arrow shows the direction. */
+  function trendShort(tr: Trend): string {
+    return tr.kind === "notEnough" ? "–" : `${num(Math.abs(tr.percent), 1)}%`;
+  }
+
+  function trendDir(tr: Trend): "up" | "down" | "steady" | "none" {
+    if (tr.kind === "notEnough") return "none";
+    const step = trendStep(tr.percent);
+    return step === "steady" ? "steady" : step.startsWith("up") ? "up" : "down";
+  }
+
   function deleteSession(id: string) {
     if (pendingSessionDelete !== id) {
       pendingSessionDelete = id;
@@ -603,6 +634,7 @@
         ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
         history = await db.loadSessions();
         lastPlayed = await db.loadLastPlayed();
+        refreshDpi();
         ready = true;
         client.connect(config.host, config.port);
       } catch (e) {
@@ -639,6 +671,9 @@
     </button>
     <button class="tab" aria-current={view === "history" ? "page" : undefined} onclick={() => go("history")}>
       {t("nav.history")}
+    </button>
+    <button class="tab" aria-current={view === "stats" ? "page" : undefined} onclick={() => go("stats")}>
+      {t("nav.stats")}
     </button>
   </nav>
   {#if inRun}
@@ -778,6 +813,9 @@
               {:else if s.status === "running"}
                 <span class="badge live">{t("history.running")}</span>
               {/if}
+              {#if dpi?.bySession.has(s.id)}
+                <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.bySession.get(s.id)!)}</span>
+              {/if}
             </div>
             <button class="ghost small danger" onclick={() => deleteSession(s.id)}>
               {pendingSessionDelete === s.id ? t("common.confirmDelete") : t("common.delete")}
@@ -790,7 +828,9 @@
                 <li>
                   <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
                   <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
-                  <span class="plan-meta">{playedLine(r)}</span>
+                  <span class="plan-meta">
+                    {playedLine(r)}{#if dpi?.byResult.has(r.id)} · {t("dpi.short")} {num(dpi.byResult.get(r.id)!)}{/if}
+                  </span>
                   <span class="plan-desc">{g.describe(r.settings)}</span>
                   <span class="plan-desc strong">{g.summary(r.values)}</span>
                 </li>
@@ -799,6 +839,105 @@
           {/if}
         </div>
       {/each}
+    </section>
+  {:else if view === "stats"}
+    {#snippet arrow(tr: Trend)}
+      {@const dir = trendDir(tr)}
+      {#if dir !== "none"}
+        <svg class="arrow" data-dir={dir} viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+          <path
+            d={dir === "up" ? "M4 12 12 4M6 4h6v6" : dir === "down" ? "M4 4l8 8M12 6v6H6" : "M2.5 8h11M9.5 4l4 4-4 4"}
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      {/if}
+    {/snippet}
+    {#snippet level(p: Performance)}
+      <div class="dpi-overall">
+        <div class="dpi-score">
+          <span class="big">{num(p.current ?? 0)}</span>
+          <span class="cap">{t("dpi.of")}</span>
+        </div>
+        <!-- Motivating is what the app is about: the line on the trend is the hero, the change sits under it. -->
+        <div class="motivation">
+          <p class="motto" class:quiet={p.trend.kind !== "trend"}>{trendText(p.trend)}</p>
+          {#if p.trend.kind === "trend"}
+            <p class="trend" data-dir={trendDir(p.trend)}>
+              {@render arrow(p.trend)}<span class="trend-value">{trendShort(p.trend)}</span>
+            </p>
+          {/if}
+        </div>
+      </div>
+    {/snippet}
+    <section class="statistics">
+      <div class="stats-head">
+        <h2>
+          {t("stats.title")}
+          <button class="info" aria-label={t("dpi.helpOpen")} title={t("dpi.helpOpen")} onclick={() => dpiHelp?.showModal()}>
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.4" />
+              <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
+              <path d="M8 7.3v4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+          </button>
+        </h2>
+        {#if dpi && dpi.overall.current !== null}
+          <div class="toggle" role="tablist" aria-label={t("dpi.title")}>
+            <button role="tab" aria-selected={statsView === "overall"} onclick={() => (statsView = "overall")}>
+              {t("dpi.overallIndex")}
+            </button>
+            <button role="tab" aria-selected={statsView === "games"} onclick={() => (statsView = "games")}>
+              {t("dpi.gameIndex")}
+            </button>
+          </div>
+        {/if}
+      </div>
+      {#if !dpi || dpi.overall.current === null}
+        <div class="dpi">
+          <h3>{t("dpi.title")}</h3>
+          <p class="hint">{t("dpi.empty")}</p>
+        </div>
+      {:else if statsView === "overall"}
+        <div class="dpi">
+          <h3>{t("dpi.overallIndex")}</h3>
+          {@render level(dpi.overall)}
+          <h4>{t("dpi.chartTitle")}</h4>
+          <DpiChart points={dpi.overallSeries} pointLabel={t("dpi.pointSession")} window={10} />
+        </div>
+      {:else}
+        <div class="dpi">
+          <h3>{t("dpi.gameIndex")}</h3>
+          <div class="game-split">
+            <ul class="dpi-games" aria-label={t("dpi.games")}>
+              {#each dpi.games as g (g.gameId)}
+                <li>
+                  <button class="dpi-game" aria-pressed={g.gameId === statsGame?.gameId} onclick={() => (statsGameId = g.gameId)}>
+                    <span class="game-label">
+                      <span class="plan-name">{gameById(g.gameId).name}</span>
+                      <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
+                    </span>
+                    <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
+                    <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend)}>
+                      {@render arrow(g.performance.trend)}{trendShort(g.performance.trend)}
+                    </span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+            <div class="game-detail">
+              {#if statsGame}
+                <h4>{gameById(statsGame.gameId).name}</h4>
+                {@render level(statsGame.performance)}
+                <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
+              {/if}
+            </div>
+          </div>
+        </div>
+      {/if}
     </section>
   {:else if view === "routines"}
     <section class="routines">
@@ -1097,6 +1236,32 @@
   <div class="foot">
     <button class="ghost" onclick={discardEmptyDraft}>{t("routines.discard")}</button>
     <button class="primary" onclick={keepEmptyDraft}>{t("routines.keep")}</button>
+  </div>
+</dialog>
+
+<!-- How the performance index is worked out, in words. Escape, the backdrop or the button closes it. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm help"
+  bind:this={dpiHelp}
+  aria-labelledby="dpi-help-title"
+  onclick={(e) => {
+    if (e.target === dpiHelp) dpiHelp.close();
+  }}
+>
+  <h3 id="dpi-help-title">{t("dpi.helpTitle")}</h3>
+  <p>{t("dpi.helpIntro")}</p>
+  <h4>{t("dpi.helpGameTitle")}</h4>
+  <p>{t("dpi.helpGame")}</p>
+  <h4>{t("dpi.helpOverallTitle")}</h4>
+  <p>{t("dpi.helpOverall")}</p>
+  <h4>{t("dpi.helpLevelTitle")}</h4>
+  <p>{t("dpi.helpLevel")}</p>
+  <h4>{t("dpi.helpTrendTitle")}</h4>
+  <p>{t("dpi.helpTrend")}</p>
+  <p class="hint">{t("dpi.helpVersion", { v: dpi?.version ?? 1 })}</p>
+  <div class="foot">
+    <button class="primary" onclick={() => dpiHelp?.close()}>{t("dpi.helpClose")}</button>
   </div>
 </dialog>
 
@@ -1546,6 +1711,58 @@
     color: var(--dim);
   }
   .badge.live { color: var(--dart); border-color: var(--dart); }
+  .badge.dpi-badge { color: var(--accent); border-color: var(--accent); }
+
+  .dpi { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .dpi h3 { margin: 0 0 0.75rem; }
+  .dpi h4 { margin: 1.5rem 0 0.75rem; }
+  /* Wide enough: the games on the left, the picked one with its chart beside them. */
+  .game-split { display: grid; gap: 0 2rem; }
+  .game-detail { min-width: 0; }
+  @media (min-width: 1000px) {
+    .game-split { grid-template-columns: minmax(20rem, 2fr) 3fr; align-items: start; }
+    .game-split .dpi-games { margin-top: 0; }
+    .game-detail h4 { margin-top: 0; }
+  }
+  .stats-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .stats-head h2 { margin: 0; }
+  .toggle { display: flex; gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+  .toggle button { padding: 0.35rem 1rem; border: none; border-radius: 999px; background: none; color: var(--dim); font: inherit; cursor: pointer; }
+  .toggle button:hover { color: var(--chalk); }
+  .toggle button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .dpi-overall { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .dpi-score { display: flex; align-items: baseline; gap: 0.5rem; }
+  .dpi-score .big { color: var(--accent); }
+  /* The arrow carries the direction and its colour; the words stay in the text colour, encouraging either way. */
+  .trend { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600; color: var(--chalk); }
+  .trend[data-dir="none"] { color: var(--dim); font-weight: 400; }
+  .motivation { flex: 1 1 18rem; display: flex; flex-direction: column; gap: 0.4rem; padding-left: 1.25rem; border-left: 3px solid var(--accent); }
+  .motto { margin: 0; font-size: 1.65rem; font-weight: 700; line-height: 1.25; color: var(--chalk); text-wrap: balance; }
+  /* Not enough data yet: a plain note, not a headline. */
+  .motto.quiet { font-size: 1.05rem; font-weight: 400; color: var(--dim); }
+  .motivation .trend { font-size: 1.05rem; }
+  .trend-value { font-variant-numeric: tabular-nums; }
+  .arrow { flex: none; }
+  .arrow[data-dir="up"] { color: var(--ok); }
+  .arrow[data-dir="down"] { color: #ff6b5b; }
+  .arrow[data-dir="steady"] { color: var(--dim); }
+  .trend.small { justify-content: flex-end; min-width: 5rem; cursor: help; font-variant-numeric: tabular-nums; }
+  .trend.small .arrow { width: 15px; height: 15px; }
+  .stats-head h2 { display: flex; align-items: center; gap: 0.4rem; }
+  .stats-head .info { display: grid; place-items: center; padding: 0.2rem; border: 0; border-radius: 50%; background: none; color: var(--dim); cursor: pointer; }
+  .stats-head .info:hover { color: var(--accent); }
+  .help { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 4rem); overflow-y: auto; line-height: 1.5; }
+  .help h4 { margin: 1.1rem 0 0.25rem; }
+  .help p { margin: 0.25rem 0; color: var(--dim); }
+  .help .foot { margin-top: 1.25rem; }
+  .dpi-games { list-style: none; margin: 1rem 0 0.75rem; padding: 0; border-top: 1px solid var(--line); }
+  .dpi-games li { border-bottom: 1px solid var(--line); }
+  .dpi-game { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.55rem 0.75rem; border: none; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .dpi-game:hover { background: rgb(34 211 238 / 0.06); }
+  .dpi-game[aria-pressed="true"] { background: rgb(34 211 238 / 0.12); box-shadow: inset 3px 0 0 var(--accent); }
+  .game-label { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+  .game-label .plan-meta { text-align: left; font-size: 0.85rem; }
+  .dpi-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 
   .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
   .board, .darts { max-width: 400px; width: 100%; }
