@@ -86,8 +86,7 @@ export const de: Record<Key, string> = {
 
   // train: routine carousel
   "train.title": "Routine starten",
-  "train.total":
-    "Höchstens {n} Minuten insgesamt. Bei Spielen mit Darts startet die Uhr mit deinem ersten Dart.",
+  "train.total": "Höchstens {n} Minuten insgesamt.",
   "train.noGames": "Diese Routine hat noch keine Spiele. Füge über den Bearbeiten-Knopf auf ihrer Karte welche hinzu.",
   "train.start": "Routine starten",
   "carousel.games": "{n} Spiele",
@@ -110,7 +109,6 @@ export const de: Record<Key, string> = {
   "run.progress": "Spiel {n} von {total}",
   "run.progressNamed": "Spiel {n} von {total}: {name}",
   "run.settingsLine": "{desc}, {n} Min.",
-  "run.clockHint": "Die Uhr startet mit deinem ersten Dart.",
   "run.startGame": "Spiel starten",
   "run.abort": "Routine abbrechen",
   "run.confirmAbort": "Zum Abbrechen erneut klicken",
@@ -119,7 +117,6 @@ export const de: Record<Key, string> = {
   "run.endedEarly": "Vorzeitig beendet.",
   "run.timeUp": "Die Zeit ist um.",
   "run.paused": "Pausiert. Würfe zählen nicht.",
-  "run.waiting": "Warte auf deinen ersten Dart.",
   "run.keepThrowing": "Weiterwerfen.",
   "run.pause": "Pause",
   "run.resume": "Weiter",
@@ -229,17 +226,24 @@ export const de: Record<Key, string> = {
 
   // 121
   "121.blurb":
-    "Checke innerhalb von 9 Darts aus. Ein Checkout mit Dart 1-3 erhöht den nächsten Checkout um 3, mit Dart 4-6 um 2, mit Dart 7-9 um 1. Ein verpasster Checkout senkt ihn um 1.",
+    "Checke innerhalb von 9 Darts. Ein Checkout erhöht den nächsten, ein Fehlversuch senkt ihn um 1. Fast-Forward und Safehouse sind optional.",
   "121.start": "Start-Checkout",
   "121.startInfo": "Der Checkout, mit dem das Spiel beginnt (2-170). Von dort geht es mit jedem Checkout nach oben und mit jedem Fehlversuch nach unten. Üblich ist der Start bei 121.",
+  "121.fastForward": "Fast-Forward",
+  "121.fastForwardInfo": "Belohnt einen schnellen Checkout. Mit Dart 1-3 ist der nächste Checkout 3 höher, mit Dart 4-6 2 höher, mit Dart 7-9 1 höher. Ist es aus, erhöht jeder Checkout den nächsten um 1.",
+  "121.fastForwardOn": "Fast-Forward an",
+  "121.fastForwardOff": "Fast-Forward aus",
+  "121.safehouse": "Safehouse",
+  "121.safehouseInfo": "Jeder Checkout, den du mit deinen ersten 3 Darts schaffst, wird dein Safehouse. Fehlversuche bringen dich nie mehr darunter. Beispiel: Du checkst 126 mit Dart 1-3. Egal wie oft du 126 danach verpasst, du fällst nie unter 126.",
+  "121.safehouseOn": "Safehouse an",
+  "121.safehouseOff": "Safehouse aus",
   "121.describe": "Start bei {n}, 9 Darts pro Checkout",
   "121.summary": "Höchster Checkout {best}, {checkouts} geschafft, {fails} verpasst",
-  "121.remaining": "Rest",
-  "121.dartsLeft": "Verbleibende Darts",
+  "121.restOf": "Rest von {n}",
+  "121.dartsLeftN": "Verbleibende Darts: {n}",
   "121.checkouts": "Geschaffte Checkouts",
   "121.fails": "Verpasst",
   "121.best": "Höchster Checkout",
-  "121.checkout": "Checkout",
 
   // motivation, shown while waiting
   "quote.1": "Jeder Wurf zählt. Jeder Tag bringt dich weiter.",
