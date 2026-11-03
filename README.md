@@ -12,9 +12,21 @@ D³ is an independent open-source project and is not affiliated with any autosco
 
 ## Why I built this
 
-<!-- Your motivation goes here: why you built D³ and how you want to train with it. -->
+I want to get better at darts, and for me that means training on purpose, not just playing. Auto-scorers come with
+training games. What they don't do is track whether systematic training actually moves you forward.
 
-_Coming soon._
+So I started doing it by hand. I'd play a training game, pause to write down the result, and put everything into a
+spreadsheet afterwards. It worked, but it was nerve-racking: every pause broke my rhythm, and none of it was fun or
+motivating. On top of that, some of the games I like most weren't supported at all.
+
+D³ is the tool I wanted back then. You put together a routine from the drills you care about, start it, and just
+throw. The app keeps the time, counts every dart through Autodarts and saves the results. Over time you see how
+you're actually progressing.
+
+**What D³ is, and what it isn't:**
+- It's a training companion for practising alone at your board, with an Autodarts setup.
+- It isn't a match platform, an online league or a replacement for the Autodarts app.
+- It's a hobby project that I build for my own training. It grows with what I need, so expect rough edges and changes.
 
 ## Features
 

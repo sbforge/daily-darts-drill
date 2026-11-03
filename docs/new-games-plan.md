@@ -1,7 +1,7 @@
 # New training games plan
 
 Scope: the six games from `TODO.md` → "Training Games": Random Checkout, Bob's 27, 170, Bull-X, Catch 40, Solo 501.
-Status: plan only, nothing is built yet. All points are decided (2026-11-03). Each game has an id (G1, G2 …) so we can talk about them one by one.
+Status: plan only, nothing is built yet; part of v1 (`docs/v1-scope.md`). All points are decided (2026-11-03). Each game has an id (G1, G2 …) so we can talk about them one by one.
 
 Status legend: ✅ decided. Every point that was open is decided as proposed, see "Decisions taken" at the end.
 
@@ -100,7 +100,8 @@ Lines: success rate (hero), checkouts made, attempts, highest checkout, average 
 - Start with 27 points. Targets D1, D2, … D20, then the bull (21 targets). 3 darts at each target.
 - Every hit adds the double's value (D7 hit twice = +28). No hit with all 3 darts subtracts one double's value (−14).
 - At 0 or below the game is over. ✅ Setting "Play on below zero" (off by default): for practice, finish all 21 targets
-  and keep the score negative.
+  and keep the score negative. The routine "Intense Doubles" uses it for one completed round
+  (`docs/predefined-routines-plan.md`).
 - A full game: 21 turns (63 darts). Max 1437. With a time cap and the game done: a new game starts from 27 (`repeat`).
 - One turn = one target: the turn's 3 darts go at the same double, the next turn moves on, whatever was hit.
 
@@ -150,6 +151,8 @@ Sample: at least 5 targets.
 **Rules** (a normal X01 leg, as you said):
 - Start at 170, count down, double out, bust = No Score (rest back to the start of the visit). The leg ends on the
   checkout; the next leg starts at 170 again, until the time cap.
+- ✅ **Legs** setting, as Solo Leg: "until the time is up" (time capped) or 1–9 legs (no time cap, done after the last
+  leg). Same code (S2).
 - ✅ Darts limit per leg: none (a leg runs until checked out). A setting "Give up after" (off / 9 / 12 / 15
   darts) so a stuck leg doesn't eat the whole session; off by default.
 
@@ -168,7 +171,8 @@ Sample: at least 5 targets.
 
 **Rules:**
 - X01 against yourself: start (setting) 501, 301 or 701, double out, bust = No Score. Leg over → next leg, until the
-  time cap. ✅ Double out only for now: no double in (rare in practice), no single or master out.
+  time cap, or until a set number of legs (setting **Legs**: until the time is up / 1–9; needed for the
+  predefined routine "Everyday Drill", `docs/predefined-routines-plan.md`). ✅ Double out only for now: no double in (rare in practice), no single or master out.
 
 **Screen:** focus = rest, route (S3) from 170 down. Lines: 3-dart average (hero), first-9 average, legs, darts per
 leg, best leg, checkout rate (darts at a double ÷ checkouts), highest checkout, 100+ / 140+ / 180 counts.
