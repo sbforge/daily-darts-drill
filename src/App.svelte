@@ -518,6 +518,40 @@
     if (phase === "running" && result?.done) finish(false);
   });
 
+  // While a game runs, the backdrop moves so the bull of its dartboard sits behind the bull of the
+  // board on screen. It stays at least as big as "cover", and grows where moving it would leave a gap.
+  const BACKDROP = { width: 2400, height: 1500, bullX: 1750, bullY: 780 };
+  let boardEl = $state<HTMLDivElement>();
+  $effect(() => {
+    const el = boardEl;
+    const svg = el?.querySelector("svg");
+    if (!el || !svg) return;
+    const style = document.body.style;
+    const align = () => {
+      const r = svg.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const { width, height, bullX, bullY } = BACKDROP;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const scale = Math.max(vw / width, vh / height, cx / bullX, cy / bullY, (vw - cx) / (width - bullX), (vh - cy) / (height - bullY));
+      style.setProperty("--backdrop-size", `${width * scale}px ${height * scale}px`);
+      style.setProperty("--backdrop-pos", `${cx - bullX * scale}px ${cy - bullY * scale}px`);
+    };
+    align();
+    // The board moves when the window or the stage around it changes size.
+    const ro = new ResizeObserver(align);
+    ro.observe(el);
+    if (el.closest(".stage")) ro.observe(el.closest(".stage")!);
+    window.addEventListener("resize", align);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", align);
+      style.removeProperty("--backdrop-size");
+      style.removeProperty("--backdrop-pos");
+    };
+  });
+
   // A bust in a checkout game shows "No Score" for a moment. The game names the busted turn,
   // so a correction that makes a turn bust shows it too, and a bust right after another one as well.
   const NO_SCORE_MS = 2000;
@@ -1591,7 +1625,7 @@
         <p class="pick-hint" class:show={session.edit !== null} aria-live="polite">
           {session.edit !== null ? t("run.pickHint", { n: session.edit + 1 }) : ""}
         </p>
-        <div class="board">
+        <div class="board" bind:this={boardEl}>
           <Board
             turns={session.allTurns.filter((_, k) => k !== session?.shownTurn)}
             current={session.shown}
@@ -1868,7 +1902,7 @@
     background:
       radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed,
       linear-gradient(rgb(6 13 18 / 0.5), rgb(6 13 18 / 0.5)) fixed,
-      url("./assets/brand/art/backdrop.webp") center / cover no-repeat fixed,
+      url("./assets/brand/art/backdrop.webp") var(--backdrop-pos, center) / var(--backdrop-size, cover) no-repeat fixed,
       var(--bg);
   }
   /* Header and footer stay put; only the content between them scrolls. */

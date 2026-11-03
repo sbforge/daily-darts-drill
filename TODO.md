@@ -1,6 +1,5 @@
 # Todos
 ## Found bugs while testing
-* on fullscreen: can we align the dartboard visualization with the backdrop?
 
 
 ## Next (in priority order)
@@ -74,6 +73,7 @@
   * Ending a running game with skip asks for a second click
   * Autodarts gone: the countdown before the first game holds until a game can start; a game in play pauses behind a "connection lost" screen and resumes by itself
   * A dropped network or a switched-off Autodarts PC is noticed within seconds (HTTP watchdog), not only when the websocket closes
+* During a game the backdrop's dartboard is centred behind the board on screen (at any window size)
 * Buy me a coffee: real link (buymeacoffee.com/sbforge), cup icon in the footer, GitHub sponsor button (.github/FUNDING.yml)
 * README for version 0.1: purpose, features with screenshots, supported autoscorers, install, data location
 * About page (question mark in the header): the project, links (GitHub, issues, Autodarts, coffee), the MIT license
