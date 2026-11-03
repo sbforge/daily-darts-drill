@@ -1,7 +1,7 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
-import { anyBull, opt, pct } from "./shared";
-import type { BoardField, GameDef } from "./types";
+import { anyBull, great, opt, pct } from "./shared";
+import type { BoardField, GameDef, Moment } from "./types";
 
 const CLOCKWISE = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20];
 const COUNTER = [1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10, 6, 13, 4, 18];
@@ -117,20 +117,27 @@ export const aroundTheClock: GameDef = {
     let rounds = 0;
     let hits = 0;
     let attempts = 0;
-    for (const d of turns.flat()) {
-      if (step >= total) break;
-      attempts++;
-      const hit = step < order.length ? hitsZone(d, order[step], zone) : hitsFinish(d, finish);
-      if (hit) {
-        hits++;
-        step++;
+    const moments: Moment[] = [];
+    turns.forEach((turn, ti) => {
+      let inTurn = 0;
+      for (const d of turn) {
+        if (step >= total) break;
+        attempts++;
+        const hit = step < order.length ? hitsZone(d, order[step], zone) : hitsFinish(d, finish);
+        if (hit) {
+          hits++;
+          step++;
+          inTurn++;
+        }
+        // With time left on the clock the round starts over; accuracy, darts and hits carry on.
+        if (step >= total && ctx.repeat) {
+          rounds++;
+          step = 0;
+        }
       }
-      // With time left on the clock the round starts over; accuracy, darts and hits carry on.
-      if (step >= total && ctx.repeat) {
-        rounds++;
-        step = 0;
-      }
-    }
+      // Three targets in one turn, each dart a hit.
+      if (inTurn === 3) moments.push(great(ti, t("atc.great")));
+    });
 
     const done = step >= total;
     const accuracy = pct(hits, attempts);
@@ -157,6 +164,7 @@ export const aroundTheClock: GameDef = {
             value: next,
           },
       targets,
+      moments,
       done,
     };
   },

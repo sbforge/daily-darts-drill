@@ -37,7 +37,7 @@
 ## Design & Artwork
 * Create Artwork for every Training game
 * Change Dartboard on carousel to real artwork instead of png
-* Animations
+* Animations: the ⏳ ideas in docs/animations-plan.md (chart draws in, loading screen logo, …)
 * Fading Screens
 
 ## Idea Backlog
@@ -59,6 +59,12 @@
 
 
 ## Done ✅
+* Animations, first batch (docs/animations-plan.md)
+  * Global fx module (src/lib/fx/): queued overlay stamps played once per key, element effects via `use:useFx`
+  * No Score moved onto it, unchanged; 180 in every game; a "great result" per game (121: checkout in 3, Plan B: first dart, Simple doubles: 3 of 3, Around the clock: 3 in a row). One stamp per turn, No Score beats 180 beats great
+  * Last 10 seconds of a timed game: the clock turns accent and beats once a second, "Time" flashes at 0
+  * Summary: the games slide in one after another, DPI values count up, "New best" when an index value beats every earlier result with the same settings
+  * Setting "Animations: on / off" (Display card), first start follows the system's reduce motion; off keeps every stamp, just still
 * Routine result screen overhaul
   * Games of the routine as a selectable list on the left with their DPI, the picked one in detail on the right
   * Total DPI of the routine and the Done button at the top, no scrolling needed

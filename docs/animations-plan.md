@@ -1,7 +1,8 @@
 # Animations plan (for discussion)
 
 Scope: where motion makes D³ clearer or more fun, and where it would only get in the way.
-Status: plan only, nothing is built yet. Each idea has an id (A1, A2 …) so we can talk about them one by one.
+Status: the first batch (A7, A8, A11, the fx module and the on / off setting) is built; the ⏳ ideas are open.
+Each idea has an id (A1, A2 …) so we can talk about them one by one.
 
 Status legend: ✅ first batch · ⏳ later · ✗ dropped · ❓ needs a decision.
 

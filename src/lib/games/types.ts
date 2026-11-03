@@ -1,4 +1,5 @@
 import type { Dart } from "../autodarts";
+import type { EffectName, Tone } from "../fx";
 
 export type Settings = Record<string, string | number>;
 
@@ -29,6 +30,20 @@ export interface BoardField {
   number?: number;
 }
 
+/**
+ * Something worth a moment on screen, like a great turn. The game only describes it; the training screen
+ * plays it once per key, so recomputing on every dart or correction doesn't repeat it.
+ */
+export interface Moment {
+  key: string;
+  /** The turn it belongs to (an index into turns): a turn gets one moment, the highest priority wins. */
+  turn: number;
+  effect: EffectName;
+  text?: string;
+  tone?: Tone;
+  priority?: number;
+}
+
 export interface GameResult {
   /** Numbers to store and chart later. */
   values: Record<string, number>;
@@ -46,6 +61,8 @@ export interface GameResult {
    * It names the turn (an index into turns), so a bust in the next turn is a new one, even right after another.
    */
   noScore?: { turn: number; darts: number };
+  /** Moments to show, e.g. a great turn. 180 and No Score are added by the training screen for every game. */
+  moments?: Moment[];
   /** True when the game has been completed before the time cap. */
   done: boolean;
 }

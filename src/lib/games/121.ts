@@ -1,6 +1,6 @@
 import { num, t } from "../i18n/index.svelte";
-import { opt, pct } from "./shared";
-import type { GameDef, GameResult } from "./types";
+import { great, opt, pct } from "./shared";
+import type { GameDef, GameResult, Moment } from "./types";
 
 const DARTS_PER_ATTEMPT = 9;
 const STAGES = DARTS_PER_ATTEMPT / 3;
@@ -77,6 +77,7 @@ export const oneTwentyOne: GameDef = {
     let safehouse = 0; // the highest checkout made with darts 1-3; a miss never drops below it
     let openUsed = 0; // darts of the turn still on the board that count in this attempt
     let noScore: GameResult["noScore"];
+    const moments: Moment[] = [];
 
     turns.forEach((turn, ti) => {
       const open = ctx.open && ti === turns.length - 1;
@@ -110,6 +111,7 @@ export const oneTwentyOne: GameDef = {
         checkouts++;
         best = Math.max(best, target);
         if (useSafehouse && outSlot <= 3) safehouse = Math.max(safehouse, target);
+        if (outSlot <= 3) moments.push(great(ti, t("121.great")));
         target = Math.min(170, target + step(outSlot, fastForward));
         remaining = target;
         slotBase = 0;
@@ -148,6 +150,7 @@ export const oneTwentyOne: GameDef = {
       // Grouped into turns of three darts.
       darts: { label: t("121.dartsLeftN", { n: dartsLeft }), total: DARTS_PER_ATTEMPT, used, group: 3 },
       noScore,
+      moments,
       done: false,
     };
   },

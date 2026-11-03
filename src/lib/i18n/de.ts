@@ -109,6 +109,11 @@ export const de: Record<Key, string> = {
   "settings.recentEmpty": "Wirf einen Dart. Er erscheint hier, dann weißt du, dass die Verbindung steht.",
   "settings.languageTitle": "Sprache",
   "settings.language": "Sprache der App",
+  "settings.displayTitle": "Anzeige",
+  "settings.animations": "Animationen",
+  "settings.animationsOn": "An",
+  "settings.animationsOff": "Aus",
+  "settings.animationsHint": "Aus schaltet alle Bewegung ab. No Score, 180 und starke Aufnahmen erscheinen trotzdem, nur ohne Bewegung.",
   "settings.statsTitle": "Statistik",
   "settings.sample": "Ergebnisse pro Vergleich",
   "settings.sampleHint": "Die Linie im Diagramm ist der Durchschnitt der letzten {n} Ergebnisse, ein Trend braucht mindestens {n} Ergebnisse in jedem Zeitraum, und für den gesamten Zeitraum werden deine letzten {n} mit den {n} davor verglichen. Weniger folgen deinen Ergebnissen enger, mehr gleichen sie aus.",
@@ -295,6 +300,7 @@ export const de: Record<Key, string> = {
   "run.nextTurn": "Nächste Aufnahme (leere Felder zählen als Fehlwurf)",
   "run.pickHint": "Klick, wo Dart {n} steckt. Neben die Scheibe = Fehlwurf.",
   "run.noScore": "No Score",
+  "run.time": "Zeit",
   "run.noScoreHint": "Überworfen: die Aufnahme zählt nicht",
   "summary.title": "Routine abgeschlossen",
   "summary.noResult": "Kein Ergebnis für dieses Spiel.",
@@ -314,6 +320,7 @@ export const de: Record<Key, string> = {
   "summary.today": "Heute",
   "summary.average": "Dein Schnitt (letzte {n})",
   "summary.noEarlier": "Spiel es noch einmal mit diesen Einstellungen, um mit heute zu vergleichen.",
+  "summary.newBest": "Neue Bestleistung",
 
   // Schlusssätze in der Zusammenfassung, einer zufällig ausgewählt
   "finish.1": "Geschafft. Jede Einheit wie diese macht das nächste Match leichter.",
@@ -411,6 +418,7 @@ export const de: Record<Key, string> = {
   "atc.rounds": "Runden geschafft",
   "atc.progress": "Fortschritt",
   "atc.complete": "Geschafft",
+  "atc.great": "3 in Folge!",
   "atc.nextTarget": "Nächstes Ziel",
   "atc.nextTargetZone": "Nächstes Ziel, {zone}",
 
@@ -419,6 +427,7 @@ export const de: Record<Key, string> = {
   "simpleDoubles.blurb": "Wirf auf ein Double. Nur dieses Double zählt als Treffer.",
   "simpleDoubles.doubleInfo": "Das Double, auf das du das ganze Spiel wirfst. Nur dieses Double zählt als Treffer, jeder andere Dart ist ein Fehlwurf.",
   "simpleDoubles.summary": "{accuracy} % Trefferquote ({hits} von {darts} Darts)",
+  "simpleDoubles.great": "3 von 3!",
 
   // Plan B (was "Complex doubles"; the keys keep the old name)
   "complexDoubles.name": "Plan B",
@@ -429,6 +438,7 @@ export const de: Record<Key, string> = {
   "complexDoubles.summary": "{rate} % Erfolg ({successes} von {rounds} Runden)",
   "complexDoubles.thisRound": "Diese Runde",
   "complexDoubles.success": "Erfolg",
+  "complexDoubles.great": "Erster Dart!",
   "complexDoubles.missed": "Verfehlt",
   "complexDoubles.remaining": "Rest {n}",
   "complexDoubles.setUp": "Stellen",
@@ -463,6 +473,7 @@ export const de: Record<Key, string> = {
   "121.describe": "Start bei {n}, 9 Darts pro Checkout",
   "121.summary": "Höchster Checkout {best}, {checkouts} geschafft, {fails} verpasst",
   "121.restOf": "Rest von {n}",
+  "121.great": "Check in 3!",
   "121.dartsLeftN": "Verbleibende Darts: {n}",
   "121.checkouts": "Geschaffte Checkouts",
   "121.fails": "Verpasst",

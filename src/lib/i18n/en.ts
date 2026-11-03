@@ -106,6 +106,11 @@ export const en = {
   "settings.recentEmpty": "Throw a dart. It shows up here, so you know the connection works.",
   "settings.languageTitle": "Language",
   "settings.language": "Language of the app",
+  "settings.displayTitle": "Display",
+  "settings.animations": "Animations",
+  "settings.animationsOn": "On",
+  "settings.animationsOff": "Off",
+  "settings.animationsHint": "Off removes all motion. No Score, 180 and great turns still show, just without moving.",
   "settings.statsTitle": "Statistics",
   "settings.sample": "Results per comparison",
   "settings.sampleHint": "The chart line is the average of the latest {n} results, a trend needs at least {n} results in each period, and for all time your latest {n} are compared with the {n} before. Fewer follow your results more closely, more even them out.",
@@ -293,6 +298,7 @@ export const en = {
   "run.nextTurn": "Next turn (empty boxes count as misses)",
   "run.pickHint": "Click where dart {n} landed. Off the board = miss.",
   "run.noScore": "No Score",
+  "run.time": "Time",
   "run.noScoreHint": "Bust: the turn does not count",
   "summary.title": "Routine finished",
   "summary.noResult": "No result for this game.",
@@ -312,6 +318,7 @@ export const en = {
   "summary.today": "Today",
   "summary.average": "Your average (last {n})",
   "summary.noEarlier": "Play it again with these settings to compare with today.",
+  "summary.newBest": "New best",
 
   // closing sentences on the summary, one picked at random
   "finish.1": "Done and dusted. Every session like this one makes the next match easier.",
@@ -410,6 +417,7 @@ export const en = {
   "atc.rounds": "Rounds complete",
   "atc.progress": "Progress",
   "atc.complete": "Complete",
+  "atc.great": "3 in a row!",
   "atc.nextTarget": "Next target",
   "atc.nextTargetZone": "Next target, {zone}",
 
@@ -418,6 +426,7 @@ export const en = {
   "simpleDoubles.blurb": "Throw at one double. Only that double counts as a hit.",
   "simpleDoubles.doubleInfo": "The double you throw at for the whole game. Only that double counts as a hit, every other dart is a miss.",
   "simpleDoubles.summary": "{accuracy}% accuracy ({hits} of {darts} darts)",
+  "simpleDoubles.great": "3 of 3!",
 
   // Plan B (was "Complex doubles"; the keys keep the old name)
   "complexDoubles.name": "Plan B",
@@ -428,6 +437,7 @@ export const en = {
   "complexDoubles.summary": "{rate}% success ({successes} of {rounds} rounds)",
   "complexDoubles.thisRound": "This round",
   "complexDoubles.success": "Success",
+  "complexDoubles.great": "First dart!",
   "complexDoubles.missed": "Missed",
   "complexDoubles.remaining": "Remaining {n}",
   "complexDoubles.setUp": "Set up",
@@ -462,6 +472,7 @@ export const en = {
   "121.describe": "Start at {n}, 9 darts per checkout",
   "121.summary": "Highest checkout {best}, {checkouts} made, {fails} failed",
   "121.restOf": "Rest of {n}",
+  "121.great": "Checkout in 3!",
   "121.dartsLeftN": "Darts left: {n}",
   "121.checkouts": "Checkouts made",
   "121.fails": "Failed",

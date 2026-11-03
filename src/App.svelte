@@ -7,6 +7,7 @@
     type BoardStatus,
     type ThrowPhase,
     type ConnState,
+    type Dart,
     type DartEvent,
   } from "./lib/autodarts";
   import {
@@ -36,7 +37,8 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
-  import { GAMES, gameById, type Settings, type StatLine } from "./lib/games";
+  import { GAMES, gameById, type Moment, type Settings, type StatLine } from "./lib/games";
+  import { FxLayer, fx, useFx } from "./lib/fx";
   import { en } from "./lib/i18n/en";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
@@ -169,6 +171,9 @@
   const def = $derived(item ? gameById(item.gameId) : null);
   const totalMs = $derived(item ? item.minutes * 60_000 : 0);
   const remaining = $derived(endsAt === null ? totalMs : Math.max(0, endsAt - (paused ? pausedAt : now)));
+  // The last seconds of a timed game: the clock turns accent and beats once a second.
+  const LAST_SECONDS_MS = 10_000;
+  const lastSeconds = $derived(phase === "running" && totalMs > 0 && !paused && remaining > 0 && remaining <= LAST_SECONDS_MS);
   const elapsed = $derived(Math.max(0, (paused ? pausedAt : now) - startsAt));
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
@@ -292,6 +297,8 @@
     const settings = $state.snapshot(session.settings);
     const finishedAt = new Date().toISOString();
     session.finish();
+    // Moments still waiting belong to the game that just ended; the one on screen plays out.
+    fx.dropQueued();
     paused = false;
     run.results.push({
       gameId: def.id,
@@ -388,18 +395,44 @@
     [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => String(a[k]) === String(b[k]));
 
   /**
-   * The latest earlier results of the picked game, played with the same settings: what it is compared with.
+   * The earlier results of a game, played with the same settings, oldest first: what it is compared with.
    * Results too short to count for the index are left out, they would pull the average down for nothing.
    */
+  function earlierOf(r: RunResult, sessionId: string): ResultRecord[] {
+    return dpiResults
+      .filter((x) => x.sessionId !== sessionId && x.gameId === r.gameId && sameSettings(x.settings, r.settings))
+      .filter((x) => !hasIndex(x.gameId) || gameIndex(x.gameId, x.settings, x.values) !== null)
+      .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  }
+
+  /** The latest earlier results of the picked game, as many as "Results per comparison". */
   const summaryEarlier = $derived.by(() => {
     const r = run?.results[summaryPick];
-    if (!run || !r) return [];
-    const id = run.sessionId;
-    return dpiResults
-      .filter((x) => x.sessionId !== id && x.gameId === r.gameId && sameSettings(x.settings, r.settings))
-      .filter((x) => !hasIndex(x.gameId) || gameIndex(x.gameId, x.settings, x.values) !== null)
-      .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
-      .slice(-statsSample);
+    return run && r ? earlierOf(r, run.sessionId).slice(-statsSample) : [];
+  });
+
+  /**
+   * Per played game, the index metrics that beat every earlier result with the same settings.
+   * A first result is no record yet, and a result too short to count can't set one.
+   */
+  const runBests = $derived(
+    run?.results.map((r, i) => {
+      const scores = metricScores(r.gameId, r.settings, r.values);
+      const earlier = run ? earlierOf(r, run.sessionId) : [];
+      if (!scores || runIndices[i] === null || !earlier.length) return new Set<string>();
+      return new Set(
+        scores.metrics
+          .filter((m) => m.value > Math.max(...earlier.map((x) => Number(x.values[m.key]) || 0)))
+          .map((m) => m.key),
+      );
+    }) ?? [],
+  );
+
+  // A new best anywhere in the run gets a stamp when the summary opens.
+  $effect(() => {
+    if (phase === "summary" && run && runBests.some((b) => b.size)) {
+      fx.play("stamp", { text: t("summary.newBest"), tone: "great", size: "normal", key: `best:${run.sessionId}` });
+    }
   });
 
   const average = (list: number[]) => (list.length ? list.reduce((s, n) => s + n, 0) / list.length : null);
@@ -576,7 +609,10 @@
     const id = setInterval(() => {
       if (paused) return;
       now = Date.now();
-      if (endsAt !== null && now >= endsAt) finish(false);
+      if (endsAt !== null && now >= endsAt) {
+        fx.play("stamp", { text: t("run.time"), tone: "info", size: "normal" });
+        finish(false);
+      }
     }, 200);
     return () => clearInterval(id);
   });
@@ -619,20 +655,28 @@
     };
   });
 
-  // A bust in a checkout game shows "No Score" for a moment. The game names the busted turn,
-  // so a correction that makes a turn bust shows it too, and a bust right after another one as well.
-  const NO_SCORE_MS = 2000;
-  let noScoreAt = $state<number | null>(null);
-  let seenNoScore: number | undefined;
-  let noScoreTimer: ReturnType<typeof setTimeout> | undefined;
+  // The moments of a game are played through the fx module: what the game describes (a great turn),
+  // plus a 180 and No Score for every game. Each plays once, so a correction that makes a turn great
+  // or bust shows it too, and a game recomputing on every dart doesn't repeat it. Keys carry the
+  // game's start, so turn 4 of the next game is a new moment.
+  const is180 = (turn: Dart[]) => turn.length === 3 && turn.every((d) => d.kind === "triple" && d.number === 20);
   $effect(() => {
-    const n = phase === "running" ? result?.noScore?.turn : undefined;
-    if (n !== undefined && n !== seenNoScore) {
-      clearTimeout(noScoreTimer);
-      noScoreAt = n;
-      noScoreTimer = setTimeout(() => (noScoreAt = null), NO_SCORE_MS);
+    if (phase !== "running" || !session || !result) return;
+    const game = gameStartedAt;
+    const moments: Moment[] = [...(result.moments ?? [])];
+    const bust = result.noScore;
+    if (bust) moments.push({ key: `noscore:${bust.turn}`, turn: bust.turn, effect: "stamp", text: t("run.noScore"), tone: "bad", priority: 4 });
+    session.allTurns.forEach((turn, i) => {
+      if (is180(turn)) moments.push({ key: `180:${i}`, turn: i, effect: "stamp", text: "180", tone: "great", priority: 3 });
+    });
+    // One stamp per turn: the highest priority plays, the others count as played. A bust is never great,
+    // so No Score beats a 180 thrown past the rest.
+    const top = new Map<number, Moment>();
+    for (const m of moments) if ((m.priority ?? 0) > (top.get(m.turn)?.priority ?? -1)) top.set(m.turn, m);
+    for (const m of moments) if (top.get(m.turn) !== m) fx.skip(`${game}:${m.key}`);
+    for (const m of top.values()) {
+      fx.play(m.effect, { text: m.text, tone: m.tone, size: "big", key: `${game}:${m.key}`, priority: m.priority });
     }
-    seenNoScore = n;
   });
 
   $effect(() => {
@@ -935,6 +979,11 @@
     db.saveConfig(config).catch(failed);
   }
 
+  function setAnimations(on: boolean) {
+    fx.enabled = on;
+    db.setSetting("animations", on ? "on" : "off").catch(failed);
+  }
+
   function changeLanguage(l: Locale) {
     setLocale(l);
     db.setSetting("language", l).catch(failed);
@@ -953,6 +1002,10 @@
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
         setLocale(isLocale(lang) ? lang : getLocale());
+        // The first start takes the system's "reduce motion" as its starting value, later only the setting counts.
+        const anim = await db.getSetting("animations");
+        if (anim) fx.enabled = anim === "on";
+        else setAnimations(fx.enabled);
         const saved = await db.hasConfig();
         config = await db.loadConfig();
         draft = { ...config };
@@ -1204,6 +1257,22 @@
               onchange={(id) => changeLanguage(id)}
             />
           </label>
+        </section>
+
+        <section class="group" aria-labelledby="display-title">
+          <h3 id="display-title">{t("settings.displayTitle")}</h3>
+          <label>
+            {t("settings.animations")}
+            <Select
+              value={fx.enabled ? "on" : "off"}
+              options={[
+                { value: "on", label: t("settings.animationsOn") },
+                { value: "off", label: t("settings.animationsOff") },
+              ]}
+              onchange={(v) => setAnimations(v === "on")}
+            />
+          </label>
+          <p class="hint">{t("settings.animationsHint")}</p>
         </section>
 
         <section class="group" aria-labelledby="stats-title">
@@ -1603,7 +1672,9 @@
             ? t("quick.progress", { name: def.name })
             : t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}
         </p>
-        <div class="clock" class:paused>{totalMs ? fmt(remaining) : fmt(elapsed, true)}</div>
+        <div class="clock" class:paused class:last={lastSeconds} use:useFx={{ effect: "pulse", active: lastSeconds }}>
+          {totalMs ? fmt(remaining) : fmt(elapsed, true)}
+        </div>
         <p class="note">
           {#if waiting}
             {t("run.waitingForBoard")}
@@ -1714,16 +1785,6 @@
         </div>
       {/if}
 
-      <!-- Over the whole game, but clicks pass through, so the busted dart can still be corrected. -->
-      {#if noScoreAt !== null}
-        {#key noScoreAt}
-          <div class="no-score" role="status" style:--no-score-ms="{NO_SCORE_MS}ms">
-            <div class="stamp">
-              <span class="word">{t("run.noScore")}</span>
-            </div>
-          </div>
-        {/key}
-      {/if}
     </section>
   {:else if phase === "summary" && run}
     {@const picked = run.results[summaryPick]}
@@ -1736,7 +1797,7 @@
         {#if !run.quick && runIndex !== null}
           <div class="dpi-score" title={t("dpi.helpOpen")}>
             <span class="cap">{t("summary.total")}</span>
-            <span class="big">{num(runIndex)}</span>
+            <span class="big" use:useFx={{ effect: "countUp", value: runIndex, format: (n) => num(n) }}></span>
             <span class="cap">{t("dpi.of")}</span>
           </div>
         {/if}
@@ -1754,13 +1815,21 @@
           <ul class="dpi dpi-games summary-games" aria-label={t("summary.games")}>
             {#each run.results as r, i (i)}
               {@const g = gameById(r.gameId)}
-              <li>
+              {@const idx = runIndices[i]}
+              <li use:useFx={{ effect: "in", delay: i * 80 }}>
                 <button class="dpi-game" aria-pressed={i === summaryPick} onclick={() => (summaryPick = i)}>
                   <span class="game-label">
-                    <span class="plan-name">{g.name}</span>
+                    <span class="plan-name">
+                      {g.name}
+                      {#if runBests[i]?.size}<span class="badge best">{t("summary.newBest")}</span>{/if}
+                    </span>
                     <span class="plan-meta">{g.describe(r.settings)}</span>
                   </span>
-                  <span class="dpi-value" title={t("dpi.short")}>{runIndices[i] === null ? "–" : num(runIndices[i]!)}</span>
+                  {#if idx === null}
+                    <span class="dpi-value" title={t("dpi.short")}>–</span>
+                  {:else}
+                    <span class="dpi-value" title={t("dpi.short")} use:useFx={{ effect: "countUp", value: idx, format: (n) => num(n) }}></span>
+                  {/if}
                 </button>
               </li>
             {/each}
@@ -1771,7 +1840,7 @@
           {@const g = gameById(picked.gameId)}
           {@const idx = runIndices[summaryPick]}
           {@const scores = picked.hasResult ? metricScores(picked.gameId, picked.settings, picked.values) : null}
-          <div class="dpi summary-detail">
+          <div class="dpi summary-detail" use:useFx={{ effect: "in", delay: 120 }}>
             <h3>{g.name}</h3>
             <p class="hint played">
               {g.describe(picked.settings)} · {playedLine({ ...picked, endedEarly: picked.early })}{#if picked.completed} · {t("summary.completed")}{/if}
@@ -1783,7 +1852,11 @@
                 <div class="dpi-overall summary-index">
                   <div class="dpi-score">
                     <span class="cap">{t("dpi.short")}</span>
-                    <span class="big">{idx === null ? "–" : num(idx)}</span>
+                    {#if idx === null}
+                      <span class="big">–</span>
+                    {:else}
+                      <span class="big" use:useFx={{ effect: "countUp", value: idx, format: (n) => num(n) }}></span>
+                    {/if}
                     <span class="cap">{t("dpi.of")}</span>
                   </div>
                   <p class="hint">
@@ -1802,6 +1875,7 @@
                     <li>
                       <span class="metric-name">
                         {t(metricOf(m.key).label)}
+                        {#if runBests[summaryPick]?.has(m.key)}<span class="badge best">{t("summary.newBest")}</span>{/if}
                         {#if scores.metrics.length > 1}<span class="cap">· {t("summary.share", { n: num(m.weight * 100) })}</span>{/if}
                       </span>
                       <span class="metric-value">{metricFormat(m.key)(m.value)}</span>
@@ -1839,6 +1913,8 @@
     </section>
   {/if}
 </main>
+
+<FxLayer />
 
 <!-- Asked when leaving the editor of a new routine that still has no games. Escape or the backdrop stays. -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -2360,58 +2436,10 @@
   }
   .lost-card h2 { margin: 0 0 0.75rem; color: var(--dart); }
 
-  /* The bust overlay: the stamp slams in, holds, and fades out within the time it is shown. */
-  .no-score {
-    position: absolute;
-    inset: -1rem;
-    z-index: 5;
-    display: grid;
-    place-items: center;
-    pointer-events: none;
-    border-radius: 1rem;
-    background: radial-gradient(closest-side, rgba(6, 13, 18, 0.85), rgba(6, 13, 18, 0.45));
-    animation: no-score-fade var(--no-score-ms) ease-out both;
-  }
-  .no-score .stamp {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1.25rem 2.5rem;
-    border: 4px solid #ff6b5b;
-    border-radius: 0.9rem;
-    color: #ff6b5b;
-    background: rgba(13, 27, 35, 0.92);
-    box-shadow: 0 0 2.5rem rgba(255, 107, 91, 0.35);
-    transform: rotate(-6deg);
-    animation: no-score-stamp var(--no-score-ms) cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
-  }
-  .no-score .word {
-    font-size: clamp(3rem, 9vw, 6rem);
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  @keyframes no-score-fade {
-    from { opacity: 0; }
-    10% { opacity: 1; }
-    80% { opacity: 1; }
-    to { opacity: 0; }
-  }
-  @keyframes no-score-stamp {
-    from { opacity: 0; transform: rotate(-14deg) scale(2.2); }
-    14% { opacity: 1; transform: rotate(-4deg) scale(0.94); }
-    22% { transform: rotate(-6deg) scale(1); }
-    30%, 34% { transform: rotate(-6deg) translateX(-4px); }
-    32%, 36% { transform: rotate(-6deg) translateX(4px); }
-    40% { transform: rotate(-6deg) translateX(0); }
-    80% { opacity: 1; transform: rotate(-6deg) scale(1); }
-    to { opacity: 0; transform: rotate(-6deg) scale(1.08); }
-  }
   .stage .panel { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .clock { font-size: 4.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock.paused { color: var(--dart); opacity: 0.75; }
+  .clock.last { color: var(--accent); }
   .note { color: var(--dim); margin: 0.5rem 0 1.5rem; }
   /* The current score, the one number to read at a glance from the oche. */
   .focus {
@@ -2458,6 +2486,7 @@
   .metrics { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
   .metrics li { display: grid; grid-template-columns: minmax(8rem, 1fr) auto minmax(5rem, 1.2fr) 5.5rem; align-items: center; gap: 0.75rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
   .metric-name { color: var(--dim); }
+  .badge.best { margin-left: 0.4rem; color: var(--dart); border-color: var(--dart); font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
   .metric-value, .metric-points { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
   .metric-points { color: var(--accent); }
   .meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
@@ -2657,5 +2686,4 @@
   .pick-hint.show { visibility: visible; }
 
   @media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }
-  @media (prefers-reduced-motion: reduce) { :global(*) { transition: none !important; animation: none !important; } }
 </style>

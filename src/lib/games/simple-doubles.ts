@@ -1,5 +1,6 @@
+import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
-import { doubleField, doubleOptions, pct } from "./shared";
+import { doubleField, doubleOptions, great, pct } from "./shared";
 import type { GameDef } from "./types";
 
 export const simpleDoubles: GameDef = {
@@ -32,7 +33,12 @@ export const simpleDoubles: GameDef = {
   compute(turns, s) {
     const target = Number(s.double);
     const darts = turns.flat();
-    const hits = darts.filter((d) => (target === 25 ? d.kind === "bull" : d.kind === "double" && d.number === target)).length;
+    const isHit = (d: Dart) => (target === 25 ? d.kind === "bull" : d.kind === "double" && d.number === target);
+    const hits = darts.filter(isHit).length;
+    // All three darts of a turn in the double.
+    const moments = turns.flatMap((turn, ti) =>
+      turn.length === 3 && turn.every(isHit) ? [great(ti, t("simpleDoubles.great"))] : [],
+    );
     const accuracy = pct(hits, darts.length);
     return {
       values: { accuracy, darts: darts.length, hits },
@@ -43,6 +49,7 @@ export const simpleDoubles: GameDef = {
       ],
       focus: { label: t("game.target"), value: target === 25 ? t("dart.bull") : `D${target}` },
       targets: [doubleField(target)],
+      moments,
       done: false,
     };
   },
