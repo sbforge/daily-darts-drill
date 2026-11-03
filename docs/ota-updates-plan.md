@@ -90,13 +90,14 @@ whether it was updated in the app or installed by hand.
      (`quiet`) is only possible when no elevation is needed. ❓ Proposal: passive, and check in the test that the app
      really starts again after the MSI (else the player starts it by hand once).
    - **Linux (AppImage):** the AppImage file is replaced, then `relaunch()`.
-6. **First start of the new version**, before anything else loads:
-   - Open the DB, read its schema version (`PRAGMA user_version`).
-   - Lower than the app's? → back up the file (also covers manual installs, which skip step 3), then run the missing
-     migrations in order, each in a transaction, and raise the version after each.
-   - A migration fails → the transaction rolls back, the app shows an error with the backup's location and does not
-     write to the DB. Higher than the app's (an older app opening a newer DB, e.g. after a manual downgrade) → the app
-     refuses to write, with a message, instead of breaking the data.
+6. **First start of the new version**, before anything else loads (details in `docs/db-migrations-plan.md`):
+   - Rust, before the database is opened: the app version differs from the last run → copy the database file to
+     `backups/` (also covers manual installs, which skip step 3).
+   - Opening the database runs `tauri-plugin-sql`'s migrations: every one not applied yet, in order, each in its own
+     transaction.
+   - A migration fails → it rolls back, the app shows an error with the backup's location and does not write to the
+     DB. A database written by a newer app (unknown migrations, e.g. after a manual downgrade) → the plugin refuses to
+     open it, and the app says so instead of breaking the data.
    - Then the normal start; "Updated to x.y.z" shows once (stored `app.lastRunVersion` vs. the running version).
 
 ## Technical plan
@@ -195,8 +196,8 @@ The workflow as a whole (jobs, Linux, version source, ad-hoc signing, SBOM, rele
 - Backups with SQLite's `VACUUM INTO '<app config>/backups/…'` (a consistent copy while the file is open, no Rust
   needed), pruned to the last 3. Called right before `downloadAndInstall`, and on the first start of a new version
   before migrating (step 6 of the flow above). The same helper does "Export my data" (`docs/logs-and-export-plan.md`).
-- **Schema version and migrations:** in detail in `docs/db-migrations-plan.md` (`PRAGMA user_version`, numbered
-  migrations, one transaction per step, today's column checks kept as a one-time legacy upgrade).
+- **Migrations:** in detail in `docs/db-migrations-plan.md` (`tauri-plugin-sql`'s own migrations, numbered `.sql`
+  files, one transaction each, backup in Rust before the database opens).
 - Migrations are forward-only; a new version must open any older DB. Downgrades are not supported (the updater only
   offers higher versions), and an older app refuses to write to a newer DB.
 - This answers the open question in TODO.md ("How to handle updates / database schema changes / migrations"):
@@ -208,7 +209,7 @@ The workflow as a whole (jobs, Linux, version source, ad-hoc signing, SBOM, rele
   a dev-only endpoint at it (endpoint list can be overridden via config for test builds). Check: discovery, skip,
   later, progress, restart, toast, backup file, bad signature (edit the `.sig`) is rejected, offline start is silent.
   Also: the app restarts by itself after the Windows MSI; started from the DMG on macOS it asks to move to
-  Applications; a database from `0.1.0` (schema version 0) is migrated and backed up on the first start; a failing
+  Applications; an existing database without migrations is recorded as the baseline and backed up on the first start; a failing
   migration leaves the DB untouched and shows the backup; a local `tauri build` without the signing key still works.
 - Real: publish `0.1.1` as a pre-release first (must not be offered), then as a release (must be offered).
 - Both on Windows and macOS.
@@ -238,7 +239,7 @@ The workflow as a whole (jobs, Linux, version source, ad-hoc signing, SBOM, rele
 ## Suggested order
 
 1. Keys + plugins + config + `latest.json` in CI (US-11, US-13, US-14, US-15), draft-then-publish, Linux AppImage,
-   schema version + migrations in `db.ts`. Ship it as a release so an update-capable version exists in the wild.
+   the plugin's migrations (`docs/db-migrations-plan.md`). Ship it as a release so an update-capable version exists in the wild.
 2. Manual check + install in Settings (US-2, US-3, US-7, US-8, US-10, US-12).
 3. Automatic check, badge, skip, later, off switch, "updated" toast (US-1, US-4, US-5, US-6, US-9).
 4. ❓ Beta channel (rest of US-15).

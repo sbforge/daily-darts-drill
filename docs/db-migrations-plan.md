@@ -7,83 +7,106 @@ Status: plan only, nothing is built yet.
 
 Status legend: ✅ decided · ❓ needs a decision (my proposal next to it).
 
+✅ **Decided:** the migrations of `tauri-plugin-sql` itself (the framework's own way), not a hand-made runner in JS
+and not our own Rust command.
+
 ## Where we start from
 
 - One SQLite file, `darttrainer.db` in the app config folder, opened from JS through `tauri-plugin-sql`
   (`src/lib/db.ts`, `openDb()`).
 - `SCHEMA`: `CREATE TABLE IF NOT EXISTS` for `settings`, `routines`, `sessions`, `game_results`, `darts`, two indexes.
-- Then three hand-made upgrades for older databases: add `sessions.status`, `routines.description`,
-  `routines.pause_seconds` if `pragma_table_info` doesn't list them.
+- Then three hand-made upgrades: add `sessions.status`, `routines.description`, `routines.pause_seconds` if
+  `pragma_table_info` doesn't list them.
 - Then a clean-up that is not a migration: sessions still `running` become `aborted`, their results are deleted.
-- No schema version anywhere. The plugin uses a **connection pool**: two `execute()` calls may run on different
-  connections, so `BEGIN` in one call and `COMMIT` in the next is not a transaction.
+- No schema version anywhere.
+- **No release has been published yet** (no tags on GitHub), so the only existing database is the developer's own,
+  and it already has every column.
+- Why not hand-made in JS: the plugin uses a **connection pool**; `BEGIN` and `COMMIT` sent as separate calls can land
+  on different connections, and a failed step can leave a transaction open. The plugin's migrations run in Rust on one
+  connection and don't have that problem.
+
+## How the plugin's migrations work
+
+- In Rust (`src-tauri/src/main.rs`), the plugin gets a list of migrations for the database URL:
+  ```rust
+  tauri_plugin_sql::Builder::new()
+      .add_migrations("sqlite:darttrainer.db", migrations())
+      .build()
+  ```
+  Each one is `Migration { version: 1, description: "baseline", sql: include_str!("../migrations/0001_baseline.sql"),
+  kind: MigrationKind::Up }`.
+- They run **when the database is opened** (`Database.load("sqlite:darttrainer.db")` in `openDb()`, as today): every
+  migration not applied yet, in version order, **each in its own transaction**. A failing one rolls back and
+  `Database.load` rejects with the error; nothing after it runs.
+- What ran is recorded in a table the plugin manages, `_sqlx_migrations` (version, description, checksum, time).
+  - A migration that was already applied and has **changed since** (checksum) → `load` fails. That enforces
+    "never edit a released migration".
+  - A database with a migration the app **doesn't know** (written by a newer app, e.g. after a manual downgrade) →
+    `load` fails too. That is the "refuse a newer database" rule for free. ❓ To confirm while building: the exact
+    error in both cases, so the error screen can tell them apart.
 
 ## Design
 
-### Schema version
+### Migration files
 
-`PRAGMA user_version` (an integer SQLite keeps in the file header, 0 for every database today) is the schema version.
-The app knows its own version as `MIGRATIONS.length`.
+- `src-tauri/migrations/0001_baseline.sql`, `0002_….sql`, … pulled into the binary with `include_str!`, listed in
+  `migrations()` in `main.rs`. Plain SQL files: easy to read, and the tests (below) can run the same files.
+- **Migration 1 = baseline:** today's `SCHEMA`, every table and index with `IF NOT EXISTS`. A new install creates
+  everything; the developer's existing database already has it all, so it just gets recorded as version 1.
+- **The three column checks go away.** They only existed for databases from before those columns; no such database
+  exists outside development (no release yet), and the developer's own one already has the columns.
+- `SCHEMA` and the column checks are removed from `db.ts`; `openDb()` only calls `Database.load` and then the
+  stale-session clean-up as today.
+- Only `MigrationKind::Up`. No down migrations: the updater never goes back a version.
 
-### Migrations
+### Backup before migrating
 
-A numbered list in `db.ts` (or `src/lib/migrations.ts` once it grows), never edited after a release, only appended:
+The plugin migrates inside `Database.load`, so the backup has to happen **before** the database is opened:
 
-```ts
-const MIGRATIONS: string[] = [
-  /* 1 */ `…the full schema of today, every table and index with IF NOT EXISTS…`,
-  /* 2 */ `ALTER TABLE …`,
-];
-```
+- A Rust step in `setup()` (before any window can call `load`): if `darttrainer.db` exists and the app version differs
+  from the one in `<config>/last-version` (a one-line text file), copy the file to
+  `<config>/backups/d3-<old version>-<date>.db`, keep the last 3, then write the new version into `last-version`.
+- A plain file copy is safe there: the database isn't open yet at that point.
+- "Version changed" is a simple stand-in for "migrations pending" and also catches manual installs. It makes a few
+  backups that weren't strictly needed (a version without a schema change); with only the last 3 kept, that's fine.
+- The updater's own backup right before installing (`docs/ota-updates-plan.md`) stays; with the database open it uses
+  `VACUUM INTO` from JS (`docs/logs-and-export-plan.md`).
 
-- **Migration 1 = baseline.** The tables as they are today. A new install creates them; an existing `0.1.0` database
-  already has them (`IF NOT EXISTS` makes it a no-op). The three column checks run once more, **before** migration 1,
-  as a small `upgradeLegacy()` for databases from before 0.1.0, and are never extended again.
-- **Each migration is one string run by one `execute()` call**, wrapped as
-  `BEGIN; …statements…; PRAGMA user_version = n; COMMIT;`. One call means one connection, so it is a real transaction:
-  a failing statement rolls back the whole step and the version stays where it was. ❓ To confirm while building:
-  the plugin (sqlx) runs all statements of one call; if it only runs the first, a small Rust command
-  `run_migration(sql)` with `rusqlite`/`sqlx` takes over (same plan, other place).
-- Migrations are **forward-only**. Changing or deleting data is allowed (e.g. renaming a game id in `items_json`),
-  but must work on every older database.
+### When a migration fails
 
-### Order on start (`openDb()`)
-
-1. Open the database, read `PRAGMA user_version` → `v`.
-2. `v > MIGRATIONS.length` (a newer app wrote this database, e.g. after a manual downgrade) → the app opens
-   **read-only in spirit**: it shows "This data is from a newer version of D³. Please update." and writes nothing.
-3. `v < MIGRATIONS.length` → **backup first** (`VACUUM INTO '<config>/backups/d3-schema<v>-<date>.db'`, a consistent
-   copy even while the file is open, no Rust needed; keep the last 3), then `upgradeLegacy()` if `v == 0`, then the
-   migrations `v+1 … n`, one after another.
-4. A migration fails → stop, show an error screen with the backup's path and "Open backup folder", and don't load the
-   rest of the app (no writes on a half-upgraded database). The error goes to the log (`docs/logs-and-export-plan.md`).
-5. Then the stale-session clean-up, then the normal start.
-
-The loading screen already has steps; "Updating your data…" becomes one of them when migrations run.
+- `Database.load` rejects → `openDb()` throws → the app shows an error screen instead of starting (today: `dbError`):
+  "Your data could not be updated", the backup's path, "Open backup folder", and the line to attach the log.
+  Nothing writes to the database; the transaction already rolled back.
+- The error goes to the log (`docs/logs-and-export-plan.md`).
+- The loading screen gets a step "Updating your data…". ❓ The plugin doesn't report which migration runs, so it's one
+  step for all of them. Proposal: fine, migrations are quick.
 
 ### Rules for later changes (for the maintainer)
 
+- A schema change = a new file `000n_<what>.sql` + one line in `migrations()`. Never edit or delete a released one.
 - New column: `ALTER TABLE x ADD COLUMN y … DEFAULT …` (SQLite can't add a NOT NULL column without a default).
-- Renaming or dropping a column, changing a type: the SQLite way (`CREATE TABLE x_new`, copy, drop, rename) inside
-  the same migration.
-- JSON columns (`items_json`, `settings_json`, `values_json`) can change shape without a migration as long as the
-  code reads old shapes (like 121 reading results from before its settings existed). A migration is only needed when
-  old shapes would otherwise need code forever.
-- Never edit a released migration; fix it with a new one.
+- Renaming or dropping a column, changing a type: the SQLite way (`CREATE TABLE x_new`, copy, `DROP`, `ALTER TABLE
+  x_new RENAME TO x`) in the same file.
+- Changing data is fine too (e.g. renaming a game id inside `items_json`), as long as it works on every older database.
+- JSON columns (`items_json`, `settings_json`, `values_json`) can change shape without a migration as long as the code
+  still reads old shapes (like 121 reading results from before its settings existed).
 
 ## Tests
 
-Part of the testing plan (`docs/testing-plan.md`), run against a real SQLite (Node's `node:sqlite` or `better-sqlite3`
-in vitest, with the same SQL strings):
-- empty database → all migrations → schema matches `MIGRATIONS` result;
-- a fixture database from `0.1.0` (copy of today's file, version 0) → upgraded, all rows still there;
-- a broken migration → version unchanged, data unchanged;
-- a database with a higher version → refused.
+Part of `docs/testing-plan.md`, in vitest with Node's built-in SQLite (`node:sqlite`), running the same `.sql` files
+in order (the plugin itself is Rust and is not part of these tests):
+- empty database → all files → every table and index exists;
+- the developer's current database (an anonymised copy as fixture) → baseline is a no-op, all rows still there;
+- each new migration: applied to a database with sample rows from the version before, rows kept and moved as intended.
+
+The plugin's own behaviour (transaction per migration, refusing a changed or unknown migration, the error reaching
+the app) is checked once by hand in the real app.
 
 ## Order
 
-1. `user_version`, `MIGRATIONS` with the baseline, `upgradeLegacy()`, runner with the transaction per call. (S)
-2. Backup via `VACUUM INTO`, pruning, the error screen. (S)
-3. Tests with a `0.1.0` fixture. (S)
+1. Baseline file, `migrations()` in `main.rs`, `SCHEMA` and the column checks out of `db.ts`. Check by hand: a new
+   install, the existing database, a deliberately broken migration, a changed migration. (S)
+2. Backup in `setup()` with `last-version`, the error screen. (S)
+3. Tests for the `.sql` files. (S)
 
-Ships with or before the first OTA-capable release, since the updater relies on step 6 of its flow.
+Ships with or before the first OTA-capable release, since the updater relies on it.

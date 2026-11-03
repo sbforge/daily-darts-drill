@@ -21,7 +21,7 @@ Status legend: ✅ decided · ❓ needs a decision (my proposal next to it).
 - **Rotation:** one file, `d3.log`, max ~1 MB, keep the last 3 (`RotationStrategy::KeepSome(3)` if the plugin version has it, else
   `KeepOne`), so it never grows.
 - **What is logged** (short lines, no personal data beyond the Autodarts host address):
-  - start: app version, OS, schema version, migrations run;
+  - start: app version, OS, migrations run (the plugin's `_sqlx_migrations`);
   - Autodarts: connect / disconnect / reconnect, board status changes, discovery results, reset / calibrate results;
   - routine start / end / abort, game finished (game id, minutes, early), no dart-by-dart lines;
   - database errors, failed saves, migration errors (with the backup path);

@@ -65,8 +65,10 @@ turn → 180.
 
 ### Migrations (`docs/db-migrations-plan.md`)
 
-Run the migration strings on an in-memory SQLite in Node (`node:sqlite`, built into Node 22): empty → latest, a
-`0.1.0` fixture → latest with all rows kept, a failing migration rolls back, a newer version is refused.
+Run the migrations' `.sql` files (`src-tauri/migrations/`) in order on an in-memory SQLite in Node (`node:sqlite`,
+built into Node 22): empty → latest, the current database as a fixture → baseline is a no-op with all rows kept, each
+new migration on sample rows from the version before. The plugin's own part (a transaction per migration, refusing
+changed or unknown migrations) is checked by hand in the app.
 
 ## CI
 

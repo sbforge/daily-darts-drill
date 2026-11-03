@@ -9,8 +9,8 @@ Every open item points to its plan.
 
 ## Must
 
-- [ ] **Versioned database migrations.** Numbered migrations + `PRAGMA user_version`, one transaction per step,
-  backup before migrating, refuse a newer database. Plan: `docs/db-migrations-plan.md`. Do this first: the updater's
+- [ ] **Versioned database migrations.** `tauri-plugin-sql`'s own migrations (numbered `.sql` files, one
+  transaction each, a newer database is refused), backup in Rust before the database opens. Plan: `docs/db-migrations-plan.md`. Do this first: the updater's
   "first start of the new version" relies on it, and it answers "Open Questions → updates / schema changes" in `TODO.md`.
 - [ ] **OTA updates with automatic check on start.** The first update-capable version must be installed by hand, so it
   should be v1 itself. Plan: `docs/ota-updates-plan.md` (stages 1–3, client flow step by step). Decide before
