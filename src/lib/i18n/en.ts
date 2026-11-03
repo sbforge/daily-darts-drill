@@ -17,6 +17,13 @@ export const en = {
   "board.stopped": "stopped",
   "board.noCamera": "no camera",
   "board.blocked": "blocked",
+  "board.actions": "Autodarts actions",
+  "board.reset": "Reset: clears the darts on the board, like a takeout by hand",
+  "board.resetDone": "Board reset",
+  "board.resetFailed": "Reset failed. Check the client.",
+  "board.calibrate": "Calibrate the cameras automatically",
+  "board.calibrateStarted": "Calibration started",
+  "board.calibrateFailed": "Calibration failed. Check the client.",
   "phase.throw": "Throw",
   "phase.takeout": "Take out your darts",
   "phase.takeoutInProgress": "Takeout in progress…",
@@ -52,10 +59,11 @@ export const en = {
 
   // history
   "history.title": "History",
-  "history.empty": "No results yet. Finish a game in a routine and it shows up here.",
+  "history.empty": "No results yet. Finish a game and it shows up here.",
   "history.aborted": "Aborted",
   "history.running": "In progress",
   "history.minutesEarly": "{n} min, ended early",
+  "history.playedNoCap": "{n} min played, no time cap",
 
   // routines
   "routines.editTitle": "Edit routine",
@@ -155,6 +163,22 @@ export const en = {
   "summary.noResult": "No result for this game.",
   "summary.saved": "Results are saved. See them under History.",
   "summary.done": "Done",
+
+  // quick game: one game without a routine
+  "quick.name": "Quick game",
+  "quick.hint": "Play a single game without a routine",
+  "quick.title": "Quick game",
+  "quick.gameToPlay": "Game to play",
+  "quick.timeCapInfo": "The longest this game runs. When the time is up, the game ends, even if it is not finished yet.",
+  "quick.progress": "Quick game: {name}",
+  "quick.cap": "Time cap",
+  "quick.capInfo": "With a time cap the game ends when the time is up. Without one it runs until the game is done or you stop it.",
+  "quick.capOn": "With time cap",
+  "quick.capOff": "No time cap",
+  "quick.settingsLineNoCap": "{desc}, no time cap",
+  "quick.stop": "Stop game (the result is saved)",
+  "quick.finished": "Game finished",
+  "quick.again": "Play again",
 
   // darts and board
   "dart.bull": "Bull",

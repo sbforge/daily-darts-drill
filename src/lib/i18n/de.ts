@@ -19,6 +19,13 @@ export const de: Record<Key, string> = {
   "board.stopped": "gestoppt",
   "board.noCamera": "keine Kamera",
   "board.blocked": "blockiert",
+  "board.actions": "Autodarts-Aktionen",
+  "board.reset": "Zurücksetzen: entfernt die Darts vom Board, wie ein Herausziehen von Hand",
+  "board.resetDone": "Board zurückgesetzt",
+  "board.resetFailed": "Zurücksetzen fehlgeschlagen. Prüfe den Client.",
+  "board.calibrate": "Kameras automatisch kalibrieren",
+  "board.calibrateStarted": "Kalibrierung gestartet",
+  "board.calibrateFailed": "Kalibrierung fehlgeschlagen. Prüfe den Client.",
   "phase.throw": "Werfen",
   "phase.takeout": "Darts herausziehen",
   "phase.takeoutInProgress": "Darts werden gezogen…",
@@ -55,10 +62,11 @@ export const de: Record<Key, string> = {
 
   // history
   "history.title": "Verlauf",
-  "history.empty": "Noch keine Ergebnisse. Beende ein Spiel in einer Routine, dann erscheint es hier.",
+  "history.empty": "Noch keine Ergebnisse. Beende ein Spiel, dann erscheint es hier.",
   "history.aborted": "Abgebrochen",
   "history.running": "Läuft",
   "history.minutesEarly": "{n} Min., vorzeitig beendet",
+  "history.playedNoCap": "{n} Min. gespielt, ohne Zeitlimit",
 
   // routines
   "routines.editTitle": "Routine bearbeiten",
@@ -157,6 +165,22 @@ export const de: Record<Key, string> = {
   "summary.noResult": "Kein Ergebnis für dieses Spiel.",
   "summary.saved": "Die Ergebnisse sind gespeichert. Du findest sie im Verlauf.",
   "summary.done": "Fertig",
+
+  // quick game: one game without a routine
+  "quick.name": "Schnelles Spiel",
+  "quick.hint": "Ein einzelnes Spiel ohne Routine spielen",
+  "quick.title": "Schnelles Spiel",
+  "quick.gameToPlay": "Spiel zum Spielen",
+  "quick.timeCapInfo": "So lange läuft dieses Spiel höchstens. Ist die Zeit um, endet das Spiel, auch wenn es noch nicht beendet ist.",
+  "quick.progress": "Schnelles Spiel: {name}",
+  "quick.cap": "Zeitlimit",
+  "quick.capInfo": "Mit Zeitlimit endet das Spiel, wenn die Zeit um ist. Ohne läuft es, bis das Spiel beendet ist oder du es stoppst.",
+  "quick.capOn": "Mit Zeitlimit",
+  "quick.capOff": "Ohne Zeitlimit",
+  "quick.settingsLineNoCap": "{desc}, ohne Zeitlimit",
+  "quick.stop": "Spiel stoppen (das Ergebnis wird gespeichert)",
+  "quick.finished": "Spiel beendet",
+  "quick.again": "Nochmal spielen",
 
   // darts and board
   "dart.bull": "Bull",

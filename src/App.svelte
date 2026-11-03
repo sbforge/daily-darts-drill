@@ -9,10 +9,20 @@
     type ConnState,
     type DartEvent,
   } from "./lib/autodarts";
-  import { DEFAULT_CONFIG, MAX_PAUSE_SECONDS, newRoutine, pauseSeconds, totalSeconds, type Config, type Routine } from "./lib/store";
+  import {
+    DEFAULT_CONFIG,
+    MAX_PAUSE_SECONDS,
+    newRoutine,
+    pauseSeconds,
+    totalSeconds,
+    type Config,
+    type Routine,
+    type RoutineItem,
+  } from "./lib/store";
   import * as db from "./lib/db";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
+  import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
   import Logo from "./lib/Logo.svelte";
@@ -61,6 +71,8 @@
   // running a routine
   let run = $state<{
     routine: Routine;
+    /** A quick game: one game without a routine, its routine made up just for this run. */
+    quick: boolean;
     index: number;
     results: RunResult[];
     sessionId: string;
@@ -70,6 +82,8 @@
   let session = $state<Session | null>(null);
   let gameStartedAt = "";
   let endsAt = $state<number | null>(null);
+  // When the game clock started, moved on by pauses. Without a time cap the clock counts up from here.
+  let startsAt = $state(0);
   let now = $state(Date.now());
   let paused = $state(false);
   let pausedAt = $state(0);
@@ -92,6 +106,7 @@
   const def = $derived(item ? gameById(item.gameId) : null);
   const totalMs = $derived(item ? item.minutes * 60_000 : 0);
   const remaining = $derived(endsAt === null ? totalMs : Math.max(0, endsAt - (paused ? pausedAt : now)));
+  const elapsed = $derived(Math.max(0, (paused ? pausedAt : now) - startsAt));
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
   const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
@@ -103,9 +118,15 @@
   const breakLeft = $derived(Math.max(0, breakEndsAt - (paused ? pausedAt : now)));
   const countdownLeft = $derived(Math.max(1, Math.ceil(breakLeft / 1000)));
 
-  function fmt(ms: number): string {
-    const s = Math.ceil(ms / 1000);
+  /** Minutes and seconds. A countdown rounds up, so it shows 0:00 only at its end; a clock counting up rounds down. */
+  function fmt(ms: number, up = false): string {
+    const s = up ? Math.floor(ms / 1000) : Math.ceil(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+
+  function settingsLine(i: RoutineItem): string {
+    const desc = gameById(i.gameId).describe(i.settings);
+    return i.minutes > 0 ? t("run.settingsLine", { desc, n: i.minutes }) : t("quick.settingsLineNoCap", { desc });
   }
 
   function failed(e: unknown) {
@@ -138,8 +159,41 @@
   function startRoutine() {
     const r = routines.find((x) => x.id === selectedId);
     if (!r || r.items.length === 0) return;
+    begin(structuredClone($state.snapshot(r)), false);
+  }
+
+  // ---- quick game: a single game without a routine
+
+  let quickDialog = $state<AddGameDialog>();
+  // The settings played last per game, and the game played last, so the dialog opens on them.
+  let quickItems = $state<RoutineItem[]>([]);
+  let quickLast = $state("");
+
+  function openQuick() {
+    quickDialog?.open($state.snapshot(quickItems), quickLast);
+  }
+
+  function startQuick(item: RoutineItem) {
+    quickLast = item.gameId;
+    quickItems = [...quickItems.filter((i) => i.gameId !== item.gameId), item];
+    db.saveQuickGame(quickLast, $state.snapshot(quickItems)).catch(failed);
+    const routine = newRoutine(t("quick.name"));
+    routine.pauseSeconds = 0;
+    routine.items = [structuredClone(item)];
+    begin(routine, true);
+  }
+
+  /** The same game again, with the same settings. */
+  function playAgain() {
+    const again = run?.quick ? $state.snapshot(run.routine.items[0]) : null;
+    closeRun();
+    if (again) startQuick(again);
+  }
+
+  function begin(routine: Routine, quick: boolean) {
     run = {
-      routine: structuredClone($state.snapshot(r)),
+      routine,
+      quick,
       index: 0,
       results: [],
       sessionId: crypto.randomUUID(),
@@ -156,7 +210,9 @@
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();
-    endsAt = now + totalMs;
+    startsAt = now;
+    // A quick game can have no time cap (0 minutes): it runs until it is done or stopped.
+    endsAt = totalMs > 0 ? now + totalMs : null;
     phase = "running";
   }
 
@@ -177,7 +233,7 @@
     if (def.hasResult) {
       db.saveGameResult({
         sessionId: run.sessionId,
-        routineId: run.routine.id,
+        routineId: run.quick ? null : run.routine.id,
         routineName: run.routine.name,
         sessionStartedAt: run.startedAt,
         position: run.index,
@@ -196,7 +252,12 @@
   }
 
   function sessionInfo(r: NonNullable<typeof run>): db.SessionInfo {
-    return { sessionId: r.sessionId, routineId: r.routine.id, routineName: r.routine.name, startedAt: r.startedAt };
+    return {
+      sessionId: r.sessionId,
+      routineId: r.quick ? null : r.routine.id,
+      routineName: r.routine.name,
+      startedAt: r.startedAt,
+    };
   }
 
   /** Straight on from a finished game: the break if the routine has one, else the next game. */
@@ -236,9 +297,18 @@
     phase = "idle";
   }
 
-  /** Stops the routine at any point. It is recorded as aborted and keeps no scores. */
+  /**
+   * Stops the routine at any point. It is recorded as aborted and keeps no scores.
+   * A quick game is stopped instead: a game in play ends and its result is kept, so it needs no
+   * second click. Before its game started there is nothing to keep and nothing is recorded.
+   */
   function abortRoutine() {
     if (!run) return;
+    if (run.quick) {
+      if (phase === "running") finish(true);
+      else closeRun();
+      return;
+    }
     if (!pendingAbort) {
       pendingAbort = true;
       setTimeout(() => (pendingAbort = false), 4000);
@@ -283,7 +353,10 @@
     if (!paused || waiting) return;
     // Move the end of the clock by however long we were paused.
     if (phase === "break") breakEndsAt += Date.now() - pausedAt;
-    else if (endsAt !== null) endsAt += Date.now() - pausedAt;
+    else {
+      startsAt += Date.now() - pausedAt;
+      if (endsAt !== null) endsAt += Date.now() - pausedAt;
+    }
     paused = false;
     now = Date.now();
   }
@@ -304,6 +377,39 @@
   function startDetection() {
     startError = false;
     client.start().catch(() => (startError = true));
+  }
+
+  // ---- reset and calibrate, beside the Autodarts status in the footer
+
+  // Reset only does something while darts are detected; calibrating waits until the client is settled.
+  const canReset = $derived(conn === "connected" && board === "running");
+  const canCalibrate = $derived(conn === "connected" && board !== "starting" && board !== "stopping" && board !== "calibrating");
+  // What became of the last reset or calibration, shown for a moment as a bubble over the buttons.
+  let boardNote = $state<{ text: string; failed: boolean } | null>(null);
+  let boardNoteTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function noteBoard(text: string, failed: boolean) {
+    clearTimeout(boardNoteTimer);
+    boardNote = { text, failed };
+    boardNoteTimer = setTimeout(() => (boardNote = null), 3000);
+  }
+
+  /** Clears the darts on the board, like a takeout by hand. A running game takes it as the end of the turn. */
+  function resetBoard() {
+    if (!canReset) return;
+    client.reset().then(
+      () => noteBoard(t("board.resetDone"), false),
+      () => noteBoard(t("board.resetFailed"), true),
+    );
+  }
+
+  /** Starts the auto-calibration of the cameras. */
+  function calibrateBoard() {
+    if (!canCalibrate) return;
+    client.calibrate().then(
+      () => noteBoard(t("board.calibrateStarted"), false),
+      () => noteBoard(t("board.calibrateFailed"), true),
+    );
   }
 
   $effect(() => {
@@ -440,6 +546,13 @@
 
   // ---- history
 
+  /** The time cap, or for a quick game without one how long it was played. */
+  function playedLine(r: db.HistoryRow): string {
+    if (r.minutes > 0) return t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes });
+    const played = Math.max(1, Math.round((Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 60_000));
+    return t("history.playedNoCap", { n: played });
+  }
+
   function deleteSession(id: string) {
     if (pendingSessionDelete !== id) {
       pendingSessionDelete = id;
@@ -487,6 +600,7 @@
         routines = await db.loadRoutines();
         const last = await db.getSetting("selected_routine");
         selectedId = routines.find((r) => r.id === last)?.id ?? routines[0].id;
+        ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
         history = await db.loadSessions();
         lastPlayed = await db.loadLastPlayed();
         ready = true;
@@ -554,8 +668,8 @@
         <button
           class="icon abort"
           class:armed={pendingAbort}
-          aria-label={pendingAbort ? t("run.confirmAbort") : t("run.abort")}
-          title={pendingAbort ? undefined : t("run.abort")}
+          aria-label={pendingAbort ? t("run.confirmAbort") : t(run?.quick ? "quick.stop" : "run.abort")}
+          title={pendingAbort ? undefined : t(run?.quick ? "quick.stop" : "run.abort")}
           onclick={abortRoutine}
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -656,7 +770,8 @@
         <div class="session">
           <div class="session-head">
             <div>
-              <strong>{s.routineName}</strong>
+              <!-- The stored routine name is in the language of the day it was played; a quick game follows the current one. -->
+              <strong>{s.quick ? t("quick.name") : s.routineName}</strong>
               <span class="plan-meta">{dateTime(s.startedAt)}</span>
               {#if s.status === "aborted"}
                 <span class="badge">{t("history.aborted")}</span>
@@ -675,7 +790,7 @@
                 <li>
                   <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
                   <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
-                  <span class="plan-meta">{t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes })}</span>
+                  <span class="plan-meta">{playedLine(r)}</span>
                   <span class="plan-desc">{g.describe(r.settings)}</span>
                   <span class="plan-desc strong">{g.summary(r.values)}</span>
                 </li>
@@ -749,6 +864,10 @@
   {:else if phase === "idle"}
     <section class="pick">
       <div class="pick-head">
+        <button class="ghost small quick" onclick={openQuick} title={t("quick.hint")}>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
+          {t("quick.name")}
+        </button>
         <h2>{t("train.title")}</h2>
         <button class="ghost small new" onclick={addRoutine}>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
@@ -756,6 +875,7 @@
         </button>
       </div>
       <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} onedit={() => go("routines")} />
+      <AddGameDialog bind:this={quickDialog} quick onadd={startQuick} />
     </section>
   {:else if phase === "countdown" && run && item && def}
     <section class="countdown">
@@ -763,7 +883,7 @@
       {#key countdownLeft}
         <div class="count" aria-live="assertive">{countdownLeft}</div>
       {/key}
-      <p class="lede">{t("run.firstUp", { name: def.name })}</p>
+      <p class="lede">{run.quick ? def.name : t("run.firstUp", { name: def.name })}</p>
       <Quote />
       {#if !canStart}
         {@render waitHint()}
@@ -792,7 +912,7 @@
           <p class="progress">{t("run.upNext", { n: run.index + 1, total: run.routine.items.length })}</p>
           <h2>{def.name}</h2>
           <p class="lede">{def.blurb}</p>
-          <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
+          <p class="settings-line">{settingsLine(item)}</p>
         </div>
       </div>
       {#if !canStart}
@@ -801,10 +921,10 @@
     </section>
   {:else if phase === "ready" && run && item && def}
     <section class="narrow">
-      <p class="progress">{t("run.progress", { n: run.index + 1, total: run.routine.items.length })}</p>
+      <p class="progress">{run.quick ? t("quick.name") : t("run.progress", { n: run.index + 1, total: run.routine.items.length })}</p>
       <h2>{def.name}</h2>
       <p class="lede">{def.blurb}</p>
-      <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
+      <p class="settings-line">{settingsLine(item)}</p>
       {#if !canStart}
         {@render waitHint()}
       {/if}
@@ -812,8 +932,12 @@
   {:else if phase === "running" && session && result && run && def}
     <section class="stage">
       <div class="panel">
-        <p class="progress">{t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}</p>
-        <div class="clock" class:paused>{fmt(remaining)}</div>
+        <p class="progress">
+          {run.quick
+            ? t("quick.progress", { name: def.name })
+            : t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}
+        </p>
+        <div class="clock" class:paused>{totalMs ? fmt(remaining) : fmt(elapsed, true)}</div>
         <p class="note">
           {#if waiting}
             {t("run.waitingForBoard")}
@@ -929,8 +1053,8 @@
     </section>
   {:else if phase === "summary" && run}
     <section class="narrow">
-      <h2>{t("summary.title")}</h2>
-      <p class="lede">{run.routine.name}</p>
+      <h2>{t(run.quick ? "quick.finished" : "summary.title")}</h2>
+      {#if !run.quick}<p class="lede">{run.routine.name}</p>{/if}
       {#each run.results as r, i (i)}
         <div class="result">
           <h3>{gameById(r.gameId).name}</h3>
@@ -945,8 +1069,11 @@
           {/if}
         </div>
       {/each}
-      <p class="hint">{t("summary.saved")}</p>
+      {#if run.results.some((r) => r.hasResult)}<p class="hint">{t("summary.saved")}</p>{/if}
       <div class="row">
+        {#if run.quick}
+          <button class="ghost" onclick={playAgain}>{t("quick.again")}</button>
+        {/if}
         <button class="primary" onclick={closeRun}>{t("summary.done")}</button>
       </div>
     </section>
@@ -1002,6 +1129,24 @@
       </span>
     {/if}
   </div>
+  {#if conn === "connected"}
+    <div class="board-actions" role="group" aria-label={t("board.actions")}>
+      <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={resetBoard}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" />
+        </svg>
+      </button>
+      <button class="icon" aria-label={t("board.calibrate")} title={t("board.calibrate")} disabled={!canCalibrate} onclick={calibrateBoard}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M11 2h2v3.07A7 7 0 0 1 18.93 11H22v2h-3.07A7 7 0 0 1 13 18.93V22h-2v-3.07A7 7 0 0 1 5.07 13H2v-2h3.07A7 7 0 0 1 11 5.07V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z" />
+        </svg>
+      </button>
+      <!-- Whether the last reset or calibration worked, over the buttons. -->
+      {#if boardNote}
+        <span class="confirm-bubble up" class:ok={!boardNote.failed} role="status">{boardNote.text}</span>
+      {/if}
+    </div>
+  {/if}
 </footer>
 
 <style>
@@ -1124,7 +1269,7 @@
   footer {
     flex: none;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     gap: 1rem;
     padding: 0.6rem 1.5rem;
@@ -1132,7 +1277,7 @@
     font-size: 0.85rem;
     color: var(--dim);
   }
-  .meta { display: flex; gap: 1.25rem; align-items: center; }
+  .meta { display: flex; gap: 1.25rem; align-items: center; margin-right: auto; }
   .meta a { color: var(--dim); text-decoration: none; }
   .meta a:hover { color: var(--accent); }
   .conn { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); font-size: 0.9rem; }
@@ -1143,6 +1288,13 @@
   /* Connected, but the client doesn't detect darts right now. */
   .conn[data-board="idle"] .dot { background: var(--dart); }
   .board-icon { display: inline-flex; color: var(--dart); cursor: help; }
+  /* Pulled up against the status, so the buttons read as part of it. */
+  .board-actions { position: relative; display: flex; gap: 0.15rem; margin-left: -0.65rem; }
+  .board-actions button.icon { width: 1.9rem; height: 1.9rem; }
+  .confirm-bubble.up { top: auto; bottom: calc(100% + 0.6rem); right: -0.6rem; }
+  .confirm-bubble.up::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: #ff9b8f; }
+  .confirm-bubble.ok { border-color: var(--accent); background: #0f2a31; color: #d4f6fc; }
+  .confirm-bubble.up.ok::before { border-top-color: var(--accent); }
   .board-icon[data-board="running"] { color: var(--ok); }
   .board-icon[data-board="noCamera"], .board-icon[data-board="blocked"] { color: #ff9b8f; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -1210,10 +1362,12 @@
   .pick-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
   .pick-head h2 { grid-column: 2; margin: 0; text-align: center; }
   .pick-head .new { grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 0.35rem; }
+  .pick-head .quick { grid-column: 1; grid-row: 1; justify-self: start; display: inline-flex; align-items: center; gap: 0.35rem; }
   @media (max-width: 640px) {
-    .pick-head { grid-template-columns: 1fr auto; }
+    .pick-head { grid-template-columns: 1fr auto auto; }
     .pick-head h2 { grid-column: 1; text-align: left; }
-    .pick-head .new { grid-column: 2; }
+    .pick-head .quick { grid-column: 2; }
+    .pick-head .new { grid-column: 3; }
   }
   /* Shared form controls and buttons, also used by components in lib/. */
   :global {
