@@ -161,6 +161,21 @@ export const DPI_CONFIG: IndexConfig = {
       sample: { keys: ["targets"], min: 5 },
     },
     {
+      gameId: "bull-x",
+      area: "accuracy",
+      metrics: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 5, 40, 0.4)],
+      // Trebles and Shanghai are harder to hit as a second chance.
+      bySetting: {
+        key: "variant",
+        metrics: {
+          doubles: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 5, 40, 0.4)],
+          trebles: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 3, 30, 0.4)],
+          shanghai: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 2, 20, 0.4)],
+        },
+      },
+      sample: { keys: ["turns"], min: 10 },
+    },
+    {
       gameId: "around-the-clock",
       area: "accuracy",
       metrics: [higher("accuracy", 20, 60)],
