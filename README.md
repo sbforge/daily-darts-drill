@@ -19,7 +19,7 @@ The app must run inside Tauri (`npm run tauri dev`): all data lives in a SQLite 
 ## Where things live
 
 - `src/lib/autodarts.ts`: websocket client and the normalizer that turns raw `state` messages into dart events
-- `src/lib/games.ts`: the games (warm up, around the clock, simple doubles, complex doubles, scoring, 121). Each one is a pure function from turns and settings to stats, so it is easy to add more
+- `src/lib/games/`: the games (warm up, around the clock, simple doubles, Plan B, scoring, 121), one module each. Each one is a pure function from turns and settings to stats, so it is easy to add more
 - `src/lib/store.ts`: data shapes and defaults for settings and routines
 - `src/lib/db.ts`: the SQLite database (settings, routines, sessions, game results, raw darts)
 - `src/lib/session.svelte.ts`: one run of one game

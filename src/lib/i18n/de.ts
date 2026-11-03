@@ -196,8 +196,8 @@ export const de: Record<Key, string> = {
   "simpleDoubles.doubleInfo": "Das Double, auf das du das ganze Spiel wirfst. Nur dieses Double zählt als Treffer, jeder andere Dart ist ein Fehlwurf.",
   "simpleDoubles.summary": "{accuracy} % Trefferquote ({hits} von {darts} Darts)",
 
-  // complex doubles
-  "complexDoubles.name": "Komplexe Doubles",
+  // Plan B (was "Complex doubles"; the keys keep the old name)
+  "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
     "Checke das Double mit drei Darts aus. Single-Treffer werden abgezogen, das nächste Ziel ergibt sich aus dem Rest. Bleibt nach Dart 2 eine ungerade Zahl, ist das Bull das Ziel.",
   "complexDoubles.describe": "Ziel D{n}",
@@ -210,7 +210,6 @@ export const de: Record<Key, string> = {
   "complexDoubles.setUp": "Stellen",
   "complexDoubles.rounds": "Runden",
   "complexDoubles.successes": "Erfolgreiche Runden",
-  "complexDoubles.wonWith": "Gewonnen mit Dart {n}",
 
   // scoring
   "scoring.name": "Scoring",
