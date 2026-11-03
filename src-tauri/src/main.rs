@@ -28,11 +28,44 @@ struct Startup {
     update_backup: Option<String>,
     /// Why a backup failed, if it did.
     backup_error: Option<String>,
+    /// The `running` marker of the last start was still there: the app didn't close normally.
+    crashed_last_time: bool,
 }
 
 #[tauri::command]
 fn startup_report(startup: State<'_, Startup>) -> &Startup {
     startup.inner()
+}
+
+/// The last lines of the log, for a crash report.
+#[tauri::command]
+fn log_tail(app: tauri::AppHandle, lines: usize) -> Vec<String> {
+    let Ok(dir) = app.path().app_log_dir() else { return vec![] };
+    let text = std::fs::read_to_string(dir.join("d3.log")).unwrap_or_default();
+    let all: Vec<&str> = text.lines().collect();
+    all[all.len().saturating_sub(lines.min(500))..].iter().map(|l| l.to_string()).collect()
+}
+
+/// Writes a crash report next to the log (`crash-<time>.json`), keeps the last 20. Returns the file's path.
+#[tauri::command]
+fn save_crash_report(app: tauri::AppHandle, json: String) -> Result<String, String> {
+    let dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let name = format!("crash-{}.json", chrono::Local::now().format("%Y-%m-%dT%H-%M-%S"));
+    let path = dir.join(&name);
+    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    log::error!("crash report written: {name}");
+    let mut old: Vec<_> = std::fs::read_dir(&dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("crash-"))
+        .collect();
+    old.sort_by_key(|e| e.file_name());
+    let extra = old.len().saturating_sub(20);
+    for e in old.into_iter().take(extra) {
+        let _ = std::fs::remove_file(e.path());
+    }
+    Ok(path.display().to_string())
 }
 
 /// Opens one of the app's folders in the file manager.
@@ -138,6 +171,14 @@ fn main() {
             let config = app.path().app_config_dir()?;
             log::info!("D³ {} on {} starting", env!("CARGO_PKG_VERSION"), std::env::consts::OS);
             let mut startup = Startup::default();
+            // A marker for "the app is running": a clean exit removes it, so finding it means the last run crashed.
+            let marker = app.path().app_log_dir()?.join("running");
+            startup.crashed_last_time = marker.exists();
+            if startup.crashed_last_time {
+                log::warn!("the last run did not close normally");
+            }
+            let _ = std::fs::create_dir_all(marker.parent().unwrap());
+            let _ = std::fs::write(&marker, "");
             match backup::update_backup(&config, env!("CARGO_PKG_VERSION")) {
                 Ok(Some(dir)) => {
                     log::info!("backup before the update: {}", dir.display());
@@ -152,7 +193,14 @@ fn main() {
             app.manage(startup);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![discover_boards, startup_report, open_folder])
-        .run(tauri::generate_context!())
-        .expect("error while running D³ – Daily Darts Drill");
+        .invoke_handler(tauri::generate_handler![discover_boards, startup_report, open_folder, log_tail, save_crash_report])
+        .build(tauri::generate_context!())
+        .expect("error while building D³ – Daily Darts Drill")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                if let Ok(dir) = app.path().app_log_dir() {
+                    let _ = std::fs::remove_file(dir.join("running"));
+                }
+            }
+        });
 }
