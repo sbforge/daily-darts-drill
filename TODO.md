@@ -1,29 +1,27 @@
 # Todos
 
 ## Next (in priority order)
-1. Autodarts client status (pause, offline, ...)
-    * Auto reconnect
-    * Pause the routine while disconnected
-2. Show current Autodarts status (throw, takeout, takeout in progress, error?)
-3. Single training game (play one game without a routine)
+1. Show current Autodarts status (throw, takeout, takeout in progress, error?)
+    * Comes as `state.status` on the websocket (see debug/AUTODARTS-API.md)
+2. Single training game (play one game without a routine)
     * add quickgame option to the training screen
       * button on the top left
     * Show Popup with available training games (like in the "add game" function when editing a routine)
-4. History graph per training game
+3. History graph per training game
     * Track result progress (per game)
-5. Reset & calibrate button (Request: see debug folder)
-6. Loading Screen
+4. Reset & calibrate button (`AutodartsClient.reset()` / `calibrate()` already exist)
+5. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-7. About Screen
+6. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-8. Settings: Autodarts auto discovery of IP & port
-9. Buy me a coffee: add the real link (placeholder URL for now)
-10. Fix GitHub Actions asset creation
-11. Update README.md for version 0.1
+7. Settings: Autodarts auto discovery of IP & port
+8. Buy me a coffee: add the real link (placeholder URL for now)
+9. Fix GitHub Actions asset creation
+10. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -120,4 +118,9 @@
   * The game recalculates; a fix survives Autodarts re-sending the turn
   * A board click with no box picked sets the next dart (for darts Autodarts missed)
   * "Next turn" button beside the boxes ends the turn by hand; empty boxes count as misses
+* Autodarts client status as an icon behind the connection in the footer (running, stopped, starting/stopping, calibrating, no camera, blocked; the name on hover)
+  * Read over REST on connect (the websocket only sends a state when it changes), then live from the websocket
+  * Auto reconnect
+  * Games with darts only start while the detection runs; "Start detection" button when it is stopped
+  * A running game pauses while the detection is gone and resumes by itself when it is back
 * Target fields highlighted on the board (Around the clock, Simple doubles, Plan B); a game can light up several at once

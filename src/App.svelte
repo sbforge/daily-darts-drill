@@ -4,6 +4,7 @@
     AutodartsClient,
     autodartsUrl,
     dartLabel,
+    type BoardStatus,
     type ConnState,
     type DartEvent,
   } from "./lib/autodarts";
@@ -42,6 +43,8 @@
   let draft = $state<Config>({ ...DEFAULT_CONFIG });
   let formError = $state("");
   let conn = $state<ConnState>("disconnected");
+  let board = $state<BoardStatus>("unknown");
+  let startError = $state(false);
   let recent = $state<string[]>([]);
 
   // routines
@@ -79,6 +82,10 @@
   const connLabel = $derived(
     t(conn === "connected" ? "conn.connected" : conn === "connecting" ? "conn.connecting" : "conn.disconnected"),
   );
+  // The websocket only says the client is up; what it is doing shows as an icon behind it.
+  const boardLabel = $derived(board === "unknown" ? "" : t(`board.${board}`));
+  // Darts are only detected while the client runs, not merely while it is connected.
+  const detecting = $derived(conn === "connected" && board === "running");
   const item = $derived(run && phase !== "summary" && phase !== "idle" ? (run.routine.items[run.index] ?? null) : null);
   const def = $derived(item ? gameById(item.gameId) : null);
   const totalMs = $derived(item ? item.minutes * 60_000 : 0);
@@ -86,7 +93,9 @@
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
   const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
-  const canStart = $derived(!!def && (conn === "connected" || !def.needsDarts));
+  const canStart = $derived(!!def && (detecting || !def.needsDarts));
+  // A game with darts can't go on without the detection, so it waits paused until Autodarts is back.
+  const waiting = $derived(phase === "running" && !!def?.needsDarts && !detecting);
   const breakLeft = $derived(Math.max(0, breakEndsAt - (paused ? pausedAt : now)));
   const countdownLeft = $derived(Math.max(1, Math.ceil(breakLeft / 1000)));
 
@@ -267,12 +276,30 @@
   }
 
   function resume() {
-    if (!paused) return;
+    if (!paused || waiting) return;
     // Move the end of the clock by however long we were paused.
     if (phase === "break") breakEndsAt += Date.now() - pausedAt;
     else if (endsAt !== null) endsAt += Date.now() - pausedAt;
     paused = false;
     now = Date.now();
+  }
+
+  // Paused by the lost detection, so it picks up by itself once the detection runs again.
+  // A pause the player made stays until they resume.
+  let autoPaused = false;
+  $effect(() => {
+    if (waiting && !paused) {
+      pause();
+      autoPaused = true;
+    } else if (!waiting && autoPaused) {
+      autoPaused = false;
+      resume();
+    }
+  });
+
+  function startDetection() {
+    startError = false;
+    client.start().catch(() => (startError = true));
   }
 
   $effect(() => {
@@ -428,7 +455,7 @@
   }
 
   onMount(() => {
-    client = new AutodartsClient({ onState: (s) => (conn = s), onEvent });
+    client = new AutodartsClient({ onState: (s) => (conn = s), onBoard: (s) => (board = s), onEvent });
     (async () => {
       try {
         await db.openDb();
@@ -452,6 +479,21 @@
   });
 </script>
 
+<!-- Why a game with darts can't start or go on: no connection, or the detection isn't running. -->
+{#snippet waitHint()}
+  {#if conn !== "connected"}
+    <p class="hint">{t("run.connectFirst")}</p>
+  {:else}
+    <p class="hint wait-hint">
+      {t("run.detectionOff", { status: t(`board.${board}`) })}
+      {#if board === "stopped"}
+        <button class="ghost small" onclick={startDetection}>{t("run.startDetection")}</button>
+      {/if}
+    </p>
+    {#if startError}<p class="error" role="alert">{t("run.startFailed")}</p>{/if}
+  {/if}
+{/snippet}
+
 <!-- Escape stops correcting a dart. -->
 <svelte:window onkeydown={(e) => e.key === "Escape" && session?.editing && (session.editing = null)} />
 
@@ -473,7 +515,7 @@
         aria-label={paused ? t("run.resume") : t("run.pause")}
         title={paused ? t("run.resume") : t("run.pause")}
         onclick={paused ? resume : pause}
-        disabled={phase !== "running" && phase !== "break"}
+        disabled={(phase !== "running" && phase !== "break") || waiting}
       >
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           {#if paused}
@@ -704,7 +746,7 @@
       <p class="lede">{t("run.firstUp", { name: def.name })}</p>
       <Quote />
       {#if !canStart}
-        <p class="hint">{t("run.connectFirst")}</p>
+        {@render waitHint()}
       {/if}
     </section>
   {:else if phase === "break" && run && item && def}
@@ -734,7 +776,7 @@
         </div>
       </div>
       {#if !canStart}
-        <p class="hint">{t("run.connectFirst")}</p>
+        {@render waitHint()}
       {/if}
     </section>
   {:else if phase === "ready" && run && item && def}
@@ -744,7 +786,7 @@
       <p class="lede">{def.blurb}</p>
       <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
       {#if !canStart}
-        <p class="hint">{t("run.connectFirst")}</p>
+        {@render waitHint()}
       {/if}
     </section>
   {:else if phase === "running" && session && result && run && def}
@@ -753,13 +795,17 @@
         <p class="progress">{t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}</p>
         <div class="clock" class:paused>{fmt(remaining)}</div>
         <p class="note">
-          {#if paused}
+          {#if waiting}
+            {t("run.waitingForBoard")}
+          {:else if paused}
             {t("run.paused")}
           {:else}
             {t("run.keepThrowing")}
           {/if}
         </p>
-        {#if paused}
+        {#if waiting}
+          {@render waitHint()}
+        {:else if paused}
           <Quote />
         {/if}
 
@@ -886,8 +932,28 @@
     <a href={GITHUB_URL} onclick={(e) => openExternal(e, GITHUB_URL)}>GitHub</a>
     <a href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>{t("footer.coffee")}</a>
   </div>
-  <div class="conn" data-state={conn} role="status">
+  <div class="conn" data-state={conn} data-board={conn === "connected" && !detecting ? "idle" : undefined} role="status">
     <span class="dot"></span>{connLabel}
+    {#if conn === "connected" && board !== "unknown"}
+      <span class="board-icon" data-board={board} title={boardLabel}>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          {#if board === "running"}
+            <path fill="currentColor" d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.8-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z" />
+          {:else if board === "stopped"}
+            <path fill="currentColor" d="M7 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
+          {:else if board === "starting" || board === "stopping"}
+            <path fill="currentColor" d="M6 2h12v6l-4 4 4 4v6H6v-6l4-4-4-4V2Zm2 2v3.2l4 4 4-4V4H8Zm4 8.8-4 4V20h8v-3.2l-4-4Z" />
+          {:else if board === "calibrating"}
+            <path fill="currentColor" d="M11 2h2v3.07A7 7 0 0 1 18.93 11H22v2h-3.07A7 7 0 0 1 13 18.93V22h-2v-3.07A7 7 0 0 1 5.07 13H2v-2h3.07A7 7 0 0 1 11 5.07V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z" />
+          {:else if board === "noCamera"}
+            <path fill="currentColor" d="M21 6.5l-4 4V7a1 1 0 0 0-1-1H9.82L21 17.18V6.5ZM3.27 2 2 3.27 4.73 6H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2Z" />
+          {:else}
+            <path fill="currentColor" d="M12 2 1 21h22L12 2Zm0 4.3L19.5 19h-15L12 6.3ZM11 10v5h2v-5h-2Zm0 6v2h2v-2h-2Z" />
+          {/if}
+        </svg>
+        <span class="sr-only">{boardLabel}</span>
+      </span>
+    {/if}
   </div>
 </footer>
 
@@ -1027,6 +1093,12 @@
   .conn[data-state="connected"] { color: var(--chalk); }
   .conn[data-state="connected"] .dot { background: var(--ok); }
   .conn[data-state="connecting"] .dot { background: var(--dart); }
+  /* Connected, but the client doesn't detect darts right now. */
+  .conn[data-board="idle"] .dot { background: var(--dart); }
+  .board-icon { display: inline-flex; color: var(--dart); cursor: help; }
+  .board-icon[data-board="running"] { color: var(--ok); }
+  .board-icon[data-board="noCamera"], .board-icon[data-board="blocked"] { color: #ff9b8f; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   /* Full width so the scrollbar sits at the window edge; the padding centres a 1100px column. */
   main {
@@ -1041,6 +1113,7 @@
   .error { color: #ff9b8f; }
   .progress { color: var(--dim); margin: 0 0 0.35rem; font-size: 0.95rem; }
   .settings-line { margin: 0 0 1rem; }
+  .wait-hint button { margin-left: 0.5rem; vertical-align: baseline; }
 
   .narrow { max-width: 34rem; }
   .pause-field { max-width: 22rem; }
