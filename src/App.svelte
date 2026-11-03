@@ -642,10 +642,13 @@
       style.setProperty("--backdrop-pos", `${cx - bullX * scale}px ${cy - bullY * scale}px`);
     };
     align();
-    // The board moves when the window or the stage around it changes size.
+    // The board moves when the window, the stage or the column above it (the dart boxes) changes size.
     const ro = new ResizeObserver(align);
     ro.observe(el);
-    if (el.closest(".stage")) ro.observe(el.closest(".stage")!);
+    for (const sel of [".stage", ".views"]) {
+      const around = el.closest(sel);
+      if (around) ro.observe(around);
+    }
     window.addEventListener("resize", align);
     return () => {
       ro.disconnect();
@@ -2652,8 +2655,15 @@
   .darts .phase[data-phase="takeoutInProgress"] svg { animation: pull 0.8s ease-in-out infinite alternate; }
   @keyframes pull { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
   .darts .next-turn:hover { color: var(--accent); border-color: var(--accent); background: var(--panel); }
+  /* A fixed height, the same for a box with or without a dart, a button or not, and in any font:
+     a box that grew by a pixel would push the board (and its backdrop) down. */
   .dart-box {
-    padding: 0.6rem 0;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    height: 3.1rem;
+    margin: 0;
+    padding: 0;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--panel);
@@ -2664,7 +2674,7 @@
     font-variant-numeric: tabular-nums;
   }
   .dart-box.filled { color: var(--dart); border-color: var(--dart); }
-  button.dart-box { font: inherit; font-size: 1.5rem; font-weight: 700; cursor: pointer; }
+  button.dart-box { appearance: none; font: inherit; font-size: 1.5rem; font-weight: 700; line-height: 1; cursor: pointer; }
   button.dart-box:hover { background: rgb(242 193 78 / 0.08); }
   /* Set by hand: a small mark in the corner. */
   .dart-box.fixed { position: relative; }
@@ -2682,7 +2692,7 @@
   .dart-box.void:not(.editing) { color: var(--dim); border-color: var(--line); border-style: dashed; text-decoration: line-through; }
   .dart-box.closed { color: #ff6b5b; opacity: 0.55; border-style: dashed; font-size: 1.2rem; }
   .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
-  .pick-hint { max-width: 400px; width: 100%; min-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
+  .pick-hint { max-width: 400px; width: 100%; height: 1.4em; line-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
   .pick-hint.show { visibility: visible; }
 
   @media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }

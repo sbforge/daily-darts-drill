@@ -59,6 +59,7 @@
 
 
 ## Done ✅
+* The dart boxes have a fixed height, so filling or highlighting one no longer shifts the board; the backdrop also realigns when the column above the board changes
 * Animations, first batch (docs/animations-plan.md)
   * Global fx module (src/lib/fx/): queued overlay stamps played once per key, element effects via `use:useFx`
   * No Score moved onto it, unchanged; 180 in every game; a "great result" per game (121: checkout in 3, Plan B: first dart, Simple doubles: 3 of 3, Around the clock: 3 in a row). One stamp per turn, No Score beats 180 beats great
