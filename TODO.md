@@ -1,20 +1,18 @@
 # Todos
 
 ## Next (in priority order)
-1. History graph per training game
-    * Track result progress (per game)
-2. Loading Screen
+1. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-3. About Screen
+2. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-4. Settings: Autodarts auto discovery of IP & port
-5. Buy me a coffee: add the real link (placeholder URL for now)
-6. Fix GitHub Actions asset creation
-7. Update README.md for version 0.1
+3. Settings: Autodarts auto discovery of IP & port
+4. Buy me a coffee: add the real link (placeholder URL for now)
+5. Fix GitHub Actions asset creation
+6. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -138,5 +136,6 @@
     * Trend as a diagonal arrow (green up, red down, grey sideways for steady) and the change in %, with an encouraging line in seven steps: steady below 2%, slight below 5%, strong from 15%
     * Uses the full width; on a wide window the game list sits beside the picked game's chart
     * The encouraging line is the hero beside the score, the arrow and the change sit under it
+* History graph per training game: the game index view charts each game's progress over time
     * Info button beside the title: how the index works, in words
   * History shows the DPI per session and per game; deleting a session recalculates it
