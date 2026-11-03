@@ -39,6 +39,7 @@
   } from "./lib/dpi";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
+  import { log } from "./lib/log";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
   import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
@@ -201,6 +202,7 @@
   }
 
   function failed(e: unknown) {
+    log.error(`save failed: ${e instanceof Error ? e.message : String(e)}`);
     saveError = t("error.save", { msg: e instanceof Error ? e.message : String(e) });
   }
 
@@ -267,6 +269,7 @@
   }
 
   function begin(routine: Routine, quick: boolean) {
+    log.info(`${quick ? "quick game" : "routine"} started: ${routine.items.map((i) => i.gameId).join(", ")}`);
     run = {
       routine,
       quick,
@@ -311,6 +314,7 @@
     const settings = $state.snapshot(session.settings);
     const finishedAt = new Date().toISOString();
     session.finish();
+    log.info(`game finished: ${def.id}, ${item.minutes} min${early ? ", early" : ""}`);
     // Moments still waiting belong to the game that just ended; the one on screen plays out.
     fx.dropQueued();
     paused = false;
@@ -489,6 +493,7 @@
       setTimeout(() => (pendingAbort = false), 4000);
       return;
     }
+    log.info("routine aborted");
     db.endSession(sessionInfo(run), "aborted").then(refreshHistory, failed);
     closeRun();
   }
@@ -590,8 +595,8 @@
   function resetBoard() {
     if (!canReset) return;
     client.reset().then(
-      () => noteBoard(t("board.resetDone"), false),
-      () => noteBoard(t("board.resetFailed"), true),
+      () => (log.info("autodarts reset"), noteBoard(t("board.resetDone"), false)),
+      (e) => (log.warn(`autodarts reset failed: ${e}`), noteBoard(t("board.resetFailed"), true)),
     );
   }
 
@@ -613,8 +618,8 @@
   function calibrateBoard() {
     if (!canCalibrate) return;
     client.calibrate().then(
-      () => noteBoard(t("board.calibrateStarted"), false),
-      () => noteBoard(t("board.calibrateFailed"), true),
+      () => (log.info("autodarts calibration started"), noteBoard(t("board.calibrateStarted"), false)),
+      (e) => (log.warn(`autodarts calibration failed: ${e}`), noteBoard(t("board.calibrateFailed"), true)),
     );
   }
 
@@ -959,6 +964,7 @@
 
   async function autoDiscover() {
     const boards = await discoverBoards().catch(() => [] as FoundBoard[]);
+    log.info(`autodarts discovery: ${boards.length} found`);
     if (conn === "connected" || !boards.length) return;
     const b = boards[0];
     if (b.host === config.host && b.port === config.port) return;
@@ -978,6 +984,7 @@
   }
 
   function onConnState(s: ConnState) {
+    if (s !== conn) log.info(`autodarts ${s} (${config.host}:${config.port})`);
     conn = s;
     if (s !== "connected" || !candidate) return;
     config = candidate;
@@ -1007,6 +1014,7 @@
       try {
         const startup = await startupReport();
         updateBackup = startup.updateBackup ?? "";
+        if (startup.backupError) log.error(`backup failed: ${startup.backupError}`);
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
@@ -1039,6 +1047,7 @@
         else setTimeout(() => conn !== "connected" && autoDiscover(), AUTO_DISCOVER_AFTER_MS);
       } catch (e) {
         dbError = e instanceof Error ? e.message : String(e);
+        log.error(`database could not be opened: ${dbError}${updateBackup ? ` (backup: ${updateBackup})` : ""}`);
       }
     })();
     return () => client.disconnect();
@@ -1343,6 +1352,14 @@
           <p class="hint">{t("about.thirdParty")}</p>
           <div class="row">
             <button class="ghost" onclick={() => sbomDialog?.open()}>{t("about.sbom")}</button>
+          </div>
+        </section>
+
+        <section class="group" aria-labelledby="about-logs">
+          <h3 id="about-logs">{t("about.logsTitle")}</h3>
+          <p class="hint">{t("about.logsHint")}</p>
+          <div class="row">
+            <button class="ghost" onclick={() => openFolder("logs")}>{t("about.openLogs")}</button>
           </div>
         </section>
       </div>

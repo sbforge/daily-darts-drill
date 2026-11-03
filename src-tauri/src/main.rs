@@ -41,6 +41,7 @@ fn open_folder(app: tauri::AppHandle, kind: String) -> Result<(), String> {
     let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
     let path: PathBuf = match kind.as_str() {
         "backups" => backup::backups_dir(&config),
+        "logs" => app.path().app_log_dir().map_err(|e| e.to_string())?,
         _ => return Err(format!("unknown folder: {kind}")),
     };
     std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
@@ -106,8 +107,26 @@ fn browse(timeout: Duration) -> Result<Vec<Board>, String> {
     Ok(boards)
 }
 
+/// The log: `d3.log` in the app's log folder, about 1 MB each, the last 3 kept. Also on stdout in development.
+fn logger() -> tauri_plugin_log::Builder {
+    use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
+    tauri_plugin_log::Builder::new()
+        .targets([
+            Target::new(TargetKind::LogDir { file_name: Some("d3".into()) }),
+            Target::new(TargetKind::Stdout),
+        ])
+        .max_file_size(1_000_000)
+        .rotation_strategy(RotationStrategy::KeepSome(3))
+        .level(if cfg!(debug_assertions) { log::LevelFilter::Debug } else { log::LevelFilter::Info })
+}
+
 fn main() {
+    // A panic on the main thread ends the app: write it down first, so the next start can say so.
+    std::panic::set_hook(Box::new(|info| {
+        log::error!("panic: {info}");
+    }));
     tauri::Builder::default()
+        .plugin(logger().build())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:darttrainer.db", migrations())
@@ -117,6 +136,7 @@ fn main() {
         .setup(|app| {
             // Before any window can open the database: the files are not in use, a plain copy is complete.
             let config = app.path().app_config_dir()?;
+            log::info!("D³ {} on {} starting", env!("CARGO_PKG_VERSION"), std::env::consts::OS);
             let mut startup = Startup::default();
             match backup::update_backup(&config, env!("CARGO_PKG_VERSION")) {
                 Ok(Some(dir)) => {

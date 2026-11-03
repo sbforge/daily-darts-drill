@@ -18,7 +18,7 @@ export async function startupReport(): Promise<StartupReport> {
   }
 }
 
-export type AppFolder = "backups";
+export type AppFolder = "backups" | "logs";
 
 export async function openFolder(kind: AppFolder): Promise<void> {
   try {
