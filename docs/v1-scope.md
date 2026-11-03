@@ -13,17 +13,22 @@ Mark each line in / out as we go.
   error (`src/lib/db.ts`). Once other people have history in their DB, every schema change must run exactly once,
   in order: numbered migrations + `PRAGMA user_version`, existing ALTERs become migrations 1…n.
   Answers the "Open Questions → updates / schema changes" in `TODO.md`. Needed by the scorer plan (`darts` table).
-- [ ] **OTA updates in v1.** The first update-capable version must be installed by hand, so it should be v1 itself.
-  See `docs/ota-updates-plan.md` (at least: signing key, updater plugin, `latest.json` in CI, manual check + install).
+- [ ] **OTA updates in v1, with automatic check on start.** The first update-capable version must be installed by
+  hand, so it should be v1 itself. See `docs/ota-updates-plan.md`, stages 1–3: signing key, updater plugin,
+  `latest.json` in CI, manual check + install, automatic check on start, badge, skip / later, off switch.
 - [ ] **Release workflow fixed** (TODO.md #5). Part of the OTA work: signed updater artifacts, `latest.json`, tag
   must match the version.
+- [ ] **Linux build.** AppImage in CI (the updater only supports AppImage on Linux), plus `linux-x86_64` in
+  `latest.json`. Optionally `.deb` for a normal install (manual updates only).
+- [ ] **Animations, first batch** (`docs/animations-plan.md`): the global fx module, No Score moved onto it,
+  A7 last seconds, A8 180 + great results, A11 summary, and the animations on / off setting.
 - [ ] **Version number.** Still `0.1.0` in `package.json`, `tauri.conf.json`, `Cargo.toml`. One source
   (`tauri.conf.json` → `../package.json`), bump to `1.0.0` for the release.
 - [ ] **About screen with third-party licenses** (TODO.md #2). Licenses of the bundled JS and Rust libraries
   (e.g. generated with `license-checker` / `cargo-about`), project links, version. SBOM (CycloneDX) as a release asset.
 - [ ] **Buy me a coffee** (TODO.md #4): real link, or hide the button for v1.
 - [ ] **README for v1** (TODO.md #6):
-  - says "Windows, macOS and Linux", but CI only builds Windows and macOS → fix the text or add Linux (AppImage)
+  - says "Windows, macOS and Linux": true once the Linux build above exists; add Linux install notes (AppImage)
   - "Not built yet: trend charts …" is outdated (statistics and charts exist)
   - why D³ exists and how it is meant to be used (your expectation-management point)
   - install notes for unsigned builds (macOS right-click → Open, Windows SmartScreen)
@@ -37,19 +42,18 @@ Mark each line in / out as we go.
   backs up before each update; this is the manual counterpart.
 - [ ] **Loading screen** (TODO.md #1).
 - [ ] **Autodarts auto discovery** of host and port (TODO.md #3).
-- [ ] **Animations, first batch** (A7, A8, A11 + the fx module, `docs/animations-plan.md`). Nice payoff for v1,
-  not blocking.
 
 ## Later
 
 - [ ] **OS code signing**: Apple Developer ID + notarization, Windows Authenticode. Removes first-install warnings.
 - [ ] **Multi scorer refactor** (`docs/scorer-interop-plan.md`). Steps 1–3 are a pure refactor and fit right after v1;
   the DB part needs the migrations from "Must" first.
-- [ ] **OTA extras**: automatic daily check, badge, skip version, beta channel (OTA plan stages 3–4), if not in v1.
+- [ ] **OTA beta channel** (OTA plan stage 4).
+- [ ] **Animations marked ⏳ later** in the animations plan.
 - [ ] Everything in `TODO.md` → "Training Games", "Design & Artwork", "Idea Backlog".
 
-## Open questions
+## Decisions
 
-1. ❓ Linux in v1 (AppImage build, also needed for its self-update) or Windows + macOS only?
-2. ❓ OTA in v1: only manual check + install (stages 1–2), or the automatic check as well (stage 3)?
-3. ❓ Animations first batch in v1, or right after?
+- ✅ Linux is part of v1 (AppImage, self-updating).
+- ✅ OTA in v1 includes the automatic update check on start (stages 1–3).
+- ✅ Animations first batch is a must for v1.

@@ -163,8 +163,8 @@ This is separate from OS code signing (Apple Developer ID / Windows Authenticode
   an unsigned `.dmg` still needs the right-click → Open dance. Real notarization needs an Apple Developer account (99 $/yr). ❓
 - **Windows without Authenticode.** SmartScreen may warn on the first install; the updater itself works. Windows closes
   the app during install (that is why US-8 matters).
-- **Linux:** the updater only supports AppImage; there is no Linux build in CI today. ❓ Add AppImage, or leave Linux on
-  manual updates.
+- **Linux:** ✅ decided: part of v1. The updater only supports AppImage, so CI builds an AppImage (Ubuntu runner,
+  `linux-x86_64` entry in `latest.json`); a `.deb` would only update manually.
 - **Lost signing key** = no more updates for installed apps (see step 1).
 - **GitHub API limits:** not an issue, `releases/latest/download/latest.json` is a plain file download, not the API.
 
