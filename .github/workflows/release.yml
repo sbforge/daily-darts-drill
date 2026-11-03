@@ -1,145 +1,114 @@
-name: Build Tauri Release
+name: Release
 
+# A pushed tag v* (made by `npm version`) builds every platform into a DRAFT release; nothing reaches players
+# until the draft is published. A manual run builds the branch picked in "Run workflow" and only keeps artifacts.
 on:
-  release:
-    types:
-      - published
-  
+  push:
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  version:
+    name: Check the version
+    runs-on: ubuntu-22.04
+    if: github.ref_type == 'tag'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/sync-version.js --check --tag "${{ github.ref_name }}"
+
   build:
     name: Build ${{ matrix.name }}
-
+    needs: [version]
+    # The version check is skipped on manual runs, which must not stop the build.
+    if: ${{ !cancelled() && (needs.version.result == 'success' || needs.version.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
-        # Every build names its target, so the installers land in target/<target>/release/bundle.
-        # Intel Macs are cross-compiled on the Apple Silicon runner.
         include:
           - name: Windows
             os: windows-latest
             target: x86_64-pc-windows-msvc
+            bundles: msi
             artifact: windows
-
           - name: macOS (Apple Silicon)
             os: macos-latest
             target: aarch64-apple-darwin
+            bundles: app,dmg
             artifact: macos-apple-silicon
-
           - name: macOS (Intel)
             os: macos-latest
             target: x86_64-apple-darwin
+            bundles: app,dmg
             artifact: macos-intel
-
+          - name: Linux
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: appimage,deb
+            artifact: linux
     runs-on: ${{ matrix.os }}
 
     steps:
-      # A release builds its tag; a manual run (for testing) builds the branch picked in "Run workflow".
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install the Linux packages Tauri needs
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
           key: ${{ matrix.target }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm test
 
-      - name: Build Tauri application
-        run: npm run tauri build -- --target ${{ matrix.target }}
+      # Draft first, publish last: a tag push creates (or fills) a draft release, a manual run only builds.
+      - name: Build
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: ${{ github.ref_type == 'tag' && format('D³ {0}', github.ref_name) || '' }}
+          releaseDraft: true
+          # v1.1.0-beta.1 and the like are pre-releases: "latest" ignores them, so no player is offered them.
+          prerelease: ${{ github.ref_type == 'tag' && contains(github.ref_name, '-') }}
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
-      - name: Upload build artifacts
+      # The ad-hoc signature (signingIdentity "-") has to be complete, else Apple Silicon calls the app "damaged".
+      - name: Verify the macOS signature
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          for app in src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+          done
+
+      - name: Keep the installers of a manual run
+        if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          # Manual test runs have no release: download the installer from the run's "Artifacts".
           retention-days: 7
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
           if-no-files-found: error
-
-  publish:
-    name: Publish Release Assets
-
-    # Only a published release has a tag to upload to.
-    if: github.event_name == 'release'
-
-    needs:
-      - build
-
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Show release artifacts
-        shell: bash
-        run: |
-          echo "Release assets:"
-
-          find artifacts -type f \( \
-            -name "*.msi" \
-            -o -name "*.dmg" \
-          \) -print
-
-      - name: Remove existing release assets
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          gh release view "$TAG" \
-            --json assets \
-            --jq '.assets[].name' |
-          while IFS= read -r asset; do
-            case "$asset" in
-              *.msi|*.dmg)
-                echo "Deleting existing asset: $asset"
-                gh release delete-asset "$TAG" "$asset" --yes
-                ;;
-              *)
-                echo "Keeping unrelated asset: $asset"
-                ;;
-            esac
-          done
-
-      - name: Upload release assets
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          find artifacts -type f \( \
-            -name "*.msi" \
-            -o -name "*.dmg" \
-          \) -print0 |
-          while IFS= read -r -d '' file; do
-            echo "Uploading: $file"
-            gh release upload "$TAG" "$file"
-          done
