@@ -132,6 +132,9 @@ This is separate from OS code signing (Apple Developer ID / Windows Authenticode
 
 ### 3. Release workflow (`.github/workflows/release.yml`)
 
+The workflow as a whole (jobs, Linux, version source, ad-hoc signing, SBOM, release checklist) is in
+`docs/release-plan.md`; this section is what the updater needs from it.
+
 - Pass the two signing secrets as env vars to the `tauri build` step.
 - Collect the updater artifacts as well (`*.app.tar.gz`, `*.sig`, the Windows installer used for updates).
 - New step in `publish`: generate `latest.json` from the version, the release body (notes), the publish date, and per
@@ -189,13 +192,11 @@ This is separate from OS code signing (Apple Developer ID / Windows Authenticode
 
 ### 5. Data safety and migrations
 
-- Small Rust command `backup_database(label)` (or JS via `@tauri-apps/plugin-fs`) that copies the SQLite file into
-  `<app config>/backups/` and prunes to the last 3. Called right before `downloadAndInstall`, and on the first start
-  of a new version before migrating (step 6 of the flow above).
-- **Schema version:** `PRAGMA user_version` holds the schema version. `db.ts` gets a numbered list of migrations
-  (`MIGRATIONS[1]`, `MIGRATIONS[2]`, …); on open it runs the ones above the stored version, each in a transaction,
-  and stores the new version. Today's "add the column if it is missing" checks become migration 1, so existing
-  databases (version 0) are brought up the same way as new ones.
+- Backups with SQLite's `VACUUM INTO '<app config>/backups/…'` (a consistent copy while the file is open, no Rust
+  needed), pruned to the last 3. Called right before `downloadAndInstall`, and on the first start of a new version
+  before migrating (step 6 of the flow above). The same helper does "Export my data" (`docs/logs-and-export-plan.md`).
+- **Schema version and migrations:** in detail in `docs/db-migrations-plan.md` (`PRAGMA user_version`, numbered
+  migrations, one transaction per step, today's column checks kept as a one-time legacy upgrade).
 - Migrations are forward-only; a new version must open any older DB. Downgrades are not supported (the updater only
   offers higher versions), and an older app refuses to write to a newer DB.
 - This answers the open question in TODO.md ("How to handle updates / database schema changes / migrations"):

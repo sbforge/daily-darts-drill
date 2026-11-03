@@ -3,7 +3,8 @@
 
 
 ## Next (in priority order)
-1. Fix GitHub Actions asset creation
+Version 1 checklist with a plan per item: docs/v1-scope.md
+1. Fix GitHub Actions asset creation (docs/release-plan.md)
 2. README.md: write the "Why I built this" section (placeholder for now)
     * Especially expectation management: why did I build this, how do I want to train?
 
@@ -50,9 +51,8 @@
 * AI Trainer Suggestions ( for the very far future ; Would love to have it.. Not important enough for now)
 
 ## Open Questions
-* How to handle updates
-  * Especially database schema changes
-  * Do I need migrations once a stable version was shipped?
+* How to handle updates → answered: docs/ota-updates-plan.md (updater) and docs/db-migrations-plan.md (yes, versioned
+  migrations from v1 on)
 
 
 ## Done ✅
