@@ -100,13 +100,13 @@ stream (`ws://<host>:3180/api/events/system`) and uses its local API to start an
 the board and calibrate. D³ itself needs no Autodarts login and no internet connection. The client announces
 itself on the network (mDNS), which is how D³ finds it on its own.
 
-Using another system? Open an [issue](https://github.com/steffen-brauer/adx-autodarts-training-experience/issues),
+Using another system? Open an [issue](https://github.com/sbforge/daily-darts-drill/issues),
 support for more autoscorers is welcome.
 
 ## Install
 
 Download the installer for your system from the
-[releases](https://github.com/steffen-brauer/adx-autodarts-training-experience/releases):
+[releases](https://github.com/sbforge/daily-darts-drill/releases):
 
 | System | File |
 |---|---|

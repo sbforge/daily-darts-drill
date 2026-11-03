@@ -8,7 +8,7 @@ Status legend: ❓ = needs a decision from you before I start.
 ## Where we start from
 
 - Tauri 2 app, version `0.1.0` in three places: `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`.
-- Releases live on GitHub (`steffen-brauer/adx-autodarts-training-experience`). `.github/workflows/release.yml` builds
+- Releases live on GitHub (`sbforge/daily-darts-drill`). `.github/workflows/release.yml` builds
   `.msi` (Windows) and `.dmg` (macOS) when a release is published and attaches them. No Linux build, no signing,
   no update metadata. (TODO.md #5 "Fix GitHub Actions asset creation" overlaps with this.)
 - No updater or process plugin yet. The CSP already allows `https:` in `connect-src`.
@@ -88,7 +88,7 @@ This is separate from OS code signing (Apple Developer ID / Windows Authenticode
   - `bundle.createUpdaterArtifacts: true` (builds `.app.tar.gz` on macOS and signed `.msi`/NSIS `.exe` on Windows,
     each with a `.sig`).
   - `plugins.updater.pubkey: "<public key>"`
-  - `plugins.updater.endpoints: ["https://github.com/steffen-brauer/adx-autodarts-training-experience/releases/latest/download/latest.json"]`
+  - `plugins.updater.endpoints: ["https://github.com/sbforge/daily-darts-drill/releases/latest/download/latest.json"]`
     (`/releases/latest` skips pre-releases and drafts, which covers US-15 for free).
   - `plugins.updater.windows.installMode: "passive"` (small progress window, no wizard).
   - `version: "../package.json"` so `package.json` is the single source (US-14); `Cargo.toml` version is bumped
