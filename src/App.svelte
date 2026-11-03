@@ -37,6 +37,7 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
+  import { missingBuiltins } from "./lib/routines/builtin";
   import { NON_COMPARABLE } from "./lib/games/shared";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
@@ -197,6 +198,15 @@
   function settingsLine(i: RoutineItem): string {
     const desc = gameById(i.gameId).describe(i.settings);
     return i.minutes > 0 ? t("run.settingsLine", { desc, n: i.minutes }) : t("quick.settingsLineNoCap", { desc });
+  }
+
+  let restoreNote = $state("");
+
+  /** Adds back the built-in routines that are missing; never overwrites what the player changed. */
+  function restoreBuiltins() {
+    const add = missingBuiltins($state.snapshot(routines));
+    routines = [...routines, ...add];
+    restoreNote = add.length ? t("builtin.restored", { n: add.length }) : t("builtin.nothingToRestore");
   }
 
   function failed(e: unknown) {
@@ -1286,6 +1296,15 @@
             />
           </label>
           <p class="hint">{t("settings.animationsHint")}</p>
+        </section>
+
+        <section class="group" aria-labelledby="routines-title">
+          <h3 id="routines-title">{t("settings.routinesTitle")}</h3>
+          <p class="hint">{t("builtin.restoreHint")}</p>
+          <div class="row">
+            <button class="ghost" onclick={restoreBuiltins}>{t("builtin.restore")}</button>
+          </div>
+          {#if restoreNote}<p class="hint" role="status">{restoreNote}</p>{/if}
         </section>
 
         <section class="group" aria-labelledby="stats-title">

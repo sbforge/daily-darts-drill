@@ -55,6 +55,9 @@ export const soloLeg: GameDef = {
     legsField("legs"),
     showRouteField,
   ],
+  canEnd: (s) => Number(s.legs) > 0,
+  // About three minutes for a 501 leg.
+  estimateMinutes: (s) => Math.max(1, Math.ceil((Number(s.legs) || 1) * 3 * (Number(s.start) || 501) / 501)),
   describe: (s) =>
     Number(s.legs) > 0 ? t("solo.describeLegs", { n: s.start, legs: s.legs }) : t("solo.describe", { n: s.start }),
   summary: (v) => t("solo.summary", { average: num(v.average, 1), legs: v.legs, darts: num(v.dartsPerLeg, 1) }),

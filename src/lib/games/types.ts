@@ -95,6 +95,10 @@ export interface GameDef {
   defaultMinutes: number;
   defaultSettings: Settings;
   fields: Field[];
+  /** True when, with these settings, the game ends by itself, so it can run without a time cap inside a routine. */
+  canEnd?(settings: Settings): boolean;
+  /** About how long the game takes without a time cap, in minutes: the routine's length counts with it. */
+  estimateMinutes?(settings: Settings): number;
   /** Settings the app adds when a game starts (a seed for a random order), kept with the result. */
   prepare?(settings: Settings): Settings;
   describe(settings: Settings): string;

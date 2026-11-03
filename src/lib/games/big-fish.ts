@@ -41,6 +41,8 @@ export const bigFish: GameDef = {
     },
     showRouteField,
   ],
+  canEnd: (s) => Number(s.legs) > 0,
+  estimateMinutes: (s) => Math.max(1, Math.ceil((Number(s.legs) || 1) * 1.5)),
   describe: (s) => (Number(s.legs) > 0 ? t("fish.describeLegs", { legs: s.legs }) : t("fish.describe")),
   summary: (v) => t("fish.summary", { legs: v.checkouts, darts: num(v.dartsPerLeg, 1), best: v.bestLeg || t("game.none") }),
   compute(turns, s, ctx) {

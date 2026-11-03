@@ -24,7 +24,7 @@ export interface Routine {
 }
 
 export const DEFAULT_CONFIG: Config = { host: "localhost", port: 3180 };
-export const DEFAULT_PAUSE_SECONDS = 60;
+export const DEFAULT_PAUSE_SECONDS = 15;
 
 export function newItem(gameId: string): RoutineItem {
   const g = gameById(gameId);
@@ -44,24 +44,30 @@ export function pauseSeconds(r: Routine): number {
   return Number.isFinite(n) ? Math.max(0, Math.min(MAX_PAUSE_SECONDS, n)) : 0;
 }
 
-/** The longest a routine can take: every game's time cap plus the breaks between games. */
-export function totalSeconds(r: Routine): number {
-  const games = r.items.reduce((sum, i) => sum + (Number(i.minutes) || 0) * 60, 0);
-  return Math.round(games + Math.max(0, r.items.length - 1) * pauseSeconds(r));
+/** A game without a time cap counts with an estimate from the game (3 minutes per 501 leg, ...). */
+export function itemMinutes(i: RoutineItem): number {
+  const m = Number(i.minutes) || 0;
+  return m > 0 ? m : (gameById(i.gameId).estimateMinutes?.(i.settings) ?? gameById(i.gameId).defaultMinutes);
 }
 
-export function starterRoutine(): Routine {
-  const r = newRoutine(t("routines.starter"), t("routines.starterDescription"));
-  r.items = GAMES.map((g) => newItem(g.id));
-  return r;
+/** True when the routine has a game without a time cap, so its length is an estimate. */
+export const hasEstimate = (r: Routine) => r.items.some((i) => !(Number(i.minutes) > 0));
+
+/** The longest a routine can take: every game's time cap plus the breaks between games. */
+export function totalSeconds(r: Routine): number {
+  const games = r.items.reduce((sum, i) => sum + itemMinutes(i) * 60, 0);
+  return Math.round(games + Math.max(0, r.items.length - 1) * pauseSeconds(r));
 }
 
 /** Drops games that no longer exist and fills in settings added in newer versions. */
 export function cleanItems(items: RoutineItem[]): RoutineItem[] {
   return items
     .filter((i) => GAMES.some((g) => g.id === i.gameId))
-    .map((i) => ({
-      ...i,
-      settings: { ...gameById(i.gameId).defaultSettings, ...i.settings },
-    }));
+    .map((i) => {
+      const g = gameById(i.gameId);
+      const settings = { ...g.defaultSettings, ...i.settings };
+      // Only a game that ends by itself can run without a time cap.
+      const minutes = Number(i.minutes) > 0 || g.canEnd?.(settings) ? i.minutes : g.defaultMinutes;
+      return { ...i, minutes, settings };
+    });
 }
