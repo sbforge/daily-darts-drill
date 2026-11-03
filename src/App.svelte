@@ -379,6 +379,49 @@
     client.start().catch(() => (startError = true));
   }
 
+  // ---- reset and calibrate, beside the Autodarts status in the footer
+
+  // Reset only does something while darts are detected; calibrating waits until the client is settled.
+  const canReset = $derived(conn === "connected" && board === "running");
+  const canCalibrate = $derived(conn === "connected" && board !== "starting" && board !== "stopping" && board !== "calibrating");
+  let pendingCalibrate = $state(false);
+  let calibrateTimer: ReturnType<typeof setTimeout> | undefined;
+  // What became of the last reset or calibration, shown for a moment as a bubble over the buttons.
+  let boardNote = $state<{ text: string; failed: boolean } | null>(null);
+  let boardNoteTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function noteBoard(text: string, failed: boolean) {
+    clearTimeout(boardNoteTimer);
+    boardNote = { text, failed };
+    boardNoteTimer = setTimeout(() => (boardNote = null), 3000);
+  }
+
+  /** Clears the darts on the board, like a takeout by hand. A running game takes it as the end of the turn. */
+  function resetBoard() {
+    if (!canReset) return;
+    client.reset().then(
+      () => noteBoard(t("board.resetDone"), false),
+      () => noteBoard(t("board.resetFailed"), true),
+    );
+  }
+
+  /** Starts the auto-calibration. It replaces the stored calibration, so it asks for a second click. */
+  function calibrateBoard() {
+    if (!canCalibrate) return;
+    if (!pendingCalibrate) {
+      boardNote = null;
+      pendingCalibrate = true;
+      calibrateTimer = setTimeout(() => (pendingCalibrate = false), 4000);
+      return;
+    }
+    clearTimeout(calibrateTimer);
+    pendingCalibrate = false;
+    client.calibrate().then(
+      () => noteBoard(t("board.calibrateStarted"), false),
+      () => noteBoard(t("board.calibrateFailed"), true),
+    );
+  }
+
   $effect(() => {
     if (phase !== "running") return;
     const id = setInterval(() => {
@@ -1096,6 +1139,33 @@
       </span>
     {/if}
   </div>
+  {#if conn === "connected"}
+    <div class="board-actions" role="group" aria-label={t("board.actions")}>
+      <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={resetBoard}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" />
+        </svg>
+      </button>
+      <button
+        class="icon"
+        class:armed={pendingCalibrate}
+        aria-label={pendingCalibrate ? t("board.confirmCalibrate") : t("board.calibrate")}
+        title={pendingCalibrate ? undefined : t("board.calibrate")}
+        disabled={!canCalibrate}
+        onclick={calibrateBoard}
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M11 2h2v3.07A7 7 0 0 1 18.93 11H22v2h-3.07A7 7 0 0 1 13 18.93V22h-2v-3.07A7 7 0 0 1 5.07 13H2v-2h3.07A7 7 0 0 1 11 5.07V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z" />
+        </svg>
+      </button>
+      <!-- The second click is asked for over the buttons, like the abort in the header; results show there too. -->
+      {#if pendingCalibrate}
+        <span class="confirm-bubble up" role="status">{t("board.confirmCalibrate")}</span>
+      {:else if boardNote}
+        <span class="confirm-bubble up" class:ok={!boardNote.failed} role="status">{boardNote.text}</span>
+      {/if}
+    </div>
+  {/if}
 </footer>
 
 <style>
@@ -1218,7 +1288,7 @@
   footer {
     flex: none;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     gap: 1rem;
     padding: 0.6rem 1.5rem;
@@ -1226,7 +1296,7 @@
     font-size: 0.85rem;
     color: var(--dim);
   }
-  .meta { display: flex; gap: 1.25rem; align-items: center; }
+  .meta { display: flex; gap: 1.25rem; align-items: center; margin-right: auto; }
   .meta a { color: var(--dim); text-decoration: none; }
   .meta a:hover { color: var(--accent); }
   .conn { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); font-size: 0.9rem; }
@@ -1237,6 +1307,14 @@
   /* Connected, but the client doesn't detect darts right now. */
   .conn[data-board="idle"] .dot { background: var(--dart); }
   .board-icon { display: inline-flex; color: var(--dart); cursor: help; }
+  /* Pulled up against the status, so the buttons read as part of it. */
+  .board-actions { position: relative; display: flex; gap: 0.15rem; margin-left: -0.65rem; }
+  .board-actions button.icon { width: 1.9rem; height: 1.9rem; }
+  .board-actions button.icon.armed { color: #ff9b8f; background: rgb(255 155 143 / 0.15); }
+  .confirm-bubble.up { top: auto; bottom: calc(100% + 0.6rem); right: -0.6rem; }
+  .confirm-bubble.up::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: #ff9b8f; }
+  .confirm-bubble.ok { border-color: var(--accent); background: #0f2a31; color: #d4f6fc; }
+  .confirm-bubble.up.ok::before { border-top-color: var(--accent); }
   .board-icon[data-board="running"] { color: var(--ok); }
   .board-icon[data-board="noCamera"], .board-icon[data-board="blocked"] { color: #ff9b8f; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

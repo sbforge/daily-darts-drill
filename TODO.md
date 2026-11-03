@@ -3,19 +3,18 @@
 ## Next (in priority order)
 1. History graph per training game
     * Track result progress (per game)
-2. Reset & calibrate button (`AutodartsClient.reset()` / `calibrate()` already exist)
-3. Loading Screen
+2. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-4. About Screen
+3. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-5. Settings: Autodarts auto discovery of IP & port
-6. Buy me a coffee: add the real link (placeholder URL for now)
-7. Fix GitHub Actions asset creation
-8. Update README.md for version 0.1
+4. Settings: Autodarts auto discovery of IP & port
+5. Buy me a coffee: add the real link (placeholder URL for now)
+6. Fix GitHub Actions asset creation
+7. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -130,3 +129,7 @@
   * Time cap optional: without one the clock counts up and the game runs until it is done or stopped
   * Results are saved and show up in History as "Quick game"; stopping a game in play keeps its result (one click, no confirmation)
   * The dialog opens on the game played last, every game keeps its settings from the last quick game
+* Reset & calibrate buttons beside the Autodarts status in the footer
+  * Reset (`POST /api/reset`) clears the darts like a takeout by hand; only while the detection runs. A running game takes it as the end of the turn
+  * Calibrate (`POST /api/config/calibration/auto`) asks for a second click, since it replaces the stored calibration
+  * A bubble over the buttons says whether it worked
