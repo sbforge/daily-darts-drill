@@ -17,6 +17,7 @@
     * pre match routine
     * Doubles only
     
+* New games: plan with rules, settings, stats and DPI per game in docs/new-games-plan.md (all points decided, build order at the end)
 * Random Checkout
 * Bobs 27
 * 170
