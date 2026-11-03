@@ -50,7 +50,7 @@ export interface GameResult {
   /** What the screen shows. */
   lines: StatLine[];
   /** The one thing to look at right now (next target, checkout, ...). */
-  focus: { label: string; value: string } | null;
+  focus: { label: string; value: string; /** A line under the value, e.g. the checkout route. */ hint?: string } | null;
   /** The fields to aim at right now, highlighted on the board. Several when any of them will do. */
   targets?: BoardField[];
   /** Darts drawn as icons under the focus: how many there are, how many are thrown, and how many form a group. */

@@ -37,6 +37,7 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
+  import { NON_COMPARABLE } from "./lib/games/shared";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { pickMoments } from "./lib/fx/moments";
@@ -404,7 +405,7 @@
   );
 
   const sameSettings = (a: Settings, b: Settings) =>
-    [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => String(a[k]) === String(b[k]));
+    [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => NON_COMPARABLE.includes(k) || String(a[k]) === String(b[k]));
 
   /**
    * The earlier results of a game, played with the same settings, oldest first: what it is compared with.
@@ -1705,6 +1706,7 @@
             <span class="cap">{result.focus.label}</span>
             <!-- Words ("Single bull", "Success") get a smaller size so they fit the box. -->
             <span class="big" class:long={result.focus.value.length > 4}>{result.focus.value}</span>
+            {#if result.focus.hint}<span class="route">{result.focus.hint}</span>{/if}
           </div>
         {/if}
 
@@ -2469,6 +2471,7 @@
     background: var(--panel);
     box-shadow: 0 0 0 4px rgb(26 159 174 / 0.12);
   }
+  .focus .route { margin-top: 0.4rem; color: var(--dim); letter-spacing: 0.04em; }
   .focus .big { font-size: 6.5rem; line-height: 1; }
   .focus .big.long { font-size: 3.6rem; line-height: 1.2; }
   .hero { display: flex; align-items: baseline; justify-content: center; gap: 0.75rem; margin-bottom: 1.25rem; }

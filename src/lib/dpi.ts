@@ -92,6 +92,13 @@ export const DPI_CONFIG: IndexConfig = {
       sample: { keys: ["checkouts", "fails"], min: 3 },
     },
     {
+      gameId: "catch-40",
+      area: "checkout",
+      // 60 points over the 40 numbers is the "professional" mark.
+      metrics: [higher("pointsPerNumber", 0.4, 1.5)],
+      sample: { keys: ["numbers"], min: 10 },
+    },
+    {
       gameId: "around-the-clock",
       area: "accuracy",
       metrics: [higher("accuracy", 20, 60)],

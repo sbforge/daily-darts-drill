@@ -46,6 +46,16 @@ export const de: Record<Key, string> = {
   "common.untitled": "Ohne Namen",
   "common.fieldInfo": "Info zu „{name}“",
   "error.save": "Speichern in der Datenbank fehlgeschlagen: {msg}",
+  "catch40.name": "Catch 40",
+  "catch40.blurb": "Checke jede Zahl von 61 bis 100 der Reihe nach, Double Out, mit sechs Darts (zwei Aufnahmen) pro Zahl. Zwei Darts bringen 3 Punkte, drei Darts 2 Punkte, vier bis sechs Darts 1 Punkt. Die 99 geht nicht mit zwei Darts, sie zählt 3, 2, 1 für drei, vier, fünf oder sechs Darts.",
+  "catch40.goal": "Druck-Checkouts in dem Bereich, der die meisten Legs entscheidet: 61 bis 100, mit einer Punktzahl, die du von Spiel zu Spiel vergleichen kannst.",
+  "catch40.describe": "61 bis 100, je sechs Darts",
+  "catch40.summary": "{points} Punkte über {numbers} Zahlen, {checkouts} ausgecheckt",
+  "catch40.restOf": "Rest von {n}",
+  "catch40.points": "Punkte",
+  "catch40.numbers": "Gespielte Zahlen",
+  "catch40.threePointers": "Checkouts mit 2 Darts",
+  "catch40.great": "Erwischt!",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",
@@ -367,6 +377,10 @@ export const de: Record<Key, string> = {
   "board.aria": "Dartscheibe mit deinen geworfenen Darts",
 
   // shared game texts
+  "game.showRoute": "Weg anzeigen",
+  "game.showRouteInfo": "Zeigt den üblichen Drei-Dart-Weg unter dem Rest und leuchtet das erste Feld auf dem Board auf. Schalte es aus, um den Finish selbst zu finden.",
+  "game.showRouteOn": "Weg wird gezeigt",
+  "game.showRouteOff": "Weg ist versteckt",
   "game.noResult": "Kein Ergebnis",
   "game.accuracy": "Trefferquote",
   "game.dartsThrown": "Geworfene Darts",
