@@ -127,5 +127,6 @@
 * Quick game: a single game without a routine
   * "Quick game" button on the top left of the Train screen, opens the add game dialog with a start button
   * Same flow as a routine: countdown, game, summary with "Play again"
-  * Results are saved and show up in History as "Quick game"; aborting keeps no scores
+  * Time cap optional: without one the clock counts up and the game runs until it is done or stopped
+  * Results are saved and show up in History as "Quick game"; stopping a game in play keeps its result (one click, no confirmation)
   * The dialog opens on the game played last, every game keeps its settings from the last quick game

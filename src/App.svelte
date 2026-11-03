@@ -82,6 +82,8 @@
   let session = $state<Session | null>(null);
   let gameStartedAt = "";
   let endsAt = $state<number | null>(null);
+  // When the game clock started, moved on by pauses. Without a time cap the clock counts up from here.
+  let startsAt = $state(0);
   let now = $state(Date.now());
   let paused = $state(false);
   let pausedAt = $state(0);
@@ -104,6 +106,7 @@
   const def = $derived(item ? gameById(item.gameId) : null);
   const totalMs = $derived(item ? item.minutes * 60_000 : 0);
   const remaining = $derived(endsAt === null ? totalMs : Math.max(0, endsAt - (paused ? pausedAt : now)));
+  const elapsed = $derived(Math.max(0, (paused ? pausedAt : now) - startsAt));
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
   const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
@@ -115,9 +118,15 @@
   const breakLeft = $derived(Math.max(0, breakEndsAt - (paused ? pausedAt : now)));
   const countdownLeft = $derived(Math.max(1, Math.ceil(breakLeft / 1000)));
 
-  function fmt(ms: number): string {
-    const s = Math.ceil(ms / 1000);
+  /** Minutes and seconds. A countdown rounds up, so it shows 0:00 only at its end; a clock counting up rounds down. */
+  function fmt(ms: number, up = false): string {
+    const s = up ? Math.floor(ms / 1000) : Math.ceil(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+
+  function settingsLine(i: RoutineItem): string {
+    const desc = gameById(i.gameId).describe(i.settings);
+    return i.minutes > 0 ? t("run.settingsLine", { desc, n: i.minutes }) : t("quick.settingsLineNoCap", { desc });
   }
 
   function failed(e: unknown) {
@@ -201,7 +210,9 @@
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();
-    endsAt = now + totalMs;
+    startsAt = now;
+    // A quick game can have no time cap (0 minutes): it runs until it is done or stopped.
+    endsAt = totalMs > 0 ? now + totalMs : null;
     phase = "running";
   }
 
@@ -286,9 +297,18 @@
     phase = "idle";
   }
 
-  /** Stops the routine at any point. It is recorded as aborted and keeps no scores. */
+  /**
+   * Stops the routine at any point. It is recorded as aborted and keeps no scores.
+   * A quick game is stopped instead: a game in play ends and its result is kept, so it needs no
+   * second click. Before its game started there is nothing to keep and nothing is recorded.
+   */
   function abortRoutine() {
     if (!run) return;
+    if (run.quick) {
+      if (phase === "running") finish(true);
+      else closeRun();
+      return;
+    }
     if (!pendingAbort) {
       pendingAbort = true;
       setTimeout(() => (pendingAbort = false), 4000);
@@ -333,7 +353,10 @@
     if (!paused || waiting) return;
     // Move the end of the clock by however long we were paused.
     if (phase === "break") breakEndsAt += Date.now() - pausedAt;
-    else if (endsAt !== null) endsAt += Date.now() - pausedAt;
+    else {
+      startsAt += Date.now() - pausedAt;
+      if (endsAt !== null) endsAt += Date.now() - pausedAt;
+    }
     paused = false;
     now = Date.now();
   }
@@ -490,6 +513,13 @@
 
   // ---- history
 
+  /** The time cap, or for a quick game without one how long it was played. */
+  function playedLine(r: db.HistoryRow): string {
+    if (r.minutes > 0) return t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes });
+    const played = Math.max(1, Math.round((Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 60_000));
+    return t("history.playedNoCap", { n: played });
+  }
+
   function deleteSession(id: string) {
     if (pendingSessionDelete !== id) {
       pendingSessionDelete = id;
@@ -605,8 +635,8 @@
         <button
           class="icon abort"
           class:armed={pendingAbort}
-          aria-label={pendingAbort ? t("run.confirmAbort") : t(run?.quick ? "quick.abort" : "run.abort")}
-          title={pendingAbort ? undefined : t(run?.quick ? "quick.abort" : "run.abort")}
+          aria-label={pendingAbort ? t("run.confirmAbort") : t(run?.quick ? "quick.stop" : "run.abort")}
+          title={pendingAbort ? undefined : t(run?.quick ? "quick.stop" : "run.abort")}
           onclick={abortRoutine}
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -727,7 +757,7 @@
                 <li>
                   <!-- The stored name is in the language of the day it was played, unless the game still exists. -->
                   <span class="plan-name">{g.id === r.gameId ? g.name : r.gameName}</span>
-                  <span class="plan-meta">{t(r.endedEarly ? "history.minutesEarly" : "common.minutes", { n: r.minutes })}</span>
+                  <span class="plan-meta">{playedLine(r)}</span>
                   <span class="plan-desc">{g.describe(r.settings)}</span>
                   <span class="plan-desc strong">{g.summary(r.values)}</span>
                 </li>
@@ -849,7 +879,7 @@
           <p class="progress">{t("run.upNext", { n: run.index + 1, total: run.routine.items.length })}</p>
           <h2>{def.name}</h2>
           <p class="lede">{def.blurb}</p>
-          <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
+          <p class="settings-line">{settingsLine(item)}</p>
         </div>
       </div>
       {#if !canStart}
@@ -861,7 +891,7 @@
       <p class="progress">{run.quick ? t("quick.name") : t("run.progress", { n: run.index + 1, total: run.routine.items.length })}</p>
       <h2>{def.name}</h2>
       <p class="lede">{def.blurb}</p>
-      <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
+      <p class="settings-line">{settingsLine(item)}</p>
       {#if !canStart}
         {@render waitHint()}
       {/if}
@@ -874,7 +904,7 @@
             ? t("quick.progress", { name: def.name })
             : t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}
         </p>
-        <div class="clock" class:paused>{fmt(remaining)}</div>
+        <div class="clock" class:paused>{totalMs ? fmt(remaining) : fmt(elapsed, true)}</div>
         <p class="note">
           {#if waiting}
             {t("run.waitingForBoard")}

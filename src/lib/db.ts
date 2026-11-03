@@ -208,6 +208,7 @@ export interface GameResultInput {
   gameId: string;
   gameName: string;
   settings: Settings;
+  /** The time cap; 0 for a quick game without one. */
   minutes: number;
   endedEarly: boolean;
   startedAt: string;
@@ -341,6 +342,7 @@ export interface HistoryRow {
   minutes: number;
   endedEarly: boolean;
   startedAt: string;
+  finishedAt: string;
   settings: Settings;
   values: Record<string, number>;
 }
@@ -367,7 +369,7 @@ export async function loadSessions(limit = 100): Promise<HistorySession[]> {
 
   const marks = sessions.map((_, i) => `$${i + 1}`).join(",");
   const results = await d.select<any[]>(
-    `SELECT id, session_id, position, game_id, game_name, minutes, ended_early, started_at,
+    `SELECT id, session_id, position, game_id, game_name, minutes, ended_early, started_at, finished_at,
             settings_json, values_json
      FROM game_results WHERE session_id IN (${marks}) ORDER BY position`,
     sessions.map((r) => r.id),
@@ -390,6 +392,7 @@ export async function loadSessions(limit = 100): Promise<HistorySession[]> {
         minutes: g.minutes,
         endedEarly: !!g.ended_early,
         startedAt: g.started_at,
+        finishedAt: g.finished_at,
         settings: JSON.parse(g.settings_json),
         values: JSON.parse(g.values_json),
       })),

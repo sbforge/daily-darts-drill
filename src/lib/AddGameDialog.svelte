@@ -36,24 +36,55 @@
     max: 120,
   };
 
+  // A quick game can do without a time cap: it then runs until the game is done or stopped.
+  // An item without a cap has 0 minutes; the minutes field keeps a number for when the cap is back on.
+  let capped = $state("on");
+  const capField: Field = {
+    key: "capped",
+    get label() {
+      return t("quick.cap");
+    },
+    get info() {
+      return t("quick.capInfo");
+    },
+    kind: "select",
+    get options() {
+      return [
+        { value: "on", label: t("quick.capOn") },
+        { value: "off", label: t("quick.capOff") },
+      ];
+    },
+  };
+
+  function load(item: RoutineItem | undefined, id: string) {
+    gameId = id;
+    draft = structuredClone(item ?? newItem(id));
+    capped = draft.minutes > 0 ? "on" : "off";
+    if (!(draft.minutes > 0)) draft.minutes = newItem(id).minutes;
+  }
+
+  function current(): RoutineItem {
+    const item = $state.snapshot(draft);
+    return quick && capped === "off" ? { ...item, minutes: 0 } : item;
+  }
+
   /** Opens on the given games' settings (e.g. the ones played last), else on each game's defaults. */
   export function open(last: RoutineItem[] = [], id = gameId) {
     made = Object.fromEntries(last.map((i) => [i.gameId, i]));
-    gameId = GAMES.some((g) => g.id === id) ? id : GAMES[0].id;
-    draft = structuredClone(made[gameId] ?? newItem(gameId));
+    const start = GAMES.some((g) => g.id === id) ? id : GAMES[0].id;
+    load(made[start], start);
     dialog?.showModal();
   }
 
   /** Switching games starts from that game's settings made so far, or from its defaults. */
   function pick(id: string) {
-    if (draft.gameId !== id) made[draft.gameId] = $state.snapshot(draft);
-    gameId = id;
-    draft = structuredClone(made[id] ?? newItem(id));
+    if (draft.gameId !== id) made[draft.gameId] = current();
+    load(made[id], id);
   }
 
   function add(e: SubmitEvent) {
     e.preventDefault();
-    onadd($state.snapshot(draft));
+    onadd(current());
     dialog?.close();
   }
 
@@ -80,7 +111,12 @@
     </fieldset>
 
     <div class="fields">
-      <GameField field={timeCap} bind:value={draft.minutes} />
+      {#if quick}
+        <GameField field={capField} bind:value={capped} />
+      {/if}
+      {#if !quick || capped === "on"}
+        <GameField field={timeCap} bind:value={draft.minutes} />
+      {/if}
       {#each g.fields as f (`${g.id}-${f.key}`)}
         <GameField field={f} bind:value={draft.settings[f.key]} />
       {/each}

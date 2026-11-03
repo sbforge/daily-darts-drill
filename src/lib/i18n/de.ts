@@ -59,6 +59,7 @@ export const de: Record<Key, string> = {
   "history.aborted": "Abgebrochen",
   "history.running": "Läuft",
   "history.minutesEarly": "{n} Min., vorzeitig beendet",
+  "history.playedNoCap": "{n} Min. gespielt, ohne Zeitlimit",
 
   // routines
   "routines.editTitle": "Routine bearbeiten",
@@ -165,7 +166,12 @@ export const de: Record<Key, string> = {
   "quick.gameToPlay": "Spiel zum Spielen",
   "quick.timeCapInfo": "So lange läuft dieses Spiel höchstens. Ist die Zeit um, endet das Spiel, auch wenn es noch nicht beendet ist.",
   "quick.progress": "Schnelles Spiel: {name}",
-  "quick.abort": "Spiel abbrechen",
+  "quick.cap": "Zeitlimit",
+  "quick.capInfo": "Mit Zeitlimit endet das Spiel, wenn die Zeit um ist. Ohne läuft es, bis das Spiel beendet ist oder du es stoppst.",
+  "quick.capOn": "Mit Zeitlimit",
+  "quick.capOff": "Ohne Zeitlimit",
+  "quick.settingsLineNoCap": "{desc}, ohne Zeitlimit",
+  "quick.stop": "Spiel stoppen (das Ergebnis wird gespeichert)",
   "quick.finished": "Spiel beendet",
   "quick.again": "Nochmal spielen",
 

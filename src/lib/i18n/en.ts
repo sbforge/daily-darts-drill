@@ -56,6 +56,7 @@ export const en = {
   "history.aborted": "Aborted",
   "history.running": "In progress",
   "history.minutesEarly": "{n} min, ended early",
+  "history.playedNoCap": "{n} min played, no time cap",
 
   // routines
   "routines.editTitle": "Edit routine",
@@ -163,7 +164,12 @@ export const en = {
   "quick.gameToPlay": "Game to play",
   "quick.timeCapInfo": "The longest this game runs. When the time is up, the game ends, even if it is not finished yet.",
   "quick.progress": "Quick game: {name}",
-  "quick.abort": "Abort game",
+  "quick.cap": "Time cap",
+  "quick.capInfo": "With a time cap the game ends when the time is up. Without one it runs until the game is done or you stop it.",
+  "quick.capOn": "With time cap",
+  "quick.capOff": "No time cap",
+  "quick.settingsLineNoCap": "{desc}, no time cap",
+  "quick.stop": "Stop game (the result is saved)",
   "quick.finished": "Game finished",
   "quick.again": "Play again",
 
