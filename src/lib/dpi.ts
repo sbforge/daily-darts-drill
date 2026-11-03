@@ -229,7 +229,14 @@ export interface DpiOverview {
   overall: Performance;
   overallSeries: DpiPoint[];
   /** Per game, in the order of the config; games without any counting result are left out. */
-  games: { gameId: string; area: SkillArea; performance: Performance; series: DpiPoint[] }[];
+  games: {
+    gameId: string;
+    area: SkillArea;
+    performance: Performance;
+    series: DpiPoint[];
+    /** The measured values behind the index, one series per metric key, from the same results. */
+    raw: { key: string; series: DpiPoint[] }[];
+  }[];
   /** Game index per result id and overall index per session id, for the history list. */
   byResult: Map<string, number>;
   bySession: Map<string, number>;
@@ -258,14 +265,18 @@ export function overview(results: ResultRecord[], config = DPI_CONFIG): DpiOverv
 
   const games = config.games
     .map((g) => {
-      const series = sorted
-        .filter((r) => r.gameId === g.gameId && byResult.has(r.id))
-        .map((r) => ({ at: r.startedAt, value: byResult.get(r.id)! }));
+      const counted = sorted.filter((r) => r.gameId === g.gameId && byResult.has(r.id));
+      const series = counted.map((r) => ({ at: r.startedAt, value: byResult.get(r.id)! }));
+      const keys = [...new Set(g.metrics.map((m) => m.key))];
       return {
         gameId: g.gameId,
         area: g.area,
         performance: performance(series.map((p) => p.value), config),
         series: withLevel(series, config),
+        raw: keys.map((key) => ({
+          key,
+          series: withLevel(counted.map((r) => ({ at: r.startedAt, value: Number(r.values[key]) || 0 })), config),
+        })),
       };
     })
     .filter((g) => g.performance.count > 0);

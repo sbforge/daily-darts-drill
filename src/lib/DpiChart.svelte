@@ -1,15 +1,44 @@
 <script lang="ts">
-  // The performance index over time: one dot per session (or game), and a line for the current level,
-  // the average of the latest results up to each point. The scale is fixed to 0-100, so charts compare.
+  // A value over time, the performance index or a game's measured values: one dot per session (or game),
+  // and a line for the current level, the average of the latest results up to each point.
+  // The index has a fixed 0-100 scale, so its charts compare; other values get a scale that fits them.
   // Hover or the arrow keys pick a point.
   import type { DpiPoint } from "./dpi";
   import { date, dateTime, num, t } from "./i18n/index.svelte";
 
-  let { points, pointLabel, window }: { points: DpiPoint[]; pointLabel: string; window: number } = $props();
+  let {
+    points,
+    pointLabel,
+    window,
+    max,
+    format = (n: number) => num(n),
+  }: {
+    points: DpiPoint[];
+    pointLabel: string;
+    window: number;
+    /** The top of the scale; without it the scale fits the values. */
+    max?: number;
+    /** How a value reads in the tooltip and at the end of the line. */
+    format?: (n: number) => string;
+  } = $props();
 
   const HEIGHT = 240;
-  const PAD = { top: 14, right: 40, bottom: 28, left: 34 };
-  const TICKS = [0, 25, 50, 75, 100];
+  const PAD = { top: 14, right: 48, bottom: 28, left: 38 };
+
+  /** A round step near `raw`: 1, 2, 2.5 or 5 times a power of ten. */
+  function niceStep(raw: number): number {
+    const p = 10 ** Math.floor(Math.log10(raw));
+    return ([1, 2, 2.5, 5, 10].find((f) => f * p >= raw) ?? 10) * p;
+  }
+
+  // Four steps from 0 to a round top that leaves a little room above the highest value.
+  const scale = $derived.by(() => {
+    if (max) return { top: max, step: max / 4 };
+    const high = Math.max(1, ...points.map((p) => Math.max(p.value, p.level))) * 1.05;
+    const step = niceStep(high / 4);
+    return { top: Math.ceil(high / step) * step, step };
+  });
+  const ticks = $derived(Array.from({ length: Math.round(scale.top / scale.step) + 1 }, (_, i) => i * scale.step));
 
   let width = $state(0);
   let active = $state<number | null>(null);
@@ -17,14 +46,14 @@
   const plotW = $derived(Math.max(0, width - PAD.left - PAD.right));
   const plotH = HEIGHT - PAD.top - PAD.bottom;
   const x = (i: number) => PAD.left + (points.length < 2 ? plotW / 2 : (i * plotW) / (points.length - 1));
-  const y = (v: number) => PAD.top + (1 - v / 100) * plotH;
+  const y = (v: number) => PAD.top + (1 - Math.min(v, scale.top) / scale.top) * plotH;
   const levelPath = $derived(points.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.level)}`).join(""));
   const last = $derived(points[points.length - 1]);
   const shown = $derived(active === null ? null : points[active]);
   // What a screen reader says for the picked point (or the latest before one is picked).
   const focusText = $derived.by(() => {
     const p = shown ?? last;
-    return p ? `${dateTime(p.at)}: ${pointLabel} ${num(p.value)}, ${t("dpi.levelLine", { n: window })} ${num(p.level)}` : "";
+    return p ? `${dateTime(p.at)}: ${pointLabel} ${format(p.value)}, ${t("dpi.levelLine", { n: window })} ${format(p.level)}` : "";
   });
 
   /** The point nearest to the pointer; readers aim at a time, never at the line. */
@@ -59,7 +88,7 @@
         height={HEIGHT}
         role="slider"
         tabindex="0"
-        aria-label={t("dpi.chartAria", { n: points.length, level: last ? num(last.level) : "–" })}
+        aria-label={t("dpi.chartAria", { n: points.length, level: last ? format(last.level) : "–" })}
         aria-valuemin={1}
         aria-valuemax={points.length}
         aria-valuenow={(active ?? points.length - 1) + 1}
@@ -70,9 +99,9 @@
         onblur={() => (active = null)}
         onkeydown={keys}
       >
-        {#each TICKS as v (v)}
+        {#each ticks as v (v)}
           <line class="grid" x1={PAD.left} x2={PAD.left + plotW} y1={y(v)} y2={y(v)} />
-          <text class="tick" x={PAD.left - 8} y={y(v)} text-anchor="end" dominant-baseline="middle">{v}</text>
+          <text class="tick" x={PAD.left - 8} y={y(v)} text-anchor="end" dominant-baseline="middle">{num(v)}</text>
         {/each}
         {#if points.length}
           <text class="tick" x={x(0)} y={HEIGHT - 8} text-anchor={points.length < 2 ? "middle" : "start"}>{date(points[0].at)}</text>
@@ -90,15 +119,15 @@
         <path class="level" d={levelPath} />
         {#if last}
           <circle class="end" cx={x(points.length - 1)} cy={y(last.level)} r="4" />
-          <text class="end-label" x={x(points.length - 1) + 8} y={y(last.level)} dominant-baseline="middle">{num(last.level)}</text>
+          <text class="end-label" x={x(points.length - 1) + 8} y={y(last.level)} dominant-baseline="middle">{format(last.level)}</text>
         {/if}
       </svg>
 
       {#if shown}
         <div class="tip" style:left="{Math.min(Math.max(x(active!), 90), width - 90)}px" style:top="{PAD.top}px" class:low={Math.max(shown.value, shown.level) > 55} aria-hidden="true">
           <div class="tip-date">{dateTime(shown.at)}</div>
-          <div class="tip-row"><span class="key dot"></span><strong>{num(shown.value)}</strong> {pointLabel}</div>
-          <div class="tip-row"><span class="key line"></span><strong>{num(shown.level)}</strong> {t("dpi.levelLine", { n: window })}</div>
+          <div class="tip-row"><span class="key dot"></span><strong>{format(shown.value)}</strong> {pointLabel}</div>
+          <div class="tip-row"><span class="key line"></span><strong>{format(shown.level)}</strong> {t("dpi.levelLine", { n: window })}</div>
         </div>
       {/if}
     {/if}

@@ -136,6 +136,6 @@
     * Trend as a diagonal arrow (green up, red down, grey sideways for steady) and the change in %, with an encouraging line in seven steps: steady below 2%, slight below 5%, strong from 15%
     * Uses the full width; on a wide window the game list sits beside the picked game's chart
     * The encouraging line is the hero beside the score, the arrow and the change sit under it
-* History graph per training game: the game index view charts each game's progress over time
+* History graph per training game: the game index view charts each game's progress over time, as its index or as its own values (toggle "Index / Values"; a dropdown picks the value when a game has several, e.g. 121: success rate or highest checkout)
     * Info button beside the title: how the index works, in words
   * History shows the DPI per session and per game; deleting a session recalculates it

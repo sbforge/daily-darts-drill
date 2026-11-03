@@ -33,7 +33,7 @@
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
-  import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Locale } from "./lib/i18n/index.svelte";
+  import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
     gameId: string;
@@ -76,6 +76,10 @@
   let statsView = $state<"overall" | "games">("overall");
   let statsGameId = $state("");
   const statsGame = $derived(dpi?.games.find((g) => g.gameId === statsGameId) ?? dpi?.games[0] ?? null);
+  // The game's chart shows its index or the measured values behind it (one metric at a time).
+  let statsChart = $state<"index" | "raw">("index");
+  let statsMetric = $state("");
+  const statsRaw = $derived(statsGame?.raw.find((r) => r.key === statsMetric) ?? statsGame?.raw[0] ?? null);
 
   // running a routine
   let run = $state<{
@@ -584,6 +588,16 @@
     return step === "steady" ? "steady" : step.startsWith("up") ? "up" : "down";
   }
 
+  /** How the measured values behind the index read: their name, and percentages on a 0-100 scale. */
+  const METRICS: Record<string, { label: Key; percent?: boolean; digits: number }> = {
+    average: { label: "scoring.average", digits: 1 },
+    accuracy: { label: "game.accuracy", percent: true, digits: 1 },
+    successRate: { label: "game.successRate", percent: true, digits: 1 },
+    highestCheckout: { label: "121.best", digits: 0 },
+  };
+  const metricOf = (key: string) => METRICS[key] ?? { label: "dpi.metric" as Key, digits: 1 };
+  const metricFormat = (key: string) => (n: number) => `${num(n, metricOf(key).digits)}${metricOf(key).percent ? "%" : ""}`;
+
   function deleteSession(id: string) {
     if (pendingSessionDelete !== id) {
       pendingSessionDelete = id;
@@ -932,7 +946,38 @@
               {#if statsGame}
                 <h4>{gameById(statsGame.gameId).name}</h4>
                 {@render level(statsGame.performance)}
-                <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
+                <div class="chart-head">
+                  <span class="chart-title">{t(statsChart === "raw" ? "dpi.rawTitle" : "dpi.chartTitle")}</span>
+                  <div class="chart-controls">
+                    {#if statsChart === "raw" && statsRaw && statsGame.raw.length > 1}
+                      <Select
+                        label={t("dpi.metric")}
+                        value={statsRaw.key}
+                        options={statsGame.raw.map((r) => ({ value: r.key, label: t(metricOf(r.key).label) }))}
+                        onchange={(k) => (statsMetric = k)}
+                      />
+                    {/if}
+                    <div class="toggle small" role="tablist" aria-label={t("dpi.chartKind")}>
+                      <button role="tab" aria-selected={statsChart === "index"} onclick={() => (statsChart = "index")}>
+                        {t("dpi.chartIndex")}
+                      </button>
+                      <button role="tab" aria-selected={statsChart === "raw"} onclick={() => (statsChart = "raw")}>
+                        {t("dpi.chartRaw")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {#if statsChart === "raw" && statsRaw}
+                  <DpiChart
+                    points={statsRaw.series}
+                    pointLabel={t(metricOf(statsRaw.key).label)}
+                    window={10}
+                    max={metricOf(statsRaw.key).percent ? 100 : undefined}
+                    format={metricFormat(statsRaw.key)}
+                  />
+                {:else}
+                  <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
+                {/if}
               {/if}
             </div>
           </div>
@@ -1730,6 +1775,10 @@
   .toggle button { padding: 0.35rem 1rem; border: none; border-radius: 999px; background: none; color: var(--dim); font: inherit; cursor: pointer; }
   .toggle button:hover { color: var(--chalk); }
   .toggle button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .toggle.small button { padding: 0.2rem 0.75rem; font-size: 0.9rem; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .chart-title { font-weight: 700; }
+  .chart-controls { display: flex; align-items: center; gap: 0.75rem; }
   .dpi-overall { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
   .dpi-score { display: flex; align-items: baseline; gap: 0.5rem; }
   .dpi-score .big { color: var(--accent); }
