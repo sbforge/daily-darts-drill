@@ -10,9 +10,10 @@
       * Show darts left
       * Safehouse
         * Can be de-/activated
-        * Safehouse means: Whenever you hit manage to checkout with the first 3 darts. You can now longer fall below that score.
+        * Safehouse means: whenever you check out a score with your first 3 darts, that score becomes your safehouse. You can no longer fall below it, however often you miss.
+        * Example: you check 121–125, then check 126 with the first 3 darts. 126 is now your safehouse: missing 126 a hundred times still never takes you back below 126.
       * Skips (+2 +3)
-        * Raname that option to "fast-foward"
+        * Rename that option to "fast-forward"
         * Should be optional
     * Complex Doubles
       * Rename ( See fancy Names )
@@ -22,10 +23,10 @@
 2. Manual score correction in the score boxes above the dartboard
     * click the box to edit
     * if possible, react to a click to the dartboard visualization.
-      * if score is corrected the calculation for that turn has to be recalcualated
+      * if score is corrected the calculation for that turn has to be recalculated
       * scores can be edited any time
         * when all 3 darts are thrown
-        * when only a part of the turn is over... i.e. 2 darts thrown.. the first one get's corrected before the player continues.
+        * when only a part of the turn is over... i.e. 2 darts thrown.. the first one gets corrected before the player continues.
 3. Autodarts client status (pause, offline, ...)
     * Auto reconnect
     * Pause the routine while disconnected
@@ -38,18 +39,18 @@
     * Track result progress (per game)
 7. Reset & calibrate button (Request: see debug folder)
 8. Loading Screen
-  * Show at least X seconds ;) I want the App Logo show at least for some seconds
-  * Maybe in real: load modules with progress bar+
+    * Show at least X seconds ;) I want the app logo to show for at least a few seconds
+    * Maybe for real: load modules with a progress bar
 9. About Screen
-  * Some Information about the project
-  * related links
-  * Library Licenses? Check THAT!
-  * SBOM
-9. Settings: Autodarts auto discovery of IP & port
-10. Buy me a coffee: add the real link (placeholder URL for now)
-11. Fix Github Actions Asset creation
-12. Update Readme.MD with version 0.1
-  * especially expectation management: why did i build this.. how do i want to train?
+    * Some information about the project
+    * Related links
+    * Library licenses? Check THAT!
+    * SBOM
+10. Settings: Autodarts auto discovery of IP & port
+11. Buy me a coffee: add the real link (placeholder URL for now)
+12. Fix GitHub Actions asset creation
+13. Update README.md for version 0.1
+    * Especially expectation management: why did I build this, how do I want to train?
 
 
 ## Total Training Progress Index
@@ -82,18 +83,18 @@
 
 ## Design & Artwork
 * Create Artwork for every Training game
-* Change Dartboard on caroussel to real artwork instead of png
+* Change Dartboard on carousel to real artwork instead of png
 * Animations
 * Fading Screens
 
 ## Idea Backlog
 * Routine Im- & Export ( for easy sharing) ( prio: medium)
-* Heatmap per training game, configurable per game (Random Checkout i.e. does not need one)  Prio: medium
+* Heatmap per training game, configurable per game (Random Checkout i.e. does not need one) (prio: medium)
 * Local Multiplayer games
   * why should we build that instead of using the official autodarts platform? IDK yet.. is AD platform latency a reason? ( prio: very low - got a solution for that)
 * Sound effects (settings / optional) (prio low)
 * Multi-User support? (prio: low)
-* Replace Dartboard view with live feed ( Prio: very low )
+* Replace Dartboard view with live feed (prio: very low)
 * Routine Week planner ( prio: low)
 * Show camera information (FPS, etc.) ( prio: low, why should i need that if i got the autodarts state)
 * AI Trainer Suggestions ( for the very far future ; Would love to have it.. Not important enough for now)
