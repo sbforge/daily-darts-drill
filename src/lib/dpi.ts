@@ -122,6 +122,13 @@ export const DPI_CONFIG: IndexConfig = {
       sample: { keys: ["legs"], min: 1 },
     },
     {
+      gameId: "big-fish",
+      area: "checkout",
+      // Darts per leg from 170: 18 is three visits of three too many, 6 is two visits.
+      metrics: [lower("dartsPerLeg", 18, 6)],
+      sample: { keys: ["legs"], min: 2 },
+    },
+    {
       gameId: "around-the-clock",
       area: "accuracy",
       metrics: [higher("accuracy", 20, 60)],
