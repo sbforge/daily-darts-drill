@@ -1,5 +1,5 @@
 import { num, t } from "../i18n/index.svelte";
-import { doubleOptions, pct } from "./shared";
+import { doubleField, doubleOptions, pct } from "./shared";
 import type { GameDef } from "./types";
 
 export const simpleDoubles: GameDef = {
@@ -42,6 +42,7 @@ export const simpleDoubles: GameDef = {
         { key: "hits", label: t("game.hits"), value: String(hits) },
       ],
       focus: { label: t("game.target"), value: target === 25 ? t("dart.bull") : `D${target}` },
+      targets: [doubleField(target)],
       done: false,
     };
   },

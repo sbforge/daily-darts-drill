@@ -1,7 +1,7 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
-import { opt, pct } from "./shared";
-import type { GameDef } from "./types";
+import { anyBull, opt, pct } from "./shared";
+import type { BoardField, GameDef } from "./types";
 
 const CLOCKWISE = [1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5, 20];
 const COUNTER = [1, 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10, 6, 13, 4, 18];
@@ -19,6 +19,10 @@ type Finish = (typeof FINISHES)[number];
 /** The finish setting, with anything unknown read as the bull. */
 function finishOf(v: unknown): Finish {
   return FINISHES.includes(v as Finish) ? (v as Finish) : "bull";
+}
+
+function finishFields(finish: Finish): BoardField[] {
+  return finish === "bull" ? [{ bed: "bull" }] : finish === "singleBull" ? [{ bed: "outerBull" }] : anyBull;
 }
 
 function hitsFinish(d: Dart, finish: Finish): boolean {
@@ -122,6 +126,11 @@ export const aroundTheClock: GameDef = {
     const done = step >= total;
     const accuracy = pct(hits, attempts);
     const next = step < order.length ? targetText(order[step], zone) : t(`atc.target.${finish}`);
+    const targets: BoardField[] = done
+      ? []
+      : step < order.length
+        ? [{ bed: ZONES.includes(zone as Zone) ? (zone as Zone) : "double", number: order[step] }]
+        : finishFields(finish);
 
     return {
       values: { accuracy, darts: attempts, hits, progress: step },
@@ -137,6 +146,7 @@ export const aroundTheClock: GameDef = {
             label: step < order.length ? t("atc.nextTargetZone", { zone: zoneInText(zone) }) : t("atc.nextTarget"),
             value: next,
           },
+      targets,
       done,
     };
   },

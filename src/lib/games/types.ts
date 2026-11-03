@@ -20,6 +20,13 @@ export interface StatLine {
   hero?: boolean;
 }
 
+/** A field of the board. Segment fields have a number; the bulls have none. */
+export type Bed = "innerSingle" | "outerSingle" | "triple" | "double" | "outerBull" | "bull";
+export interface BoardField {
+  bed: Bed;
+  number?: number;
+}
+
 export interface GameResult {
   /** Numbers to store and chart later. */
   values: Record<string, number>;
@@ -27,6 +34,8 @@ export interface GameResult {
   lines: StatLine[];
   /** The one thing to look at right now (next target, checkout, ...). */
   focus: { label: string; value: string } | null;
+  /** The fields to aim at right now, highlighted on the board. Several when any of them will do. */
+  targets?: BoardField[];
   /** Darts drawn as icons under the focus: how many there are, how many are thrown, and how many form a group. */
   darts?: { label: string; total: number; used: number; group: number };
   /** True when the game has been completed before the time cap. */

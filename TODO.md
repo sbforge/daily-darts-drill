@@ -1,36 +1,29 @@
 # Todos
 
 ## Next (in priority order)
-1. Manual score correction in the score boxes above the dartboard
-    * click the box to edit
-    * if possible, react to a click to the dartboard visualization.
-      * if score is corrected the calculation for that turn has to be recalculated
-      * scores can be edited any time
-        * when all 3 darts are thrown
-        * when only a part of the turn is over... i.e. 2 darts thrown.. the first one gets corrected before the player continues.
-2. Autodarts client status (pause, offline, ...)
+1. Autodarts client status (pause, offline, ...)
     * Auto reconnect
     * Pause the routine while disconnected
-3. Show current Autodarts status (throw, takeout, takeout in progress, error?)
-4. Single training game (play one game without a routine)
+2. Show current Autodarts status (throw, takeout, takeout in progress, error?)
+3. Single training game (play one game without a routine)
     * add quickgame option to the training screen
       * button on the top left
     * Show Popup with available training games (like in the "add game" function when editing a routine)
-5. History graph per training game
+4. History graph per training game
     * Track result progress (per game)
-6. Reset & calibrate button (Request: see debug folder)
-7. Loading Screen
+5. Reset & calibrate button (Request: see debug folder)
+6. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-8. About Screen
+7. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-9. Settings: Autodarts auto discovery of IP & port
-10. Buy me a coffee: add the real link (placeholder URL for now)
-11. Fix GitHub Actions asset creation
-12. Update README.md for version 0.1
+8. Settings: Autodarts auto discovery of IP & port
+9. Buy me a coffee: add the real link (placeholder URL for now)
+10. Fix GitHub Actions asset creation
+11. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -122,3 +115,8 @@
   * Skips renamed to fast-forward (optional)
 * Around the clock: finish on bull, single bull or any bull; T/D shown on treble and double targets
 * Complex doubles renamed to "Plan B", current target in the score box, "Won with dart n" stats removed
+* Dart correction: click a dart box, then the field on the board (off the board = miss)
+  * Works mid-turn and after the takeout, until the next dart lands
+  * The game recalculates; a fix survives Autodarts re-sending the turn
+  * A board click with no box picked sets the next dart (for darts Autodarts missed)
+* Target fields highlighted on the board (Around the clock, Simple doubles, Plan B); a game can light up several at once

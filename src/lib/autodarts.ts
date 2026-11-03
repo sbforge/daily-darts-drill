@@ -75,7 +75,7 @@ export function dartLabel(d: Dart): string {
   }
 }
 
-function sameDart(a: Dart, b: Dart): boolean {
+export function sameDart(a: Dart, b: Dart): boolean {
   return a.x === b.x && a.y === b.y && a.score === b.score;
 }
 
