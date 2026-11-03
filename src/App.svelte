@@ -38,13 +38,15 @@
   import Board from "./lib/Board.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
   import DpiChart from "./lib/DpiChart.svelte";
+  import LoadingScreen from "./lib/LoadingScreen.svelte";
+  import SbomDialog from "./lib/SbomDialog.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
-  import { COFFEE_URL, GITHUB_URL, openExternal } from "./lib/links";
+  import { AUTODARTS_URL, COFFEE_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
@@ -58,9 +60,15 @@
   }
 
   let ready = $state(false);
+  let sbomDialog = $state<SbomDialog>();
+  // The loading screen: how many of the startup steps are done, and what runs now.
+  const LOAD_STEPS = 4;
+  const MIN_LOADING_MS = 2000;
+  let loadDone = $state(0);
+  let loadLabel = $state<Key>("loading.data");
   let dbError = $state("");
   let saveError = $state("");
-  type View = "train" | "routines" | "history" | "stats" | "settings";
+  type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
 
   // connection settings
@@ -183,7 +191,7 @@
   }
 
   function refreshDpi() {
-    db.loadResults().then((r) => (dpiResults = r), failed);
+    return db.loadResults().then((r) => (dpiResults = r), failed);
   }
 
   // ---- live events
@@ -628,9 +636,9 @@
   function loadHistory() {
     const from = new Date(`${historyFrom}T00:00`);
     const to = new Date(`${historyTo}T00:00`);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) return;
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return Promise.resolve();
     to.setDate(to.getDate() + 1);
-    db.loadSessions(from.toISOString(), to.toISOString()).then((h) => (history = h), failed);
+    return db.loadSessions(from.toISOString(), to.toISOString()).then((h) => (history = h), failed);
   }
 
   function sessionName(s: db.HistorySession): string {
@@ -813,6 +821,11 @@
 
   onMount(() => {
     client = new AutodartsClient({ onState: onConnState, onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
+    const started = performance.now();
+    const loaded = (next?: Key) => {
+      loadDone++;
+      if (next) loadLabel = next;
+    };
     (async () => {
       try {
         await db.openDb();
@@ -822,14 +835,20 @@
         const saved = await db.hasConfig();
         config = await db.loadConfig();
         draft = { ...config };
+        loaded("loading.routines");
         routines = await db.loadRoutines();
         const last = await db.getSetting("selected_routine");
         selectedId = routines.find((r) => r.id === last)?.id ?? routines[0].id;
         ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
-        loadHistory();
+        loaded("loading.history");
+        await loadHistory();
         lastPlayed = await db.loadLastPlayed();
+        loaded("loading.stats");
         await loadRange();
-        refreshDpi();
+        await refreshDpi();
+        loaded();
+        // A fast start still shows the loading screen for a moment.
+        await new Promise((r) => setTimeout(r, MIN_LOADING_MS - (performance.now() - started)));
         ready = true;
         client.connect(config.host, config.port);
         // First start: look for a board right away. Later: only if the saved one doesn't answer.
@@ -917,6 +936,20 @@
     </div>
   {/if}
   <button
+    class="icon help"
+    aria-label={t("nav.about")}
+    title={t("nav.about")}
+    aria-current={view === "about" ? "page" : undefined}
+    onclick={() => go("about")}
+  >
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm-1-5h2v2h-2v-2Zm1-10a4 4 0 0 0-4 4h2a2 2 0 1 1 3.2 1.6c-.94.7-2.2 1.64-2.2 3.4h2c0-.9.6-1.4 1.4-2A4 4 0 0 0 12 5Z"
+      />
+    </svg>
+  </button>
+  <button
     class="icon"
     aria-label={t("nav.settings")}
     title={t("nav.settings")}
@@ -946,10 +979,7 @@
       </p>
     </section>
   {:else if !ready}
-    <section class="countdown">
-      <Quote />
-      <p class="hint">{t("db.loading")}</p>
-    </section>
+    <!-- The loading screen covers the window, see below. -->
   {:else if view === "settings"}
     <section class="settings">
       <h2>{t("settings.title")}</h2>
@@ -1050,6 +1080,46 @@
           <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
         </section>
       </div>
+    </section>
+  {:else if view === "about"}
+    <section class="settings about">
+      <h2>{t("about.title")}</h2>
+      <p class="lede">{t("about.lede")}</p>
+      <div class="settings-grid">
+        <section class="group wide about-hero" aria-labelledby="about-app">
+          <Logo height={44} />
+          <div>
+            <h3 id="about-app">{t("about.version", { v: __APP_VERSION__ })}</h3>
+            <p>{t("about.what")}</p>
+            <p class="hint">{t("about.independent")}</p>
+          </div>
+        </section>
+
+        <section class="group" aria-labelledby="about-links">
+          <h3 id="about-links">{t("about.linksTitle")}</h3>
+          <ul class="links">
+            {#each [[GITHUB_URL, "about.github", "about.githubHint"], [ISSUES_URL, "about.issues", "about.issuesHint"], [AUTODARTS_URL, "about.autodarts", "about.autodartsHint"], [COFFEE_URL, "footer.coffee", "about.coffeeHint"]] as const as [url, label, hint]}
+              <li>
+                <a href={url} onclick={(e) => openExternal(e, url)}>{t(label)}</a>
+                <span class="hint">{t(hint)}</span>
+              </li>
+            {/each}
+          </ul>
+        </section>
+
+        <section class="group" aria-labelledby="about-licenses">
+          <h3 id="about-licenses">{t("about.licensesTitle")}</h3>
+          <p>
+            {t("about.license")}
+            <a href={LICENSE_URL} onclick={(e) => openExternal(e, LICENSE_URL)}>{t("about.licenseLink")}</a>
+          </p>
+          <p class="hint">{t("about.thirdParty")}</p>
+          <div class="row">
+            <button class="ghost" onclick={() => sbomDialog?.open()}>{t("about.sbom")}</button>
+          </div>
+        </section>
+      </div>
+      <SbomDialog bind:this={sbomDialog} />
     </section>
   {:else if view === "history"}
     <section class="history">
@@ -1655,10 +1725,14 @@
   </div>
 </dialog>
 
+{#if !ready && !dbError}
+  <!-- Filled a little before the minimum time is up, so the full bar shows for a moment. -->
+  <LoadingScreen progress={loadDone / LOAD_STEPS} label={t(loadLabel)} fillMs={MIN_LOADING_MS - 250} />
+{/if}
+
 <footer>
   <div class="meta">
     <span>D³ v{__APP_VERSION__}</span>
-    <a href={GITHUB_URL} onclick={(e) => openExternal(e, GITHUB_URL)}>GitHub</a>
     <a href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>{t("footer.coffee")}</a>
   </div>
   <div class="conn" data-state={conn} data-board={conn === "connected" && !detecting ? "idle" : undefined} role="status">
@@ -1880,8 +1954,6 @@
   }
   h2 { font-size: 1.6rem; margin: 0 0 0.5rem; }
   h3 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
-  .lede { color: var(--dim); max-width: 56ch; line-height: 1.5; margin: 0 0 1.25rem; }
-  .error { color: #ff9b8f; }
   .progress { color: var(--dim); margin: 0 0 0.35rem; font-size: 0.95rem; }
   .settings-line { margin: 0 0 1rem; }
   .wait-hint button { margin-left: 0.5rem; vertical-align: baseline; }
@@ -1942,6 +2014,26 @@
   }
   /* Shared form controls and buttons, also used by components in lib/. */
   :global {
+    /* Text, dialogs and the pill toggle. */
+    .lede { color: var(--dim); max-width: 56ch; line-height: 1.5; margin: 0 0 1.25rem; }
+    .error { color: #ff9b8f; }
+    .confirm {
+      width: min(26rem, calc(100vw - 2rem));
+      padding: 1.25rem 1.5rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--chalk);
+      box-shadow: 0 20px 60px rgb(0 0 0 / 0.55);
+    }
+    .confirm::backdrop { background: rgb(2 6 9 / 0.7); }
+    .confirm h3 { margin: 0 0 0.5rem; }
+    .confirm .foot { display: flex; justify-content: flex-end; gap: 0.75rem; }
+    .toggle { display: flex; gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+    .toggle button { padding: 0.35rem 1rem; border: none; border-radius: 999px; background: none; color: var(--dim); font: inherit; cursor: pointer; }
+    .toggle button:hover { color: var(--chalk); }
+    .toggle button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+    .toggle.small button { padding: 0.2rem 0.75rem; font-size: 0.9rem; }
     .hint { color: var(--dim); font-size: 0.9rem; max-width: 56ch; line-height: 1.45; }
     textarea { resize: vertical; line-height: 1.4; }
     label { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.95rem; }
@@ -1996,18 +2088,6 @@
   button.icon.delete:hover, button.icon.armed { color: #ff9b8f; }
   button.icon.armed { background: rgb(255 155 143 / 0.15); }
 
-  .confirm {
-    width: min(26rem, calc(100vw - 2rem));
-    padding: 1.25rem 1.5rem;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--panel);
-    color: var(--chalk);
-    box-shadow: 0 20px 60px rgb(0 0 0 / 0.55);
-  }
-  .confirm::backdrop { background: rgb(2 6 9 / 0.7); }
-  .confirm h3 { margin: 0 0 0.5rem; }
-  .confirm .foot { display: flex; justify-content: flex-end; gap: 0.75rem; }
 
   .plan { padding: 0; margin: 0 0 1rem; list-style: none; border-top: 1px solid var(--line); }
   .plan li {
@@ -2106,6 +2186,14 @@
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
   .narrow { max-width: 34rem; }
+  .about-hero { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
+  .about-hero p { margin: 0 0 0.5rem; max-width: 60ch; line-height: 1.5; }
+  .about-hero .hint { margin: 0; }
+  .links { margin: 0; padding: 0; list-style: none; }
+  .links li { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+  .links li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .about a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .about a:hover { text-decoration: underline; }
   .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
   .group { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .group.wide { grid-column: 1 / -1; }
@@ -2176,14 +2264,9 @@
   }
   .stats-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
   .stats-head h2 { margin: 0; }
-  .toggle { display: flex; gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
-  .toggle button { padding: 0.35rem 1rem; border: none; border-radius: 999px; background: none; color: var(--dim); font: inherit; cursor: pointer; }
-  .toggle button:hover { color: var(--chalk); }
-  .toggle button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
   .stats-controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
   .range { display: flex; align-items: center; gap: 0.5rem; color: var(--dim); }
   .range input { width: 4.5rem; }
-  .toggle.small button { padding: 0.2rem 0.75rem; font-size: 0.9rem; }
   .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
   .chart-title { font-weight: 700; }
   .chart-controls { display: flex; align-items: center; gap: 0.75rem; }
