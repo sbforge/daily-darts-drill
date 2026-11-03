@@ -1,24 +1,20 @@
 # Todos
 ## Found bugs while testing
+* Low-resolution screens (Windows, 1366 × 768 at 125 %): the game view scrolls, the window is taller than the screen,
+  space unused on big screens → docs/responsive-layout-plan.md
 
 
 ## Next (in priority order)
 Version 1 checklist with a plan per item: docs/v1-scope.md
 1. Fix GitHub Actions asset creation (docs/release-plan.md)
-2. README.md: write the "Why I built this" section (placeholder for now)
-    * Especially expectation management: why did I build this, how do I want to train?
 
 
 ## Training Games
-* Routines: Predefined training routines
-  * deletable?
-  * recoverable?
-  * Ideas:
-    * everyday training
-    * pre match routine
-    * Doubles only
+* Routines: Predefined training routines (part of v1: Everyday Drill, Intense Doubles → docs/predefined-routines-plan.md)
+  * deletable? → yes, normal routines; recoverable? → "Restore built-in routines" in Settings
+  * More ideas: pre match routine
     
-* New games: plan with rules, settings, stats and DPI per game in docs/new-games-plan.md (all points decided, build order at the end)
+* New games (part of v1): plan with rules, settings, stats and DPI per game in docs/new-games-plan.md (all points decided, build order at the end)
 * Random Checkout
 * Bobs 27
 * 170
@@ -56,6 +52,7 @@ Version 1 checklist with a plan per item: docs/v1-scope.md
 
 
 ## Done ✅
+* README: "Why I built this" (motivation, what D³ is and isn't)
 * A routine or quick game resets Autodarts during its countdown (once the detection runs), so the first game starts on a clean board
 * Game names & descriptions: every game has a catchy name (Loose Arm, Clockwork, Double Trouble, Plan B, Ton Machine, Checkout Ladder) with its usual name under it, a short description and a "Why play" goal, in the add game dialog, before a game and on the break screen
 * The dart boxes have a fixed height, so filling or highlighting one no longer shifts the board; the backdrop also realigns when the column above the board changes

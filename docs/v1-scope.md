@@ -24,13 +24,23 @@ Every open item points to its plan.
   synced by `npm version`), bump to `1.0.0`. Plan: `docs/release-plan.md` §1.
 - [ ] **macOS ad-hoc signing.** `signingIdentity: "-"` and a `codesign --verify` step, so Apple Silicon shows
   "Open Anyway" instead of "damaged". Plan: `docs/release-plan.md` §4.
+- [ ] **Responsive layout.** Nothing scrolls inside a routine (countdown, game, break) from 900 × 540 up; the board
+  and the game panel grow with the window; the window fits a 1366 × 768 laptop at 125 % and remembers its size; F11
+  fullscreen. Found on the first Windows test. Plan: `docs/responsive-layout-plan.md`.
+- [ ] **The six new training games** (Catch 40, Random Checkout, Bob's 27, Bull-X, 170, Solo 501), each with artwork
+  card, EN/DE texts, DPI config and a README row. All rules decided; build order in the plan (shared checkout logic
+  first). Plan: `docs/new-games-plan.md`. The game tests (Should below) come first, since the shared checkout logic
+  moves 121 onto it.
+- [ ] **Predefined routines "Everyday Drill" and "Intense Doubles"**, shipped to new and existing installs, normal
+  routines the player can edit and delete, "Restore built-in routines" in Settings. Default break 15 s for all
+  routines. Needs Bull-X, Bob's 27 and Solo Leg, Solo
+  Leg's "Legs" setting and no time cap inside a routine. Plan: `docs/predefined-routines-plan.md`.
 - [x] **Animations, first batch** (`docs/animations-plan.md`): fx module, No Score on it, last seconds, 180 + great
   turns, summary motion and New best, animations on / off.
 - [x] **About screen with third-party licenses:** project, links, MIT license, SBOM popup (CycloneDX, Rust + npm).
 - [x] **Buy me a coffee**: real link (buymeacoffee.com/sbforge), GitHub sponsor button via FUNDING.yml.
 - [ ] **README for v1** (TODO.md "README.md"):
-  - [ ] "Why I built this": **you write it** (motivation, how D³ is meant to be used, expectation management). Still
-    an empty placeholder.
+  - [x] "Why I built this": motivation and expectation management (what D³ is and isn't).
   - [ ] macOS install steps for Sequoia: System Settings → Privacy & Security → "Open Anyway" (right-click → Open no
     longer works); `xattr` stays as the fallback for "damaged".
   - [ ] Linux install steps (AppImage in a writable folder, `.deb`), once the build exists; drop "build it yourself".
@@ -64,7 +74,6 @@ Every open item points to its plan.
 
 - [ ] **OS code signing**: ✅ decided: no Apple Developer ID / notarization and no Windows Authenticode for v1.
   Revisit when strangers start installing D³ ($99/year for Apple).
-- [ ] **New training games** (Catch 40, Wild Card, Bob's 27, Bull-X, Big Fish, Solo Leg). Plan: `docs/new-games-plan.md`.
 - [ ] **Multi scorer refactor** (`docs/scorer-interop-plan.md`). Steps 1–3 are a pure refactor and fit right after v1;
   the DB part needs the migrations from "Must" first.
 - [ ] **OTA beta channel** (OTA plan stage 4).
@@ -75,18 +84,21 @@ Every open item points to its plan.
 
 ## Suggested order
 
-1. Log file, daily backup, crash reports.
+1. Responsive layout (the first real test found it), then log file, daily backup, crash reports.
 2. Migrations (+ their tests).
-3. Release workflow, version source, CI, ad-hoc signing.
-4. OTA updates (keys, plugin, settings UI).
-5. Linux build and test.
-6. Export.
-7. README.
-8. Real-app test on every platform, `npm version 1.0.0`, draft, publish.
+3. Game tests (vitest), then the six new games in the plan's order, then the predefined routines.
+4. Release workflow, version source, CI, ad-hoc signing.
+5. OTA updates (keys, plugin, settings UI).
+6. Linux build and test.
+7. Export.
+8. README.
+9. Real-app test on every platform, `npm version 1.0.0`, draft, publish.
 
 ## Decisions
 
 - ✅ Linux is part of v1 (AppImage, self-updating).
 - ✅ OTA in v1 includes the automatic update check on start (stages 1–3).
 - ✅ Animations first batch is a must for v1 (done).
+- ✅ The six new games are part of v1 (2026-11-03).
+- ✅ Two predefined routines ship with v1: Everyday Drill and Intense Doubles (2026-11-03).
 - ✅ No Apple notarization for v1; ad-hoc signing instead.
