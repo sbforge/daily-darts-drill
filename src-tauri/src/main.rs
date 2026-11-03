@@ -87,6 +87,33 @@ fn clear_export_target(path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Where D³ runs from decides whether it can replace itself: macOS runs an app opened from a disk image (or the
+/// Downloads folder, "App Translocation") from a read-only place, a `.deb` install on Linux is updated by hand.
+/// Returns `null` when updating in place works, else the reason: `"macos-not-installed"` or `"linux-package"`.
+#[tauri::command]
+fn update_blocker() -> Option<&'static str> {
+    let exe = std::env::current_exe().ok()?.to_string_lossy().to_string();
+    if cfg!(target_os = "macos") && (exe.starts_with("/Volumes/") || exe.contains("/AppTranslocation/")) {
+        return Some("macos-not-installed");
+    }
+    if cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none() {
+        return Some("linux-package");
+    }
+    None
+}
+
+/// A place for the backup right before an in-app update, written by the app itself (`VACUUM INTO`, the database
+/// is open): `backups/update/<version>-<date>-install/darttrainer.db`. Keeps the last 3 update backups.
+#[tauri::command]
+fn prepare_update_backup(app: tauri::AppHandle) -> Result<String, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let update = backup::backups_dir(&config).join("update");
+    let dir = update.join(format!("{}-{}-install", env!("CARGO_PKG_VERSION"), backup::today()));
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    backup::prune(&update, 3);
+    Ok(dir.join(backup::DB_FILE).display().to_string())
+}
+
 /// Opens one of the app's folders in the file manager.
 #[tauri::command]
 fn open_folder(app: tauri::AppHandle, kind: String) -> Result<(), String> {
@@ -186,6 +213,8 @@ fn main() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // Before any window can open the database: the files are not in use, a plain copy is complete.
             let config = app.path().app_config_dir()?;
@@ -232,7 +261,9 @@ fn main() {
             open_folder,
             log_tail,
             save_crash_report,
-            clear_export_target
+            clear_export_target,
+            update_blocker,
+            prepare_update_backup
         ])
         .build(tauri::generate_context!())
         .expect("error while building D³ – Daily Darts Drill")

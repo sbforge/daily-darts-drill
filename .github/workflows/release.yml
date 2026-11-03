@@ -84,13 +84,18 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updates are signed in CI only; local builds work without the key.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          # tauri-action writes latest.json (all platforms, with signatures) into the draft release.
+          includeUpdaterJson: true
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: ${{ github.ref_type == 'tag' && format('D³ {0}', github.ref_name) || '' }}
           releaseDraft: true
           # v1.1.0-beta.1 and the like are pre-releases: "latest" ignores them, so no player is offered them.
           prerelease: ${{ github.ref_type == 'tag' && contains(github.ref_name, '-') }}
-          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       # The ad-hoc signature (signingIdentity "-") has to be complete, else Apple Silicon calls the app "damaged".
       - name: Verify the macOS signature
