@@ -38,6 +38,7 @@
   import Board from "./lib/Board.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
   import DpiChart from "./lib/DpiChart.svelte";
+  import LoadingScreen from "./lib/LoadingScreen.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
@@ -58,6 +59,11 @@
   }
 
   let ready = $state(false);
+  // The loading screen: how many of the startup steps are done, and what runs now.
+  const LOAD_STEPS = 4;
+  const MIN_LOADING_MS = 2000;
+  let loadDone = $state(0);
+  let loadLabel = $state<Key>("loading.data");
   let dbError = $state("");
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings";
@@ -183,7 +189,7 @@
   }
 
   function refreshDpi() {
-    db.loadResults().then((r) => (dpiResults = r), failed);
+    return db.loadResults().then((r) => (dpiResults = r), failed);
   }
 
   // ---- live events
@@ -628,9 +634,9 @@
   function loadHistory() {
     const from = new Date(`${historyFrom}T00:00`);
     const to = new Date(`${historyTo}T00:00`);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) return;
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return Promise.resolve();
     to.setDate(to.getDate() + 1);
-    db.loadSessions(from.toISOString(), to.toISOString()).then((h) => (history = h), failed);
+    return db.loadSessions(from.toISOString(), to.toISOString()).then((h) => (history = h), failed);
   }
 
   function sessionName(s: db.HistorySession): string {
@@ -813,6 +819,11 @@
 
   onMount(() => {
     client = new AutodartsClient({ onState: onConnState, onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
+    const started = performance.now();
+    const loaded = (next?: Key) => {
+      loadDone++;
+      if (next) loadLabel = next;
+    };
     (async () => {
       try {
         await db.openDb();
@@ -822,14 +833,20 @@
         const saved = await db.hasConfig();
         config = await db.loadConfig();
         draft = { ...config };
+        loaded("loading.routines");
         routines = await db.loadRoutines();
         const last = await db.getSetting("selected_routine");
         selectedId = routines.find((r) => r.id === last)?.id ?? routines[0].id;
         ({ last: quickLast, items: quickItems } = await db.loadQuickGame());
-        loadHistory();
+        loaded("loading.history");
+        await loadHistory();
         lastPlayed = await db.loadLastPlayed();
+        loaded("loading.stats");
         await loadRange();
-        refreshDpi();
+        await refreshDpi();
+        loaded();
+        // A fast start still shows the loading screen for a moment.
+        await new Promise((r) => setTimeout(r, MIN_LOADING_MS - (performance.now() - started)));
         ready = true;
         client.connect(config.host, config.port);
         // First start: look for a board right away. Later: only if the saved one doesn't answer.
@@ -946,10 +963,7 @@
       </p>
     </section>
   {:else if !ready}
-    <section class="countdown">
-      <Quote />
-      <p class="hint">{t("db.loading")}</p>
-    </section>
+    <!-- The loading screen covers the window, see below. -->
   {:else if view === "settings"}
     <section class="settings">
       <h2>{t("settings.title")}</h2>
@@ -1654,6 +1668,11 @@
     <button class="primary destructive" onclick={confirmDelete}>{t("history.deleteConfirm")}</button>
   </div>
 </dialog>
+
+{#if !ready && !dbError}
+  <!-- Filled a little before the minimum time is up, so the full bar shows for a moment. -->
+  <LoadingScreen progress={loadDone / LOAD_STEPS} label={t(loadLabel)} fillMs={MIN_LOADING_MS - 250} />
+{/if}
 
 <footer>
   <div class="meta">

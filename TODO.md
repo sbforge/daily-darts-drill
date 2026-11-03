@@ -1,17 +1,14 @@
 # Todos
 
 ## Next (in priority order)
-1. Loading Screen
-    * Show at least X seconds ;) I want the app logo to show for at least a few seconds
-    * Maybe for real: load modules with a progress bar
-2. About Screen
+1. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-3. Buy me a coffee: add the real link (placeholder URL for now)
-4. Fix GitHub Actions asset creation
-5. Update README.md for version 0.1
+2. Buy me a coffee: add the real link (placeholder URL for now)
+3. Fix GitHub Actions asset creation
+4. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -61,6 +58,15 @@
 
 
 ## Done ✅
+* Loading screen with the D³ backdrop and a progress bar, visible for at least 2 seconds
+* History tab
+  * Filter by date range (last month by default) and by routines / quick games
+  * One compact line per session, DPI label in its own column, full width
+  * Details popup with the games of a session and their DPI
+  * Delete with a trash icon and a confirm dialog (the index will change)
+* Settings grouped into cards (connection, language, statistics), flags in the language select
+* Start / stop the Autodarts detection from the footer and the settings
+* Release workflow: manual runs build without publishing, Rust build cache
 * Autodarts auto discovery (mDNS)
   * "Search network" in the settings fills in host & port
   * Searches by itself on the first start and when the saved client doesn't answer; saved only once it connects

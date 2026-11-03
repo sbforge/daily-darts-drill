@@ -49,9 +49,12 @@ export const de: Record<Key, string> = {
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",
   "db.hintAfter": "oder nutze die installierte App. In einem normalen Browser funktioniert die Seite nicht.",
-  "db.loading": "Deine Daten werden geöffnet…",
 
   // settings
+  "loading.data": "Deine Daten werden geöffnet…",
+  "loading.routines": "Deine Routinen werden geladen…",
+  "loading.history": "Dein Verlauf wird geladen…",
+  "loading.stats": "Deine Statistik wird berechnet…",
   "settings.title": "Einstellungen",
   "settings.lede": "Verbinde deinen Autodarts-Client und richte die App so ein, wie du sie magst.",
   "settings.connTitle": "Autodarts-Verbindung",

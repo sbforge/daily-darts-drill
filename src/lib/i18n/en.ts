@@ -46,9 +46,12 @@ export const en = {
   "db.title": "Can’t open the database",
   "db.hintBefore": "D³ keeps all settings, routines and results in a local SQLite database. Start the app with",
   "db.hintAfter": "or use the installed app. Opening the page in a normal browser does not work.",
-  "db.loading": "Opening your data…",
 
   // settings
+  "loading.data": "Opening your data…",
+  "loading.routines": "Loading your routines…",
+  "loading.history": "Loading your history…",
+  "loading.stats": "Calculating your statistics…",
   "settings.title": "Settings",
   "settings.lede": "Connect your Autodarts client and set up the app the way you like it.",
   "settings.connTitle": "Autodarts connection",
