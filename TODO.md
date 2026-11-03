@@ -137,5 +137,6 @@
     * A dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values; also as a table
     * Trend as a diagonal arrow (green up, red down, grey sideways for steady) and the change in %, with an encouraging line in seven steps: steady below 2%, slight below 5%, strong from 15%
     * Uses the full width; on a wide window the game list sits beside the picked game's chart
+    * The encouraging line is the hero beside the score, the arrow and the change sit under it
     * Info button beside the title: how the index works, in words
   * History shows the DPI per session and per game; deleting a session recalculates it

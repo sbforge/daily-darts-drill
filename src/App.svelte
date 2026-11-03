@@ -862,11 +862,15 @@
           <span class="big">{num(p.current ?? 0)}</span>
           <span class="cap">{t("dpi.of")}</span>
         </div>
-        <p class="trend" data-dir={trendDir(p.trend)}>
-          {@render arrow(p.trend)}
-          {#if p.trend.kind === "trend"}<span class="trend-value">{trendShort(p.trend)}</span>{/if}
-          <span class="trend-text">{trendText(p.trend)}</span>
-        </p>
+        <!-- Motivating is what the app is about: the line on the trend is the hero, the change sits under it. -->
+        <div class="motivation">
+          <p class="motto" class:quiet={p.trend.kind !== "trend"}>{trendText(p.trend)}</p>
+          {#if p.trend.kind === "trend"}
+            <p class="trend" data-dir={trendDir(p.trend)}>
+              {@render arrow(p.trend)}<span class="trend-value">{trendShort(p.trend)}</span>
+            </p>
+          {/if}
+        </div>
       </div>
     {/snippet}
     <section class="statistics">
@@ -1732,9 +1736,12 @@
   /* The arrow carries the direction and its colour; the words stay in the text colour, encouraging either way. */
   .trend { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600; color: var(--chalk); }
   .trend[data-dir="none"] { color: var(--dim); font-weight: 400; }
-  .dpi-overall .trend { flex: 1 1 18rem; }
+  .motivation { flex: 1 1 18rem; display: flex; flex-direction: column; gap: 0.4rem; padding-left: 1.25rem; border-left: 3px solid var(--accent); }
+  .motto { margin: 0; font-size: 1.65rem; font-weight: 700; line-height: 1.25; color: var(--chalk); text-wrap: balance; }
+  /* Not enough data yet: a plain note, not a headline. */
+  .motto.quiet { font-size: 1.05rem; font-weight: 400; color: var(--dim); }
+  .motivation .trend { font-size: 1.05rem; }
   .trend-value { font-variant-numeric: tabular-nums; }
-  .trend-text { font-weight: 400; color: var(--dim); }
   .arrow { flex: none; }
   .arrow[data-dir="up"] { color: var(--ok); }
   .arrow[data-dir="down"] { color: #ff6b5b; }
