@@ -146,17 +146,18 @@ export class Session {
 
   /**
    * A dart can be set by hand as the next one: it fills up the turn on the board, or after the
-   * takeout starts the next turn. A full or busted turn set by hand makes way for the next; one
-   * with darts from Autodarts waits for its takeout.
+   * takeout starts the next turn. A full turn set by hand makes way for the next; a full turn
+   * from Autodarts waits for its takeout. A busted turn takes no dart at all until one of its
+   * darts is corrected, the darts are taken out, or the turn is ended with "next turn".
    */
   get canAdd(): boolean {
-    return !this.finished && ((this.current.length < 3 && !this.busted) || this.source.every((at) => at === null));
+    return !this.finished && !this.busted && (this.current.length < 3 || this.source.every((at) => at === null));
   }
 
   /** Adds a dart set by hand, for one Autodarts did not detect or when playing without it. */
   add(dart: Dart) {
     if (!this.canAdd) return;
-    if (this.current.length >= 3 || this.busted) this.closeTurn();
+    if (this.current.length >= 3) this.closeTurn();
     this.current = [...this.current, dart];
     this.source = [...this.source, null];
     this.editing = null;
