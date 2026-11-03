@@ -2,6 +2,7 @@
 import { oneTwentyOne } from "./121";
 import { aroundTheClock } from "./around-the-clock";
 import { bigFish } from "./big-fish";
+import { bobs27 } from "./bobs-27";
 import { catch40 } from "./catch-40";
 import { complexDoubles } from "./complex-doubles";
 import { scoring } from "./scoring";
@@ -12,9 +13,9 @@ import { warmUp } from "./warm-up";
 import { wildCard } from "./wild-card";
 
 export type * from "./types";
-export { aroundTheClock, bigFish, catch40, complexDoubles, oneTwentyOne, scoring, simpleDoubles, soloLeg, warmUp, wildCard };
+export { aroundTheClock, bigFish, bobs27, catch40, complexDoubles, oneTwentyOne, scoring, simpleDoubles, soloLeg, warmUp, wildCard };
 
-export const GAMES: GameDef[] = [warmUp, aroundTheClock, simpleDoubles, complexDoubles, scoring, oneTwentyOne, catch40, soloLeg, bigFish, wildCard];
+export const GAMES: GameDef[] = [warmUp, aroundTheClock, simpleDoubles, complexDoubles, scoring, oneTwentyOne, catch40, soloLeg, bigFish, wildCard, bobs27];
 
 export function gameById(id: string): GameDef {
   return GAMES.find((g) => g.id === id) ?? GAMES[0];

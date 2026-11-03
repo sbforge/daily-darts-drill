@@ -154,6 +154,13 @@ export const DPI_CONFIG: IndexConfig = {
       sample: { keys: ["attempts"], min: 5 },
     },
     {
+      gameId: "bobs-27",
+      area: "doubles",
+      // The score is shown and charted but not part of the index: it depends on how far you get.
+      metrics: [higher("hitRate", 5, 35)],
+      sample: { keys: ["targets"], min: 5 },
+    },
+    {
       gameId: "around-the-clock",
       area: "accuracy",
       metrics: [higher("accuracy", 20, 60)],
