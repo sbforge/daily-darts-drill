@@ -11,6 +11,7 @@ pub const DB_FILE: &str = "darttrainer.db";
 const LAST_VERSION_FILE: &str = "last-version";
 /// How many update backups are kept (a version change). The daily ones have their own count.
 const KEEP_UPDATE: usize = 3;
+const KEEP_DAILY: usize = 5;
 
 pub fn backups_dir(config: &Path) -> PathBuf {
     config.join("backups")
@@ -49,6 +50,40 @@ pub fn prune(dir: &Path, keep: usize) {
     for (_, path) in folders.into_iter().skip(keep) {
         let _ = fs::remove_dir_all(path);
     }
+}
+
+/// The daily backup: the first start of each day, last 5 kept. Returns the folder if one was made.
+pub fn daily_backup(config: &Path) -> Result<Option<PathBuf>, String> {
+    let dest = backups_dir(config).join("daily").join(today());
+    if dest.exists() {
+        return Ok(None);
+    }
+    match copy_database(config, &dest) {
+        Ok(true) => {
+            prune(&backups_dir(config).join("daily"), KEEP_DAILY);
+            Ok(Some(dest))
+        }
+        Ok(false) => Ok(None),
+        Err(e) => {
+            // A half-copied folder would pass for today's backup and block the retry on the next start.
+            let _ = fs::remove_dir_all(&dest);
+            Err(e)
+        }
+    }
+}
+
+/// When the newest backup of any kind was made, as RFC 3339 local time.
+pub fn last_backup(config: &Path) -> Option<String> {
+    let mut newest: Option<std::time::SystemTime> = None;
+    for kind in ["daily", "update"] {
+        let Ok(read) = fs::read_dir(backups_dir(config).join(kind)) else { continue };
+        for e in read.flatten().filter(|e| e.path().is_dir()) {
+            if let Ok(m) = e.metadata().and_then(|m| m.modified()) {
+                newest = Some(newest.map_or(m, |n| n.max(m)));
+            }
+        }
+    }
+    newest.map(|t| chrono::DateTime::<Local>::from(t).to_rfc3339())
 }
 
 /// Backup when the app version differs from the last run, before the migrations of the new version run.
@@ -116,6 +151,16 @@ mod tests {
         assert!(dir.to_string_lossy().contains("0.9.0-"));
         assert!(dir.join(DB_FILE).exists());
         assert!(update_backup(&cfg, "1.0.0").unwrap().is_none());
+    }
+
+    #[test]
+    fn one_daily_backup_per_day() {
+        let cfg = temp("daily");
+        fs::write(cfg.join(DB_FILE), "db").unwrap();
+        let first = daily_backup(&cfg).unwrap().expect("a backup");
+        assert!(first.join(DB_FILE).exists());
+        assert!(daily_backup(&cfg).unwrap().is_none());
+        assert!(last_backup(&cfg).is_some());
     }
 
     #[test]

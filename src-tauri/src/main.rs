@@ -26,6 +26,8 @@ fn migrations() -> Vec<Migration> {
 struct Startup {
     /// A backup taken because the app version changed.
     update_backup: Option<String>,
+    /// Today's backup, if this start made it.
+    daily_backup: Option<String>,
     /// Why a backup failed, if it did.
     backup_error: Option<String>,
 }
@@ -33,6 +35,13 @@ struct Startup {
 #[tauri::command]
 fn startup_report(startup: State<'_, Startup>) -> &Startup {
     startup.inner()
+}
+
+/// When the newest backup was made.
+#[tauri::command]
+fn last_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(backup::last_backup(&config))
 }
 
 /// Opens one of the app's folders in the file manager.
@@ -149,10 +158,22 @@ fn main() {
                     startup.backup_error = Some(e);
                 }
             }
+            // One backup step for all reasons, each with its own folder and count.
+            match backup::daily_backup(&config) {
+                Ok(Some(dir)) => {
+                    log::info!("daily backup: {}", dir.display());
+                    startup.daily_backup = Some(dir.display().to_string());
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    log::error!("daily backup failed: {e}");
+                    startup.backup_error = Some(e);
+                }
+            }
             app.manage(startup);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![discover_boards, startup_report, open_folder])
+        .invoke_handler(tauri::generate_handler![discover_boards, startup_report, last_backup, open_folder])
         .run(tauri::generate_context!())
         .expect("error while running D³ – Daily Darts Drill");
 }

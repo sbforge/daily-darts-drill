@@ -40,6 +40,7 @@
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
+  import { lastBackup } from "./lib/backend";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
   import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
@@ -82,6 +83,8 @@
   let loadLabel = $state<Key>("loading.data");
   let dbError = $state("");
   let updateBackup = $state("");
+  let backupError = $state("");
+  let lastBackupAt = $state<string | null>(null);
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
@@ -1014,7 +1017,11 @@
       try {
         const startup = await startupReport();
         updateBackup = startup.updateBackup ?? "";
-        if (startup.backupError) log.error(`backup failed: ${startup.backupError}`);
+        if (startup.backupError) {
+          log.error(`backup failed: ${startup.backupError}`);
+          backupError = startup.backupError;
+        }
+        lastBackupAt = await lastBackup();
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
@@ -1181,6 +1188,13 @@
 {#if saveError}
   <p class="banner" role="alert">{saveError}</p>
 {/if}
+{#if backupError}
+  <p class="banner" role="alert">
+    {t("backup.failed", { msg: backupError })}
+    <button class="link" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+    <button class="link" onclick={() => (backupError = "")}>{t("common.close")}</button>
+  </p>
+{/if}
 
 <main>
   {#if dbError}
@@ -1305,6 +1319,15 @@
             />
           </label>
           <p class="hint">{t("settings.animationsHint")}</p>
+        </section>
+
+        <section class="group" aria-labelledby="data-title">
+          <h3 id="data-title">{t("settings.dataTitle")}</h3>
+          <p>{lastBackupAt ? t("backup.last", { when: dateTime(lastBackupAt) }) : t("backup.none")}</p>
+          <p class="hint">{t("backup.hint")}</p>
+          <div class="row">
+            <button class="ghost" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+          </div>
         </section>
 
         <section class="group" aria-labelledby="stats-title">

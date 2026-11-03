@@ -4,17 +4,28 @@ import { invoke } from "@tauri-apps/api/core";
 export interface StartupReport {
   /** The folder of the backup taken because the app version changed. */
   updateBackup: string | null;
+  /** Today's backup, if this start made it. */
+  dailyBackup: string | null;
   /** Why a backup failed, if it did. */
   backupError: string | null;
 }
 
-const EMPTY: StartupReport = { updateBackup: null, backupError: null };
+const EMPTY: StartupReport = { updateBackup: null, dailyBackup: null, backupError: null };
 
 export async function startupReport(): Promise<StartupReport> {
   try {
     return { ...EMPTY, ...(await invoke<StartupReport>("startup_report")) };
   } catch {
     return EMPTY;
+  }
+}
+
+/** When the newest backup was made (ISO), or null. */
+export async function lastBackup(): Promise<string | null> {
+  try {
+    return await invoke<string | null>("last_backup");
+  } catch {
+    return null;
   }
 }
 
