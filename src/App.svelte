@@ -20,7 +20,7 @@
     type RoutineItem,
   } from "./lib/store";
   import * as db from "./lib/db";
-  import { overview, type DpiOverview, type Trend } from "./lib/dpi";
+  import { overview, type DpiOverview, type Performance, type Trend } from "./lib/dpi";
   import { GAMES, gameById, type StatLine } from "./lib/games";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
@@ -71,9 +71,10 @@
   let pendingSessionDelete = $state<string | null>(null);
   // The performance index, calculated from all stored results each time they change.
   let dpi = $state<DpiOverview | null>(null);
-  // Which index the statistics chart shows: "overall" or a game id.
-  let statsSeries = $state("overall");
-  const statsGame = $derived(dpi?.games.find((g) => g.gameId === statsSeries) ?? null);
+  // Statistics shows either the overall index or the index of one game (the picked one, else the first).
+  let statsView = $state<"overall" | "games">("overall");
+  let statsGameId = $state("");
+  const statsGame = $derived(dpi?.games.find((g) => g.gameId === statsGameId) ?? dpi?.games[0] ?? null);
 
   // running a routine
   let run = $state<{
@@ -568,12 +569,13 @@
   /** Changes below 2% read as steady. */
   const STEADY = 2;
 
-  /** Encouraging feedback on the trend, also when it goes down. */
-  function trendText(tr: Trend): string {
+  /** Encouraging feedback on the trend, also when it goes down. `games`: the trend of one game, not of the sessions. */
+  function trendText(tr: Trend, games = false): string {
     if (tr.kind === "notEnough") return tr.missing ? t("dpi.notEnough", { n: tr.missing }) : t("dpi.notEnoughYet");
     const p = num(Math.abs(tr.percent), 1);
-    if (Math.abs(tr.percent) < STEADY) return t("dpi.trendSteady");
-    return t(tr.percent > 0 ? "dpi.trendUp" : "dpi.trendDown", { p });
+    if (Math.abs(tr.percent) < STEADY) return t("dpi.trendSteady", { what: t(games ? "dpi.whatGames" : "dpi.whatSessions") });
+    const what = t(games ? "dpi.whatGames" : "dpi.whatSessions");
+    return t(tr.percent > 0 ? "dpi.trendUp" : "dpi.trendDown", { p, what });
   }
 
   function trendShort(tr: Trend): string {
@@ -843,62 +845,78 @@
       {/each}
     </section>
   {:else if view === "stats"}
+    {#snippet level(p: Performance, basedOn: string, games = false)}
+      <div class="dpi-overall">
+        <div class="dpi-score">
+          <span class="big">{num(p.current ?? 0)}</span>
+          <span class="cap">{t("dpi.of")}</span>
+        </div>
+        <div>
+          <p class="plan-meta">{basedOn}</p>
+          <p class="trend" data-dir={trendDir(p.trend)}>{trendText(p.trend, games)}</p>
+        </div>
+      </div>
+    {/snippet}
     <section class="history">
-      <h2>{t("stats.title")}</h2>
-      <div class="dpi">
-        <h3>{t("dpi.title")}</h3>
+      <div class="stats-head">
+        <h2>{t("stats.title")}</h2>
         {#if dpi && dpi.overall.current !== null}
-          <div class="dpi-overall">
-            <div class="dpi-score">
-              <span class="big">{num(dpi.overall.current)}</span>
-              <span class="cap">{t("dpi.of")}</span>
-            </div>
-            <div>
-              <p class="plan-meta">
-                {dpi.overall.count === 1 ? t("dpi.basedOnOne") : t("dpi.basedOn", { n: dpi.overall.count })}
-              </p>
-              <p class="trend" data-dir={trendDir(dpi.overall.trend)}>{trendText(dpi.overall.trend)}</p>
-            </div>
+          <div class="toggle" role="tablist" aria-label={t("dpi.title")}>
+            <button role="tab" aria-selected={statsView === "overall"} onclick={() => (statsView = "overall")}>
+              {t("dpi.overallIndex")}
+            </button>
+            <button role="tab" aria-selected={statsView === "games"} onclick={() => (statsView = "games")}>
+              {t("dpi.gameIndex")}
+            </button>
           </div>
+        {/if}
+      </div>
+      {#if !dpi || dpi.overall.current === null}
+        <div class="dpi">
+          <h3>{t("dpi.title")}</h3>
+          <p class="hint">{t("dpi.empty")}</p>
+        </div>
+      {:else if statsView === "overall"}
+        <div class="dpi">
+          <h3>{t("dpi.overallIndex")}</h3>
+          {@render level(
+            dpi.overall,
+            dpi.overall.count === 1 ? t("dpi.basedOnOne") : t("dpi.basedOn", { n: dpi.overall.count }),
+          )}
+          <h4>{t("dpi.chartTitle")}</h4>
+          <DpiChart points={dpi.overallSeries} pointLabel={t("dpi.pointSession")} window={10} />
+        </div>
+      {:else}
+        <div class="dpi">
+          <h3>{t("dpi.gameIndex")}</h3>
           <ul class="dpi-games" aria-label={t("dpi.games")}>
             {#each dpi.games as g (g.gameId)}
               <li>
-                <span class="plan-name">{gameById(g.gameId).name}</span>
-                <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
-                <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
-                <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend)}>
-                  {trendShort(g.performance.trend)}
-                </span>
+                <button class="dpi-game" aria-pressed={g.gameId === statsGame?.gameId} onclick={() => (statsGameId = g.gameId)}>
+                  <span class="plan-name">{gameById(g.gameId).name}</span>
+                  <span class="plan-meta">{t(`dpi.area.${g.area}`)} · {t("dpi.gameBasedOn", { n: g.performance.count })}</span>
+                  <span class="dpi-value">{num(g.performance.current ?? 0)}</span>
+                  <span class="trend small" data-dir={trendDir(g.performance.trend)} title={trendText(g.performance.trend, true)}>
+                    {trendShort(g.performance.trend)}
+                  </span>
+                </button>
               </li>
             {/each}
           </ul>
-          <p class="hint">{t("dpi.explain", { v: dpi.version })}</p>
-        {:else}
-          <p class="hint">{t("dpi.empty")}</p>
-        {/if}
-      </div>
-      {#if dpi && dpi.overallSeries.length}
-        <div class="dpi">
-          <div class="chart-head">
-            <h3>{t("dpi.chartTitle")}</h3>
-            <label class="chart-pick">
-              {t("dpi.chartShow")}
-              <Select
-                bind:value={statsSeries}
-                options={[
-                  { value: "overall", label: t("dpi.overall") },
-                  ...dpi.games.map((g) => ({ value: g.gameId, label: gameById(g.gameId).name })),
-                ]}
-              />
-            </label>
-          </div>
-          <DpiChart
-            points={statsGame ? statsGame.series : dpi.overallSeries}
-            pointLabel={statsGame ? t("dpi.pointGame") : t("dpi.pointSession")}
-            window={10}
-          />
+          {#if statsGame}
+            <h4>{gameById(statsGame.gameId).name}</h4>
+            {@render level(
+              statsGame.performance,
+              statsGame.performance.count === 1
+                ? t("dpi.basedOnOneGame")
+                : t("dpi.basedOnGames", { n: statsGame.performance.count }),
+              true,
+            )}
+            <DpiChart points={statsGame.series} pointLabel={t("dpi.pointGame")} window={10} />
+          {/if}
         </div>
       {/if}
+      {#if dpi && dpi.overall.current !== null}<p class="hint">{t("dpi.explain", { v: dpi.version })}</p>{/if}
     </section>
   {:else if view === "routines"}
     <section class="routines">
@@ -1650,10 +1668,15 @@
 
   .dpi { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .dpi h3 { margin: 0 0 0.75rem; }
-  .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-  .chart-head h3 { margin: 0; }
-  .chart-pick { display: flex; align-items: center; gap: 0.6rem; color: var(--dim); }
-  .dpi-overall { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+  .dpi h4 { margin: 1.5rem 0 0.75rem; }
+  .stats-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .stats-head h2 { margin: 0; }
+  .toggle { display: flex; gap: 0.25rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+  .toggle button { padding: 0.35rem 1rem; border: none; border-radius: 999px; background: none; color: var(--dim); font: inherit; cursor: pointer; }
+  .toggle button:hover { color: var(--chalk); }
+  .toggle button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .dpi-overall { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .dpi-overall .plan-meta { text-align: left; }
   .dpi-score { display: flex; align-items: baseline; gap: 0.5rem; }
   .dpi-score .big { color: var(--accent); }
   .dpi-overall p { margin: 0.2rem 0; }
@@ -1664,7 +1687,10 @@
   .trend[data-dir="none"] { color: var(--dim); font-weight: 400; }
   .trend.small { min-width: 4.5rem; text-align: right; cursor: help; font-variant-numeric: tabular-nums; }
   .dpi-games { list-style: none; margin: 1rem 0 0.75rem; padding: 0; border-top: 1px solid var(--line); }
-  .dpi-games li { display: flex; align-items: baseline; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+  .dpi-games li { border-bottom: 1px solid var(--line); }
+  .dpi-game { display: flex; align-items: baseline; gap: 0.75rem; width: 100%; padding: 0.55rem 0.75rem; border: none; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .dpi-game:hover { background: rgb(34 211 238 / 0.06); }
+  .dpi-game[aria-pressed="true"] { background: rgb(34 211 238 / 0.12); box-shadow: inset 3px 0 0 var(--accent); }
   .dpi-games .plan-meta { flex: 1; }
   .dpi-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 

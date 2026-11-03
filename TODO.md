@@ -133,5 +133,6 @@
   * Current level: average of the latest 10 sessions (overall) or results (per game)
   * Trend: latest 10 against the 10 before, shown from 5 in each; encouraging also when it goes down
   * Own "Statistics" page in the navigation: the index (overall, per game with trend) and a chart of the index over time
-    * Overall or one game; a dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values; also as a table
+    * Toggle between the overall index and the game index; the game index lists every game, a click picks the one charted
+    * A dot per session or game, a line for the average of the latest 10; hover or arrow keys for the values; also as a table
   * History shows the DPI per session and per game; deleting a session recalculates it
