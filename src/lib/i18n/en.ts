@@ -16,6 +16,7 @@ export const en = {
   "common.confirmDelete": "Click again to delete",
   "common.minutes": "{n} min",
   "common.untitled": "Untitled",
+  "common.fieldInfo": "About “{name}”",
   "error.save": "Could not save to the database: {msg}",
   "db.title": "Can’t open the database",
   "db.hintBefore": "D³ keeps all settings, routines and results in a local SQLite database. Start the app with",
@@ -65,6 +66,7 @@ export const en = {
   "routines.collapseAll": "Collapse all",
   "routines.noSettings": "Nothing to set for this game.",
   "routines.timeCap": "Time cap (minutes)",
+  "routines.timeCapInfo": "The longest this game runs. When the time is up, the routine moves on to the next game, even if this one is not finished yet.",
   "routines.gameToAdd": "Game to add",
   "routines.addGame": "Add game",
   "routines.duplicate": "Duplicate routine",
@@ -163,14 +165,17 @@ export const en = {
   "atc.name": "Around the clock",
   "atc.blurb": "Hit every number in board order, then finish on the bull. Only hits move you on.",
   "atc.direction": "Direction",
+  "atc.directionInfo": "The order you go round the board. Clockwise starts at 1 and follows the board via 18, 4, 13 … to 20. Counter-clockwise starts at 1 and goes via 20, 5, 12 … to 18.",
   "atc.cw": "Clockwise",
   "atc.ccw": "Counter-clockwise",
   "atc.zone": "Segment to hit",
+  "atc.zoneInfo": "Which part of each number counts as a hit. Inner single is the big area between bull and treble, outer single the one between treble and double. Any other hit on the number does not move you on.",
   "atc.outerSingle": "Outer single",
   "atc.innerSingle": "Inner single",
   "atc.triple": "Treble",
   "atc.double": "Double",
   "atc.finish": "Finish on",
+  "atc.finishInfo": "The last target after all 20 numbers. Bull needs the bullseye, single bull the green ring around it.",
   // the same names, as they read inside a sentence
   "atc.inText.outerSingle": "outer single",
   "atc.inText.innerSingle": "inner single",
@@ -188,6 +193,7 @@ export const en = {
   // simple doubles
   "simpleDoubles.name": "Simple doubles",
   "simpleDoubles.blurb": "Throw at one double. Only that double counts as a hit.",
+  "simpleDoubles.doubleInfo": "The double you throw at for the whole game. Only that double counts as a hit, every other dart is a miss.",
   "simpleDoubles.summary": "{accuracy}% accuracy ({hits} of {darts} darts)",
 
   // complex doubles
@@ -195,6 +201,7 @@ export const en = {
   "complexDoubles.blurb":
     "Check out the double over three darts. Single hits are subtracted and the next target follows from what is left. With an odd leave after dart 2, the bull is the target.",
   "complexDoubles.describe": "Target D{n}",
+  "complexDoubles.doubleInfo": "The double each round starts on. Every round is a checkout of twice its value (D16 = 32) with three darts. Bull is not available here.",
   "complexDoubles.summary": "{rate}% success ({successes} of {rounds} rounds)",
   "complexDoubles.thisRound": "This round",
   "complexDoubles.success": "Success",
@@ -221,6 +228,7 @@ export const en = {
   "121.blurb":
     "Check out within 9 darts. Checking out with darts 1-3 raises the next checkout by 3, with darts 4-6 by 2, with darts 7-9 by 1. Missing it lowers it by 1.",
   "121.start": "Starting checkout",
+  "121.startInfo": "The checkout the game starts with (2-170). From there it goes up with every checkout and down with every miss. The usual start is 121.",
   "121.describe": "Start at {n}, 9 darts per checkout",
   "121.summary": "Highest checkout {best}, {checkouts} made, {fails} failed",
   "121.remaining": "Remaining",
