@@ -1,27 +1,25 @@
 # Todos
 
 ## Next (in priority order)
-1. Show current Autodarts status (throw, takeout, takeout in progress, error?)
-    * Comes as `state.status` on the websocket (see debug/AUTODARTS-API.md)
-2. Single training game (play one game without a routine)
+1. Single training game (play one game without a routine)
     * add quickgame option to the training screen
       * button on the top left
     * Show Popup with available training games (like in the "add game" function when editing a routine)
-3. History graph per training game
+2. History graph per training game
     * Track result progress (per game)
-4. Reset & calibrate button (`AutodartsClient.reset()` / `calibrate()` already exist)
-5. Loading Screen
+3. Reset & calibrate button (`AutodartsClient.reset()` / `calibrate()` already exist)
+4. Loading Screen
     * Show at least X seconds ;) I want the app logo to show for at least a few seconds
     * Maybe for real: load modules with a progress bar
-6. About Screen
+5. About Screen
     * Some information about the project
     * Related links
     * Library licenses? Check THAT!
     * SBOM
-7. Settings: Autodarts auto discovery of IP & port
-8. Buy me a coffee: add the real link (placeholder URL for now)
-9. Fix GitHub Actions asset creation
-10. Update README.md for version 0.1
+6. Settings: Autodarts auto discovery of IP & port
+7. Buy me a coffee: add the real link (placeholder URL for now)
+8. Fix GitHub Actions asset creation
+9. Update README.md for version 0.1
     * Especially expectation management: why did I build this, how do I want to train?
 
 
@@ -124,3 +122,4 @@
   * Games with darts only start while the detection runs; "Start detection" button when it is stopped
   * A running game pauses while the detection is gone and resumes by itself when it is back
 * Target fields highlighted on the board (Around the clock, Simple doubles, Plan B); a game can light up several at once
+* Throw / takeout status as an icon left of the dart boxes while playing (target: throw, hand: take out, moving hand: takeout in progress)

@@ -5,6 +5,7 @@
     autodartsUrl,
     dartLabel,
     type BoardStatus,
+    type ThrowPhase,
     type ConnState,
     type DartEvent,
   } from "./lib/autodarts";
@@ -44,6 +45,7 @@
   let formError = $state("");
   let conn = $state<ConnState>("disconnected");
   let board = $state<BoardStatus>("unknown");
+  let throwPhase = $state<ThrowPhase>(null);
   let startError = $state(false);
   let recent = $state<string[]>([]);
 
@@ -455,7 +457,7 @@
   }
 
   onMount(() => {
-    client = new AutodartsClient({ onState: (s) => (conn = s), onBoard: (s) => (board = s), onEvent });
+    client = new AutodartsClient({ onState: (s) => (conn = s), onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
     (async () => {
       try {
         await db.openDb();
@@ -841,6 +843,21 @@
         <!-- A thrown dart is corrected by clicking its box, then the field it really hit on the board.
              A click on the board without a box picked sets the next dart. -->
         <div class="darts" role="group" aria-label={t("run.dartsAria")}>
+          <!-- What Autodarts waits for: darts, the takeout, or the hand pulling them. -->
+          {#if throwPhase && !waiting}
+            <span class="phase" data-phase={throwPhase} title={t(`phase.${throwPhase}`)} role="status">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                {#if throwPhase === "throw"}
+                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+                  <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2" />
+                  <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+                {:else}
+                  <path fill="currentColor" d="M21 7.5V19a4 4 0 0 1-4 4h-6.2a4 4 0 0 1-2.83-1.17L2 15.83l1.24-1.22a1.2 1.2 0 0 1 1.46-.18L8 16.3V5.5a1.5 1.5 0 0 1 3 0V12h1V3.5a1.5 1.5 0 0 1 3 0V12h1V4.5a1.4 1.4 0 0 1 2.8 0V12h.4V7.5a.9 .9 0 0 1 1.8 0Z" />
+                {/if}
+              </svg>
+              <span class="sr-only">{t(`phase.${throwPhase}`)}</span>
+            </span>
+          {/if}
           <!-- Ends the turn by hand, e.g. one set on the board; empty boxes count as misses. -->
           {#if !paused}
             <button class="icon next-turn" title={t("run.nextTurn")} aria-label={t("run.nextTurn")} onclick={() => session?.endTurn()}>
@@ -1308,6 +1325,21 @@
     border: 1px solid var(--line);
     color: var(--chalk);
   }
+  .darts .phase {
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 0.75rem);
+    transform: translateY(-50%);
+    display: inline-flex;
+    padding: 0.45rem;
+    color: var(--ok);
+    cursor: help;
+  }
+  .darts .phase[data-phase="takeout"] { color: var(--dart); }
+  /* The hand is in the picture: the icon waves while the darts come out. */
+  .darts .phase[data-phase="takeoutInProgress"] { color: var(--accent); }
+  .darts .phase[data-phase="takeoutInProgress"] svg { animation: pull 0.8s ease-in-out infinite alternate; }
+  @keyframes pull { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
   .darts .next-turn:hover { color: var(--accent); border-color: var(--accent); background: var(--panel); }
   .dart-box {
     padding: 0.6rem 0;
