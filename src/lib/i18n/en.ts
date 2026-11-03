@@ -84,7 +84,7 @@ export const en = {
 
   // train: routine carousel
   "train.title": "Start a routine",
-  "train.total": "{n} minutes in total at most. Games with darts start their clock on your first dart.",
+  "train.total": "{n} minutes in total at most.",
   "train.noGames": "This routine has no games yet. Add some with the edit button on its card.",
   "train.start": "Start routine",
   "carousel.games": "{n} games",
@@ -107,7 +107,6 @@ export const en = {
   "run.progress": "Game {n} of {total}",
   "run.progressNamed": "Game {n} of {total}: {name}",
   "run.settingsLine": "{desc}, {n} min",
-  "run.clockHint": "The clock starts with your first dart.",
   "run.startGame": "Start game",
   "run.abort": "Abort routine",
   "run.confirmAbort": "Click again to abort",
@@ -116,7 +115,6 @@ export const en = {
   "run.endedEarly": "Ended early.",
   "run.timeUp": "Time is up.",
   "run.paused": "Paused. Throws are not counted.",
-  "run.waiting": "Waiting for your first dart.",
   "run.keepThrowing": "Keep throwing.",
   "run.pause": "Pause",
   "run.resume": "Resume",

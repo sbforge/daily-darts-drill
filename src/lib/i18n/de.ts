@@ -86,8 +86,7 @@ export const de: Record<Key, string> = {
 
   // train: routine carousel
   "train.title": "Routine starten",
-  "train.total":
-    "Höchstens {n} Minuten insgesamt. Bei Spielen mit Darts startet die Uhr mit deinem ersten Dart.",
+  "train.total": "Höchstens {n} Minuten insgesamt.",
   "train.noGames": "Diese Routine hat noch keine Spiele. Füge über den Bearbeiten-Knopf auf ihrer Karte welche hinzu.",
   "train.start": "Routine starten",
   "carousel.games": "{n} Spiele",
@@ -110,7 +109,6 @@ export const de: Record<Key, string> = {
   "run.progress": "Spiel {n} von {total}",
   "run.progressNamed": "Spiel {n} von {total}: {name}",
   "run.settingsLine": "{desc}, {n} Min.",
-  "run.clockHint": "Die Uhr startet mit deinem ersten Dart.",
   "run.startGame": "Spiel starten",
   "run.abort": "Routine abbrechen",
   "run.confirmAbort": "Zum Abbrechen erneut klicken",
@@ -119,7 +117,6 @@ export const de: Record<Key, string> = {
   "run.endedEarly": "Vorzeitig beendet.",
   "run.timeUp": "Die Zeit ist um.",
   "run.paused": "Pausiert. Würfe zählen nicht.",
-  "run.waiting": "Warte auf deinen ersten Dart.",
   "run.keepThrowing": "Weiterwerfen.",
   "run.pause": "Pause",
   "run.resume": "Weiter",

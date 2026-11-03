@@ -117,10 +117,6 @@
       finish(false);
       return;
     }
-    if (e.kind === "dart" && endsAt === null) {
-      now = Date.now();
-      endsAt = now + totalMs;
-    }
     session.handle(e);
   }
 
@@ -147,7 +143,7 @@
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();
-    endsAt = def.needsDarts ? null : now + totalMs;
+    endsAt = now + totalMs;
     phase = "running";
   }
 
@@ -732,9 +728,6 @@
           <h2>{def.name}</h2>
           <p class="lede">{def.blurb}</p>
           <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
-          {#if def.needsDarts}
-            <p class="hint">{t("run.clockHint")}</p>
-          {/if}
         </div>
       </div>
       {#if !canStart}
@@ -747,9 +740,6 @@
       <h2>{def.name}</h2>
       <p class="lede">{def.blurb}</p>
       <p class="settings-line">{t("run.settingsLine", { desc: def.describe(item.settings), n: item.minutes })}</p>
-      {#if def.needsDarts}
-        <p class="hint">{t("run.clockHint")}</p>
-      {/if}
       {#if !canStart}
         <p class="hint">{t("run.connectFirst")}</p>
       {/if}
@@ -758,12 +748,10 @@
     <section class="stage">
       <div class="panel">
         <p class="progress">{t("run.progressNamed", { n: run.index + 1, total: run.routine.items.length, name: def.name })}</p>
-        <div class="clock" class:waiting={endsAt === null} class:paused>{fmt(remaining)}</div>
+        <div class="clock" class:paused>{fmt(remaining)}</div>
         <p class="note">
           {#if paused}
             {t("run.paused")}
-          {:else if endsAt === null}
-            {t("run.waiting")}
           {:else}
             {t("run.keepThrowing")}
           {/if}
@@ -1155,7 +1143,6 @@
   .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
   .stage .panel { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .clock { font-size: 4.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
-  .clock.waiting { color: var(--dim); }
   .clock.paused { color: var(--dart); opacity: 0.75; }
   .note { color: var(--dim); margin: 0.5rem 0 1.5rem; }
   /* The current score, the one number to read at a glance from the oche. */

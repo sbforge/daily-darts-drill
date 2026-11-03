@@ -49,7 +49,7 @@ export interface GameDef {
   id: string;
   name: string;
   blurb: string;
-  needsDarts: boolean; // false: the clock starts immediately
+  needsDarts: boolean; // false: can run without an Autodarts connection
   hasResult: boolean;
   defaultMinutes: number;
   defaultSettings: Settings;
