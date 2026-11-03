@@ -41,6 +41,8 @@ export const bobs27: GameDef = {
       options: [opt("off", () => t("bob.playOnOff")), opt("on", () => t("bob.playOnOn"))],
     },
   ],
+  canEnd: () => true,
+  estimateMinutes: (s) => (s.playOn === "on" ? 8 : 5),
   describe: (s) => (s.playOn === "on" ? t("bob.describePlayOn") : t("bob.describe")),
   summary: (v) => t("bob.summary", { score: v.score, reached: v.reached, rate: num(v.hitRate, 1) }),
   compute(turns, s, ctx) {

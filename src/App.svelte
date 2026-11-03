@@ -37,6 +37,7 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
+  import { missingBuiltins } from "./lib/routines/builtin";
   import { NON_COMPARABLE } from "./lib/games/shared";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
@@ -224,6 +225,15 @@
       log.error(`export failed: ${e}`);
       exportNote = { text: t("export.failed", { msg: e instanceof Error ? e.message : String(e) }), failed: true };
     }
+  }
+
+  let restoreNote = $state("");
+
+  /** Adds back the built-in routines that are missing; never overwrites what the player changed. */
+  function restoreBuiltins() {
+    const add = missingBuiltins($state.snapshot(routines));
+    routines = [...routines, ...add];
+    restoreNote = add.length ? t("builtin.restored", { n: add.length }) : t("builtin.nothingToRestore");
   }
 
   function failed(e: unknown) {
@@ -1437,6 +1447,15 @@
           </div>
           <p class="hint">{t("export.hint")}</p>
           {#if exportNote}<p class={exportNote.failed ? "error" : "hint"} role="status">{exportNote.text}</p>{/if}
+        </section>
+
+        <section class="group" aria-labelledby="routines-title">
+          <h3 id="routines-title">{t("settings.routinesTitle")}</h3>
+          <p class="hint">{t("builtin.restoreHint")}</p>
+          <div class="row">
+            <button class="ghost" onclick={restoreBuiltins}>{t("builtin.restore")}</button>
+          </div>
+          {#if restoreNote}<p class="hint" role="status">{restoreNote}</p>{/if}
         </section>
 
         <section class="group" aria-labelledby="stats-title">

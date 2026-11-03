@@ -22,6 +22,8 @@
   // Settings already made for a game, so switching back to it keeps them. Starts from what open() was given.
   let made: Record<string, RoutineItem> = {};
   const g = $derived(gameById(draft.gameId));
+  // A quick game can always run without a time cap; in a routine only a game that ends by itself can.
+  const canEnd = $derived(quick || !!g.canEnd?.(draft.settings));
 
   const timeCap: Field = {
     key: "minutes",
@@ -65,7 +67,7 @@
 
   function current(): RoutineItem {
     const item = $state.snapshot(draft);
-    return quick && capped === "off" ? { ...item, minutes: 0 } : item;
+    return capped === "off" && canEnd ? { ...item, minutes: 0 } : item;
   }
 
   /** Opens on the given games' settings (e.g. the ones played last), else on each game's defaults. */
@@ -113,10 +115,10 @@
     <p class="goal"><strong>{t("game.goal")}</strong> {g.goal}</p>
 
     <div class="fields">
-      {#if quick}
+      {#if canEnd}
         <GameField field={capField} bind:value={capped} />
       {/if}
-      {#if !quick || capped === "on"}
+      {#if !canEnd || capped === "on"}
         <GameField field={timeCap} bind:value={draft.minutes} />
       {/if}
       {#each g.fields as f (`${g.id}-${f.key}`)}

@@ -5,7 +5,8 @@ import Database from "@tauri-apps/plugin-sql";
 import type { Dart } from "./autodarts";
 import type { ResultRecord } from "./dpi";
 import type { Settings } from "./games";
-import { cleanItems, DEFAULT_CONFIG, pauseSeconds, starterRoutine, type Config, type Routine, type RoutineItem } from "./store";
+import { BUILTIN_PAUSE_SECONDS, BUILTIN_ROUTINES, makeBuiltin } from "./routines/builtin";
+import { cleanItems, DEFAULT_CONFIG, pauseSeconds, type Config, type Routine, type RoutineItem } from "./store";
 
 let db: Database | null = null;
 
@@ -109,11 +110,21 @@ export async function loadRoutines(): Promise<Routine[]> {
       items: cleanItems(items),
     };
   });
-  if (list.length) return list;
-
-  const starter = [starterRoutine()];
-  await saveRoutines(starter);
-  return starter;
+  // The built-in routines are added once, behind what is already there: a new install gets just them, an update
+  // keeps the player's routines. A routine deleted later doesn't come back by itself ("Restore built-in routines").
+  const shipped = await getSetting("builtin_routines");
+  if (shipped === null) {
+    // Once, with the 15 second break becoming the default: routines made before keep going on with it too.
+    list.forEach((r) => (r.pauseSeconds = BUILTIN_PAUSE_SECONDS));
+    list.push(...BUILTIN_ROUTINES.filter((b) => !list.some((r) => r.id === b.id)).map((b) => makeBuiltin(b)));
+    await saveRoutines(list);
+    await setSetting("builtin_routines", JSON.stringify(BUILTIN_ROUTINES.map((b) => b.id)));
+  } else if (!list.length) {
+    // There is always a routine to pick.
+    list.push(...BUILTIN_ROUTINES.map((b) => makeBuiltin(b)));
+    await saveRoutines(list);
+  }
+  return list;
 }
 
 export function saveRoutines(routines: Routine[]): Promise<void> {

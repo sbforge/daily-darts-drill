@@ -35,6 +35,8 @@ export const catch40: GameDef = {
   defaultMinutes: 10,
   defaultSettings: { showRoute: "on" },
   fields: [showRouteField],
+  canEnd: () => true,
+  estimateMinutes: () => 10,
   describe: () => t("catch40.describe"),
   summary: (v) => t("catch40.summary", { points: v.points, numbers: v.numbers, checkouts: v.checkouts }),
   compute(turns, s, ctx) {

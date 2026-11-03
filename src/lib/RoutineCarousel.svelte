@@ -4,7 +4,7 @@
   import { gameById } from "./games";
   import cardArt from "../assets/brand/art/routine-card.webp";
   import { getLocale, t } from "./i18n/index.svelte";
-  import { totalSeconds, type Routine } from "./store";
+  import { hasEstimate, totalSeconds, type Routine } from "./store";
 
   let {
     routines,
@@ -279,13 +279,13 @@
             {@const g = gameById(it.gameId)}
             <li>
               <span class="g-name">{g.name}</span>
-              <span class="g-min">{t("common.minutes", { n: it.minutes })}</span>
+              <span class="g-min">{it.minutes > 0 ? t("common.minutes", { n: it.minutes }) : t("routines.untilDone")}</span>
               <span class="g-desc">{g.describe(it.settings)}</span>
             </li>
           {/each}
         </ol>
         <p class="note">
-          {t("train.total", { n: minutes(info) })}
+          {t(hasEstimate(info) ? "train.totalEstimate" : "train.total", { n: minutes(info) })}
         </p>
       {:else}
         <p class="note">{t("train.noGames")}</p>

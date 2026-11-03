@@ -145,6 +145,14 @@
     await tick();
     handle.focus();
   }
+
+  // A game that can't end by itself (e.g. Solo Leg set back to "until the time is up") needs its time cap again.
+  $effect(() => {
+    for (const it of items) {
+      const g = gameById(it.gameId);
+      if (!(it.minutes > 0) && !g.canEnd?.(it.settings)) it.minutes = g.defaultMinutes;
+    }
+  });
 </script>
 
 <div class="list-head">
@@ -203,10 +211,18 @@
             <span class="summary">{summary(g, it)}</span>
           {/if}
         </button>
-        <label class="minutes">
-          <input type="number" min="1" max="120" bind:value={it.minutes} aria-label={t("routines.timeCap")} />
-          <span>{t("routines.minutesUnit")}</span>
-        </label>
+        {#if g.canEnd?.(it.settings)}
+          <label class="nocap" title={t("routines.noCapInfo")}>
+            <input type="checkbox" checked={!(it.minutes > 0)} onchange={(e) => (it.minutes = e.currentTarget.checked ? 0 : g.defaultMinutes)} />
+            <span>{t("routines.noCap")}</span>
+          </label>
+        {/if}
+        {#if it.minutes > 0 || !g.canEnd?.(it.settings)}
+          <label class="minutes">
+            <input type="number" min="1" max="120" bind:value={it.minutes} aria-label={t("routines.timeCap")} />
+            <span>{t("routines.minutesUnit")}</span>
+          </label>
+        {/if}
       </div>
       {#if isOpen}
         <div class="body">
@@ -292,6 +308,7 @@
   strong { flex: none; }
   .summary { min-width: 0; color: var(--dim); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+  .nocap { flex: none; display: flex; flex-direction: row; align-items: center; gap: 0.35rem; margin: 0 0.5rem 0 0; color: var(--dim); font-size: 0.85rem; }
   .minutes { flex: none; flex-direction: row; align-items: center; gap: 0.4rem; margin: 0; color: var(--dim); font-size: 0.9rem; }
   .minutes input { width: 4.2rem; padding: 0.35rem 0.5rem; text-align: right; }
 
