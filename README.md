@@ -1,5 +1,7 @@
 # D³ – Daily Darts Drill
 
+**TRAIN. PLAY. FAIL. IMPROVE.**
+
 Timed darts training on top of the Autodarts event stream (`ws://<host>:<port>/api/events/system`).
 D³ is an independent project and is not affiliated with Autodarts.
 Built with Tauri 2 + Svelte 5 + TypeScript. Runs on Windows, macOS and Linux.
