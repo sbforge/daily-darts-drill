@@ -1,5 +1,6 @@
 // All persistence lives here: one SQLite file managed by the Tauri SQL plugin.
 // Tables: settings, routines, sessions, game_results, darts. The schema lives in src-tauri/migrations.
+import { invoke } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 import type { Dart } from "./autodarts";
 import type { ResultRecord } from "./dpi";
@@ -366,5 +367,18 @@ export async function loadResults(): Promise<ResultRecord[]> {
     } catch {
       return []; // a broken row is left out instead of blocking the index
     }
+  });
+}
+
+// --------------------------------------------------------------- export
+
+/**
+ * A consistent copy of the whole database in one file, made while the database is open (what is still in the
+ * -wal file is included). The same call makes the backup right before an update.
+ */
+export function exportTo(path: string): Promise<void> {
+  return queue(async () => {
+    await invoke("clear_export_target", { path });
+    await conn().execute("VACUUM INTO $1", [path]);
   });
 }

@@ -40,7 +40,7 @@
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
-  import { lastBackup } from "./lib/backend";
+  import { chooseExportFile, lastBackup } from "./lib/backend";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
   import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
@@ -202,6 +202,22 @@
   function settingsLine(i: RoutineItem): string {
     const desc = gameById(i.gameId).describe(i.settings);
     return i.minutes > 0 ? t("run.settingsLine", { desc, n: i.minutes }) : t("quick.settingsLineNoCap", { desc });
+  }
+
+  let exportNote = $state<{ text: string; failed: boolean } | null>(null);
+
+  async function exportData() {
+    exportNote = null;
+    try {
+      const path = await chooseExportFile();
+      if (!path) return;
+      await db.exportTo(path);
+      log.info("data exported");
+      exportNote = { text: t("export.done"), failed: false };
+    } catch (e) {
+      log.error(`export failed: ${e}`);
+      exportNote = { text: t("export.failed", { msg: e instanceof Error ? e.message : String(e) }), failed: true };
+    }
   }
 
   function failed(e: unknown) {
@@ -1327,7 +1343,10 @@
           <p class="hint">{t("backup.hint")}</p>
           <div class="row">
             <button class="ghost" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+            <button class="ghost" disabled={phase !== "idle"} onclick={exportData}>{t("export.button")}</button>
           </div>
+          <p class="hint">{t("export.hint")}</p>
+          {#if exportNote}<p class={exportNote.failed ? "error" : "hint"} role="status">{exportNote.text}</p>{/if}
         </section>
 
         <section class="group" aria-labelledby="stats-title">

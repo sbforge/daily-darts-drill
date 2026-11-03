@@ -57,6 +57,10 @@ export const de: Record<Key, string> = {
   "backup.none": "Noch kein Backup.",
   "backup.hint": "D³ kopiert deine Daten einmal am Tag beim Start und behält die letzten 5. Zum Zurückspielen: D³ schließen und die Dateien aus einem Backup-Ordner über darttrainer.db kopieren.",
   "backup.failed": "Das heutige Backup ist fehlgeschlagen: {msg}",
+  "export.button": "Meine Daten exportieren",
+  "export.hint": "Speichert eine Kopie aller deiner Daten in einer Datei, z. B. für einen USB-Stick oder einen neuen Computer. Nicht während eine Routine läuft.",
+  "export.done": "Exportiert.",
+  "export.failed": "Export fehlgeschlagen: {msg}",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",

@@ -43,3 +43,12 @@ export async function openFolder(kind: AppFolder): Promise<void> {
 export function isNewerDatabase(message: string): boolean {
   return /previously applied but is missing|VersionMissing/i.test(message);
 }
+
+/** Asks where to save, returns null when cancelled. */
+export async function chooseExportFile(): Promise<string | null> {
+  const { save } = await import("@tauri-apps/plugin-dialog");
+  return save({
+    defaultPath: `d3-export-${new Date().toISOString().slice(0, 10)}.db`,
+    filters: [{ name: "D³ data", extensions: ["db"] }],
+  });
+}
