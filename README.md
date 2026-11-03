@@ -1,6 +1,7 @@
-# ADX – The Autodarts Training Experience
+# D³ – Daily Darts Drill
 
 Timed darts training on top of the Autodarts event stream (`ws://<host>:<port>/api/events/system`).
+D³ is an independent project and is not affiliated with Autodarts.
 Built with Tauri 2 + Svelte 5 + TypeScript. Runs on Windows, macOS and Linux.
 
 ## Run it
@@ -8,7 +9,7 @@ Built with Tauri 2 + Svelte 5 + TypeScript. Runs on Windows, macOS and Linux.
 1. Install Node 20+ and Rust, plus the Tauri system prerequisites for your OS:
    https://v2.tauri.app/start/prerequisites/
 2. `npm install`
-3. `npx tauri icon path/to/any-square-image.png` (generates `src-tauri/icons`, needed once)
+3. `npx tauri icon src-tauri/icons/app-icon.png` (regenerates all app icons in `src-tauri/icons` from the D³ artwork)
 4. `npm run tauri dev` to develop, `npm run tauri build` for an installer
 
 The app must run inside Tauri (`npm run tauri dev`): all data lives in a SQLite file in the app's config folder, created on first start.

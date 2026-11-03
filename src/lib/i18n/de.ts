@@ -21,13 +21,13 @@ export const de: Record<Key, string> = {
   "error.save": "Speichern in der Datenbank fehlgeschlagen: {msg}",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
-    "ADX speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",
+    "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",
   "db.hintAfter": "oder nutze die installierte App. In einem normalen Browser funktioniert die Seite nicht.",
   "db.loading": "Deine Daten werden geöffnet…",
 
   // settings
   "settings.connTitle": "Autodarts-Verbindung",
-  "settings.connLede": "ADX hört auf den Live-Ereignisstrom deines Autodarts-Clients.",
+  "settings.connLede": "D³ hört auf den Live-Ereignisstrom deines Autodarts-Clients.",
   "settings.host": "Host",
   "settings.port": "Port",
   "settings.hostRequired": "Gib den Hostnamen oder die IP-Adresse deines Autodarts-Clients ein.",

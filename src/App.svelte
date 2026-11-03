@@ -854,7 +854,7 @@
 
 <footer>
   <div class="meta">
-    <span>ADX v{__APP_VERSION__}</span>
+    <span>D³ v{__APP_VERSION__}</span>
     <a href={GITHUB_URL} onclick={(e) => openExternal(e, GITHUB_URL)}>GitHub</a>
     <a href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>{t("footer.coffee")}</a>
   </div>
@@ -887,11 +887,11 @@
   :global(body) {
     margin: 0;
     min-height: 100vh;
-    /* The full logo artwork sits behind every view, dimmed so it never competes with the content. */
+    /* The D³ backdrop artwork sits behind every view, dimmed so it never competes with the content. */
     background:
       radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed,
       linear-gradient(rgb(6 13 18 / 0.78), rgb(6 13 18 / 0.78)) fixed,
-      url("./assets/brand/adx-logo-tagline.webp") center / cover no-repeat fixed,
+      url("./assets/brand/d3-backdrop.svg") center / cover no-repeat fixed,
       var(--bg);
   }
   /* Header and footer stay put; only the content between them scrolls. */

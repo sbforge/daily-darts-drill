@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000">
+  <defs>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f7f8" />
+      <stop offset="1" stop-color="#aeb9bf" />
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="#050b0f" />
+  <!-- dartboard rings -->
+  <g fill="none" transform="translate(800 470)">
+    <circle r="420" stroke="#22d3ee" stroke-opacity="0.35" stroke-width="10" />
+    <circle r="350" stroke="#7fa3b0" stroke-opacity="0.18" stroke-width="60" stroke-dasharray="46 46" />
+    <circle r="200" stroke="#7fa3b0" stroke-opacity="0.12" stroke-width="40" stroke-dasharray="26 26" />
+  </g>
+  <!-- D³ mark -->
+  <path fill="url(#silver)" fill-rule="evenodd" d="M570 300 H690 A170 170 0 0 1 690 640 H570 Z M650 380 V560 H690 A90 90 0 0 0 690 380 Z" />
+  <path transform="translate(905 290) scale(1.05)" fill="none" stroke="#22d3ee" stroke-width="30" stroke-linejoin="round" stroke-linecap="round" d="M0 0 H100 L45 55 A50 50 0 1 1 5 127" />
+  <text x="800" y="790" text-anchor="middle" fill="url(#silver)" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="64" font-weight="600" letter-spacing="10">DAILY DARTS DRILL</text>
+</svg>
