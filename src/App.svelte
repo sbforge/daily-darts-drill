@@ -1009,7 +1009,7 @@
             {t("settings.language")}
             <Select
               value={getLocale()}
-              options={LOCALES.map((l) => ({ value: l.id, label: l.name }))}
+              options={LOCALES.map((l) => ({ value: l.id, label: l.name, icon: l.flag }))}
               onchange={(id) => changeLanguage(id)}
             />
           </label>
