@@ -119,4 +119,5 @@
   * Works mid-turn and after the takeout, until the next dart lands
   * The game recalculates; a fix survives Autodarts re-sending the turn
   * A board click with no box picked sets the next dart (for darts Autodarts missed)
+  * "Next turn" button beside the boxes ends the turn by hand; empty boxes count as misses
 * Target fields highlighted on the board (Around the clock, Simple doubles, Plan B); a game can light up several at once

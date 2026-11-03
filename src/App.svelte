@@ -795,6 +795,14 @@
         <!-- A thrown dart is corrected by clicking its box, then the field it really hit on the board.
              A click on the board without a box picked sets the next dart. -->
         <div class="darts" role="group" aria-label={t("run.dartsAria")}>
+          <!-- Ends the turn by hand, e.g. one set on the board; empty boxes count as misses. -->
+          {#if !paused}
+            <button class="icon next-turn" title={t("run.nextTurn")} aria-label={t("run.nextTurn")} onclick={() => session?.endTurn()}>
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                <path fill="currentColor" d="M3 11h11.2l-4.6-4.6L11 5l7 7-7 7-1.4-1.4 4.6-4.6H3zM19 5h2v14h-2z" />
+              </svg>
+            </button>
+          {/if}
           {#each [0, 1, 2] as i (i)}
             {@const d = session.shown[i]}
             {#if d}
@@ -1217,7 +1225,17 @@
 
   .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
   .board, .darts { max-width: 400px; width: 100%; }
-  .darts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  .darts { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  /* Beside the boxes, so they stay lined up with the board. */
+  .darts .next-turn {
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 0.75rem);
+    transform: translateY(-50%);
+    border: 1px solid var(--line);
+    color: var(--chalk);
+  }
+  .darts .next-turn:hover { color: var(--accent); border-color: var(--accent); background: var(--panel); }
   .dart-box {
     padding: 0.6rem 0;
     border: 1px solid var(--line);

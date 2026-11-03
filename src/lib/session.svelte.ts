@@ -1,6 +1,14 @@
 import { sameDart, type Dart, type DartEvent } from "./autodarts";
 import type { GameDef, Settings } from "./games";
 
+// Drawn just off the bottom of the board, where the board shows misses.
+const MISS: Dart = { kind: "miss", number: null, zone: null, score: 0, x: 0, y: -1.15, radius: 1.15, bouncer: false, failed: false, method: "manual" };
+
+/** A turn made up to three darts, the missing ones as misses. */
+function fillWithMisses(turn: Dart[]): Dart[] {
+  return [...turn, ...Array.from({ length: Math.max(0, 3 - turn.length) }, () => MISS)];
+}
+
 /** One run of one game. Collects darts into turns and exposes live results. */
 export class Session {
   game: GameDef;
@@ -15,6 +23,11 @@ export class Session {
   private source: (number | null)[] = [];
   // The darts Autodarts had detected where the player corrected them, by their place in Autodarts' turn.
   private detected = new Map<number, Dart>();
+  // The player closed a turn set by hand: the boxes stay empty instead of showing it.
+  private cleared = $state(false);
+  // The player ended a turn while Autodarts still had darts of it on the board: its updates
+  // to that turn are ignored until the takeout, so they don't spill into the next turn.
+  private awaitingTakeout = false;
 
   constructor(game: GameDef, settings: Settings) {
     this.game = game;
@@ -23,6 +36,11 @@ export class Session {
 
   handle(e: DartEvent) {
     if (this.finished) return;
+    if (this.awaitingTakeout) {
+      // A first dart means the board was cleared without us seeing it, e.g. after a reconnect.
+      if (e.kind === "turnEnded" || (e.kind === "dart" && e.indexInTurn === 0)) this.awaitingTakeout = false;
+      if (e.kind !== "dart" || this.awaitingTakeout) return;
+    }
     switch (e.kind) {
       case "dart":
         this.current = [...this.current, e.dart];
@@ -74,6 +92,7 @@ export class Session {
     this.current = [];
     this.source = [];
     this.detected.clear();
+    this.cleared = false;
   }
 
   get allTurns(): Dart[][] {
@@ -83,9 +102,10 @@ export class Session {
   /**
    * The turn the dart boxes show: the darts on the board, or after the takeout the last
    * turn, until the next dart lands. Both stay correctable while they are shown.
+   * After "next turn" the boxes are empty: the turn shown is the one still to come.
    */
   get shownTurn(): number {
-    return this.current.length ? this.turns.length : this.turns.length - 1;
+    return this.current.length || this.cleared ? this.turns.length : this.turns.length - 1;
   }
 
   get shown(): Dart[] {
@@ -135,6 +155,25 @@ export class Session {
     this.current = [...this.current, dart];
     this.source = [...this.source, null];
     this.editing = null;
+  }
+
+  /**
+   * Ends the turn by hand and clears the boxes for the next one; what the boxes show counts.
+   * Empty boxes are misses, so with none filled the turn is three misses. When the boxes still
+   * show the last turn after its takeout, its empty boxes become misses and the boxes are cleared.
+   */
+  endTurn() {
+    if (this.finished) return;
+    this.editing = null;
+    if (!this.current.length && !this.cleared && this.turns.length) {
+      const last = this.turns.length - 1;
+      this.turns = this.turns.map((turn, k) => (k === last ? fillWithMisses(turn) : turn));
+    } else {
+      if (this.source.some((at) => at !== null)) this.awaitingTakeout = true;
+      this.current = fillWithMisses(this.current);
+      this.closeTurn();
+    }
+    this.cleared = true;
   }
 
   get result() {
