@@ -2,6 +2,7 @@
   // Cover-flow style picker for the Train view. The selected routine sits in front,
   // its neighbours turn away to the sides. It wraps around, so you can keep rotating.
   import { gameById } from "./games";
+  import cardArt from "../assets/brand/art/routine-card.webp";
   import { getLocale, t } from "./i18n/index.svelte";
   import { totalSeconds, type Routine } from "./store";
 
@@ -120,43 +121,6 @@
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   }
 
-  // Board rings as fractions of the outer double ring, like a real board (170 mm).
-  const RINGS = [
-    { from: 95.3, to: 100, kind: "ring" },
-    { from: 62.9, to: 95.3, kind: "single" },
-    { from: 58.2, to: 62.9, kind: "ring" },
-    { from: 9.4, to: 58.2, kind: "single" },
-  ] as const;
-
-  function sector(r1: number, r2: number, a1: number, a2: number): string {
-    const p = (r: number, a: number) => `${(r * Math.sin(a)).toFixed(2)} ${(-r * Math.cos(a)).toFixed(2)}`;
-    return `M${p(r2, a1)}A${r2} ${r2} 0 0 1 ${p(r2, a2)}L${p(r1, a2)}A${r1} ${r1} 0 0 0 ${p(r1, a1)}Z`;
-  }
-
-  /** The 80 board fields, drawn once and coloured per card. */
-  const FIELDS = Array.from({ length: 20 }, (_, i) => {
-    const a1 = ((i - 0.5) * Math.PI) / 10;
-    const a2 = ((i + 0.5) * Math.PI) / 10;
-    return RINGS.map((ring) => ({ d: sector(ring.from, ring.to, a1, a2), kind: ring.kind, even: i % 2 === 0 }));
-  }).flat();
-
-  /** Board colours for one routine, all from its hue. */
-  function palette(h: number) {
-    return {
-      dark: `hsl(${h} 30% 11%)`,
-      light: `hsl(${h} 55% 38%)`,
-      ringA: `hsl(${h} 85% 55%)`,
-      ringB: `hsl(${(h + 150) % 360} 55% 35%)`,
-      surround: `hsl(${h} 25% 7%)`,
-      bg: `hsl(${h} 45% 15%)`,
-    };
-  }
-
-  function fill(f: (typeof FIELDS)[number], c: ReturnType<typeof palette>): string {
-    if (f.kind === "ring") return f.even ? c.ringA : c.ringB;
-    return f.even ? c.dark : c.light;
-  }
-
   /** A hue per routine, so every card gets its own board colours. */
   function hue(id: string): number {
     let h = 0;
@@ -185,7 +149,6 @@
   <div class="stage">
     {#each cards as { r, o, jump } (r.id)}
       {@const isFront = o === 0}
-      {@const c = palette(hue(r.id))}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
       <div
         class="card"
@@ -198,16 +161,8 @@
         aria-current={isFront ? "true" : undefined}
         onclick={() => (selectedId = r.id)}
       >
-        <div class="art" aria-hidden="true" style:background-color={c.bg}>
-          <svg class="board" viewBox="-110 -110 220 220" style:--spin={`${o * 18}deg`}>
-            <circle r="110" fill={c.surround} />
-            {#each FIELDS as f (f.d)}
-              <path d={f.d} fill={fill(f, c)} />
-            {/each}
-            <circle r="9.4" fill="var(--board-green)" />
-            <circle r="3.7" fill="var(--board-red)" />
-            <circle r="100" fill="none" stroke="#8c9c96" stroke-opacity="0.35" stroke-width="0.6" />
-          </svg>
+        <div class="art" aria-hidden="true">
+          <img class="board" src={cardArt} alt="" draggable="false" style:--tint={`${hue(r.id) - 190}deg`} />
           <span class="count">{r.items.length === 1 ? t("carousel.game") : t("carousel.games", { n: r.items.length })}</span>
         </div>
         <button
@@ -414,16 +369,15 @@
     flex: none;
     overflow: hidden;
   }
-  /* A dartboard peeking in from the corner, coloured per routine. */
+  /* The card artwork, which is cyan from the start and turned to the routine's hue. */
   .board {
     position: absolute;
-    width: 60cqh;
-    height: 60cqh;
-    right: -16cqh;
-    top: -11.5cqh;
-    opacity: 0.9;
-    transform: rotate(var(--spin));
-    transition: transform 600ms ease-out;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+    filter: hue-rotate(var(--tint));
   }
   .count {
     position: absolute;
