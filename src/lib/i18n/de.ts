@@ -133,6 +133,8 @@ export const de: Record<Key, string> = {
   "run.skipBreak": "Pause überspringen",
   "run.dartsAria": "Darts in dieser Aufnahme",
   "run.corrected": "(korrigiert)",
+  "run.correctDart": "Dart {n}: {dart}. Klicken zum Korrigieren",
+  "run.pickHint": "Klick, wo Dart {n} steckt. Neben die Scheibe = Fehlwurf.",
   "summary.title": "Routine abgeschlossen",
   "summary.noResult": "Kein Ergebnis für dieses Spiel.",
   "summary.saved": "Die Ergebnisse sind gespeichert. Du findest sie im Verlauf.",

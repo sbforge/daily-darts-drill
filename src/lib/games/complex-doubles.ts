@@ -1,7 +1,7 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
-import { doubleOptions, pct } from "./shared";
-import type { GameDef } from "./types";
+import { doubleField, doubleOptions, pct } from "./shared";
+import type { BoardField, GameDef } from "./types";
 
 interface Round {
   outcome: "success" | "fail" | "pending";
@@ -82,15 +82,23 @@ export const complexDoubles: GameDef = {
     });
 
     let focus = { label: t("game.target"), value: `D${target}` };
+    // Setting up and a decided round have nothing in particular to aim at.
+    let targets: BoardField[] = [doubleField(target)];
     if (ctx.open && turns.length) {
       const last = turns[turns.length - 1];
       const r = evalRound(last, target);
       const left = t("complexDoubles.remaining", { n: r.remaining });
+      targets = [];
       if (r.outcome === "success") focus = { label: t("complexDoubles.thisRound"), value: t("complexDoubles.success") };
       else if (r.outcome === "fail") focus = { label: t("complexDoubles.thisRound"), value: t("complexDoubles.missed") };
-      else if (r.remaining % 2 === 0 && r.remaining >= 2) focus = { label: left, value: `D${r.remaining / 2}` };
-      else if (last.length === 1) focus = { label: left, value: t("complexDoubles.setUp") };
-      else focus = { label: left, value: t("dart.bull") };
+      else if (r.remaining % 2 === 0 && r.remaining >= 2) {
+        focus = { label: left, value: `D${r.remaining / 2}` };
+        targets = [doubleField(r.remaining / 2)];
+      } else if (last.length === 1) focus = { label: left, value: t("complexDoubles.setUp") };
+      else {
+        focus = { label: left, value: t("dart.bull") };
+        targets = [{ bed: "bull" }];
+      }
     }
 
     const rate = pct(successes, rounds);
@@ -102,6 +110,7 @@ export const complexDoubles: GameDef = {
         { key: "successes", label: t("complexDoubles.successes"), value: String(successes) },
       ],
       focus,
+      targets,
       done: false,
     };
   },

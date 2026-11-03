@@ -452,6 +452,9 @@
   });
 </script>
 
+<!-- Escape stops correcting a dart. -->
+<svelte:window onkeydown={(e) => e.key === "Escape" && session?.editing && (session.editing = null)} />
+
 <header>
   <h1><Logo height={26} /></h1>
   <nav aria-label={t("nav.main")}>
@@ -789,14 +792,37 @@
       </div>
 
       <div class="views">
-        <div class="darts" aria-label={t("run.dartsAria")}>
+        <!-- A thrown dart is corrected by clicking its box, then the field it really hit on the board.
+             A click on the board without a box picked sets the next dart. -->
+        <div class="darts" role="group" aria-label={t("run.dartsAria")}>
           {#each [0, 1, 2] as i (i)}
-            {@const d = session.current[i]}
-            <div class="dart-box" class:filled={d}>{d ? dartLabel(d) : "–"}</div>
+            {@const d = session.shown[i]}
+            {#if d}
+              <button
+                class="dart-box filled"
+                class:done={!session.current.length}
+                class:editing={session.edit === i}
+                class:fixed={d.method === "manual"}
+                aria-pressed={session.edit === i}
+                aria-label={t("run.correctDart", { n: i + 1, dart: dartLabel(d) })}
+                onclick={() => session?.toggleEdit(i)}
+              >{dartLabel(d)}</button>
+            {:else}
+              <div class="dart-box">–</div>
+            {/if}
           {/each}
         </div>
+        <p class="pick-hint" class:show={session.edit !== null} aria-live="polite">
+          {session.edit !== null ? t("run.pickHint", { n: session.edit + 1 }) : ""}
+        </p>
         <div class="board">
-          <Board turns={session.turns} current={session.current} />
+          <Board
+            turns={session.allTurns.filter((_, k) => k !== session?.shownTurn)}
+            current={session.shown}
+            targets={result.targets}
+            picking={session.edit !== null || (!paused && session.canAdd)}
+            onpick={(d) => (session?.edit !== null ? session?.correct(d) : !paused && session?.add(d))}
+          />
         </div>
       </div>
     </section>
@@ -1204,6 +1230,25 @@
     font-variant-numeric: tabular-nums;
   }
   .dart-box.filled { color: var(--dart); border-color: var(--dart); }
+  button.dart-box { font: inherit; font-size: 1.5rem; font-weight: 700; cursor: pointer; }
+  button.dart-box:hover { background: rgb(242 193 78 / 0.08); }
+  /* The last turn after the takeout: still shown, and still correctable, until the next dart. */
+  .dart-box.done { opacity: 0.6; }
+  /* Set by hand: a small mark in the corner. */
+  .dart-box.fixed { position: relative; }
+  .dart-box.fixed::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
+  .pick-hint { max-width: 400px; width: 100%; min-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
+  .pick-hint.show { visibility: visible; }
 
   @media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { :global(*) { transition: none !important; animation: none !important; } }

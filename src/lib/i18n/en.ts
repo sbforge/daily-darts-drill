@@ -131,6 +131,8 @@ export const en = {
   "run.skipBreak": "Skip break",
   "run.dartsAria": "Darts this turn",
   "run.corrected": "(corrected)",
+  "run.correctDart": "Dart {n}: {dart}. Click to correct it",
+  "run.pickHint": "Click where dart {n} landed. Off the board = miss.",
   "summary.title": "Routine finished",
   "summary.noResult": "No result for this game.",
   "summary.saved": "Results are saved. See them under History.",
