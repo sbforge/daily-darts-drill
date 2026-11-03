@@ -43,6 +43,8 @@ export const en = {
   "db.loading": "Opening your data…",
 
   // settings
+  "settings.title": "Settings",
+  "settings.lede": "Connect your Autodarts client and set up the app the way you like it.",
   "settings.connTitle": "Autodarts connection",
   "settings.connLede": "D³ listens to the live event stream of your Autodarts client.",
   "settings.host": "Host",

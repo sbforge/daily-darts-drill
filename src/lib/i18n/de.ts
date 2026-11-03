@@ -46,6 +46,8 @@ export const de: Record<Key, string> = {
   "db.loading": "Deine Daten werden geöffnet…",
 
   // settings
+  "settings.title": "Einstellungen",
+  "settings.lede": "Verbinde deinen Autodarts-Client und richte die App so ein, wie du sie magst.",
   "settings.connTitle": "Autodarts-Verbindung",
   "settings.connLede": "D³ hört auf den Live-Ereignisstrom deines Autodarts-Clients.",
   "settings.host": "Host",

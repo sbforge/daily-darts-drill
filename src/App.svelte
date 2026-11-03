@@ -933,78 +933,97 @@
       <p class="hint">{t("db.loading")}</p>
     </section>
   {:else if view === "settings"}
-    <section class="narrow">
-      <h2>{t("settings.connTitle")}</h2>
-      <p class="lede">{t("settings.connLede")}</p>
-      <form onsubmit={saveSettings}>
-        <label>
-          {t("settings.host")}
-          <input type="text" bind:value={draft.host} autocomplete="off" spellcheck="false" />
-        </label>
-        <label>
-          {t("settings.port")}
-          <input type="number" min="1" max="65535" bind:value={draft.port} />
-        </label>
-        <p class="url">{autodartsUrl(draft.host.trim() || "…", draft.port || 0)}</p>
-        {#if formError}<p class="error" role="alert">{formError}</p>{/if}
-        {#if conn !== "connected" && !formError}
-          <p class="hint">
-            {t("settings.unreachable")}
-          </p>
-        {/if}
-        <div class="row">
-          <button type="submit" class="primary">{t("settings.save")}</button>
-          <button type="button" class="ghost" onclick={searchBoards} disabled={searching}>
-            {t(searching ? "settings.searching" : "settings.search")}
-          </button>
-          <button type="button" class="ghost" onclick={useDefaults}>{t("settings.reset")}</button>
-        </div>
-        {#if found && !searching}
-          {#if found.length === 0}
-            <p class="hint">{t("settings.foundNone")}</p>
-          {:else if found.length === 1}
-            <p class="hint">{t("settings.foundOne", { name: found[0].name })}</p>
-          {:else}
-            <p class="hint">{t("settings.foundMany")}</p>
-            <div class="row found">
-              {#each found as b (b.id)}
-                <button
-                  type="button"
-                  class="ghost small"
-                  class:picked={draft.host === b.host && draft.port === b.port}
-                  onclick={() => pickBoard(b)}
-                >
-                  {b.name} · {b.host}:{b.port}{b.cams ? ` · ${t("settings.cams", { n: b.cams })}` : ""}
+    <section class="settings">
+      <h2>{t("settings.title")}</h2>
+      <p class="lede">{t("settings.lede")}</p>
+      <div class="settings-grid">
+        <section class="group wide" aria-labelledby="conn-title">
+          <div class="group-head">
+            <h3 id="conn-title">{t("settings.connTitle")}</h3>
+            <span class="conn" data-state={conn}><span class="dot"></span>{connLabel}</span>
+          </div>
+          <p class="lede">{t("settings.connLede")}</p>
+          <div class="conn-split">
+            <form onsubmit={saveSettings}>
+              <div class="fields">
+                <label class="host">
+                  {t("settings.host")}
+                  <input type="text" bind:value={draft.host} autocomplete="off" spellcheck="false" />
+                </label>
+                <label class="port">
+                  {t("settings.port")}
+                  <input type="number" min="1" max="65535" bind:value={draft.port} />
+                </label>
+              </div>
+              <div class="url-line">
+                <p class="url">{autodartsUrl(draft.host.trim() || "…", draft.port || 0)}</p>
+                <button type="button" class="link" onclick={useDefaults}>{t("settings.reset")}</button>
+              </div>
+              {#if formError}<p class="error" role="alert">{formError}</p>{/if}
+              {#if conn !== "connected" && !formError}
+                <p class="hint">{t("settings.unreachable")}</p>
+              {/if}
+              <div class="row">
+                <button type="submit" class="primary">{t("settings.save")}</button>
+                <button type="button" class="ghost" onclick={searchBoards} disabled={searching}>
+                  {t(searching ? "settings.searching" : "settings.search")}
                 </button>
-              {/each}
+              </div>
+              {#if found && !searching}
+                {#if found.length === 0}
+                  <p class="hint">{t("settings.foundNone")}</p>
+                {:else if found.length === 1}
+                  <p class="hint">{t("settings.foundOne", { name: found[0].name })}</p>
+                {:else}
+                  <p class="hint">{t("settings.foundMany")}</p>
+                  <div class="row found">
+                    {#each found as b (b.id)}
+                      <button
+                        type="button"
+                        class="ghost small"
+                        class:picked={draft.host === b.host && draft.port === b.port}
+                        onclick={() => pickBoard(b)}
+                      >
+                        {b.name} · {b.host}:{b.port}{b.cams ? ` · ${t("settings.cams", { n: b.cams })}` : ""}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              {/if}
+            </form>
+            <!-- The connection check: darts thrown now show up here. -->
+            <div class="recent-box">
+              <h4>{t("settings.recentTitle")}</h4>
+              {#if recent.length}
+                <p class="recent">{recent.join("  ")}</p>
+              {:else}
+                <p class="hint">{t("settings.recentEmpty")}</p>
+              {/if}
             </div>
-          {/if}
-        {/if}
-      </form>
+          </div>
+        </section>
 
-      <h3>{t("settings.recentTitle")}</h3>
-      {#if recent.length}
-        <p class="recent">{recent.join("  ")}</p>
-      {:else}
-        <p class="hint">{t("settings.recentEmpty")}</p>
-      {/if}
+        <section class="group" aria-labelledby="lang-title">
+          <h3 id="lang-title">{t("settings.languageTitle")}</h3>
+          <label>
+            {t("settings.language")}
+            <Select
+              value={getLocale()}
+              options={LOCALES.map((l) => ({ value: l.id, label: l.name }))}
+              onchange={(id) => changeLanguage(id)}
+            />
+          </label>
+        </section>
 
-      <h3>{t("settings.languageTitle")}</h3>
-      <label>
-        {t("settings.language")}
-        <Select
-          value={getLocale()}
-          options={LOCALES.map((l) => ({ value: l.id, label: l.name }))}
-          onchange={(id) => changeLanguage(id)}
-        />
-      </label>
-
-      <h3>{t("settings.statsTitle")}</h3>
-      <label>
-        {t("settings.sample")}
-        <input type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
-      </label>
-      <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
+        <section class="group" aria-labelledby="stats-title">
+          <h3 id="stats-title">{t("settings.statsTitle")}</h3>
+          <label>
+            {t("settings.sample")}
+            <input class="short" type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
+          </label>
+          <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
+        </section>
+      </div>
     </section>
   {:else if view === "history"}
     <section class="history">
@@ -1824,7 +1843,6 @@
   .settings-line { margin: 0 0 1rem; }
   .wait-hint button { margin-left: 0.5rem; vertical-align: baseline; }
 
-  .narrow { max-width: 34rem; }
   .pause-field { max-width: 22rem; }
   .pause-field input { max-width: 8rem; }
   .pause-field .hint { margin: 0; }
@@ -2044,7 +2062,30 @@
 
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
-  .history { max-width: 44rem; }
+  .narrow { max-width: 34rem; }
+  .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+  .group { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .group.wide { grid-column: 1 / -1; }
+  .group h3 { margin: 0 0 0.75rem; }
+  .group > :last-child, .group label:last-child { margin-bottom: 0; }
+  .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+  .group-head h3 { margin-bottom: 0.35rem; }
+  .group .lede { margin-bottom: 1.25rem; }
+  .conn-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1.5rem; }
+  .fields { display: grid; grid-template-columns: minmax(0, 1fr) 7rem; gap: 0 0.75rem; }
+  .fields label { margin-bottom: 0.5rem; }
+  .group .row { margin-top: 0.75rem; }
+  .url-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 1rem; }
+  .url-line .url { margin: 0; }
+  button.link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 0.85rem; cursor: pointer; }
+  button.link:hover { text-decoration: underline; }
+  .recent-box { padding: 1rem 1.25rem; border: 1px dashed var(--line); border-radius: 8px; align-self: start; }
+  .recent-box h4 { margin: 0 0 0.5rem; }
+  .recent-box p { margin: 0; }
+  input.short { width: 7rem; }
+  @media (max-width: 760px) {
+    .conn-split, .settings-grid { grid-template-columns: 1fr; }
+  }
   .history-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1rem; margin-bottom: 1.5rem; }
   .history-filters label { margin: 0; }
   .history-filters .toggle { margin-left: auto; }
