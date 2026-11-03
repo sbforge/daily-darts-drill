@@ -75,6 +75,8 @@ export const oneTwentyOne: GameDef = {
     let fails = 0;
     let best = 0;
     let safehouse = 0; // the highest checkout made with darts 1-3; a miss never drops below it
+    let openUsed = 0; // darts of the turn still on the board that count in this attempt
+    let noScore: number | undefined;
 
     turns.forEach((turn, ti) => {
       const open = ctx.open && ti === turns.length - 1;
@@ -90,6 +92,7 @@ export const oneTwentyOne: GameDef = {
           ended = "out";
           outSlot = slotBase + i + 1;
         } else if (rem <= 1) {
+          // Past the rest, a rest of 1, or 0 without a double: no double can finish from there.
           ended = "bust";
           remaining = turnStart;
         } else {
@@ -99,6 +102,8 @@ export const oneTwentyOne: GameDef = {
         break; // darts after a bust or checkout don't count
       }
 
+      // A bust is no score: the rest goes back to the start of the turn, which ends right there.
+      if (ended === "bust" && ti === turns.length - 1) noScore = ti;
       if (ended === "out") {
         checkouts++;
         best = Math.max(best, target);
@@ -106,8 +111,10 @@ export const oneTwentyOne: GameDef = {
         target = Math.min(170, target + step(outSlot, fastForward));
         remaining = target;
         slotBase = 0;
-      } else if (!open) {
-        slotBase += 3; // a finished turn uses all three darts, even if fewer were thrown
+      } else if (open && ended === "none") {
+        openUsed = turn.length;
+      } else {
+        slotBase += 3; // a finished or busted turn uses all three darts, even if fewer were thrown
         if (slotBase >= DARTS_PER_ATTEMPT) {
           fails++;
           target = Math.max(2, safehouse, target - 1);
@@ -117,8 +124,7 @@ export const oneTwentyOne: GameDef = {
       }
     });
 
-    const lastOpen = ctx.open && turns.length ? turns[turns.length - 1].length : 0;
-    const used = slotBase + lastOpen;
+    const used = slotBase + openUsed;
     const dartsLeft = Math.max(0, DARTS_PER_ATTEMPT - used);
     const attempts = checkouts + fails;
     const rate = pct(checkouts, attempts);
@@ -138,6 +144,7 @@ export const oneTwentyOne: GameDef = {
       focus: { label: t("121.restOf", { n: target }), value: String(remaining) },
       // Grouped into turns of three darts.
       darts: { label: t("121.dartsLeftN", { n: dartsLeft }), total: DARTS_PER_ATTEMPT, used, group: 3 },
+      noScore,
       done: false,
     };
   },

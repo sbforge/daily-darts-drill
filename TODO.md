@@ -123,3 +123,6 @@
   * A running game pauses while the detection is gone and resumes by itself when it is back
 * Target fields highlighted on the board (Around the clock, Simple doubles, Plan B); a game can light up several at once
 * Throw / takeout status as an icon left of the dart boxes while playing (target: throw, hand: take out, moving hand: takeout in progress)
+* "No Score" (bust) rule in the checkout games (121, Plan B): past the rest, a rest of 1, or 0 without a double ends the turn at once with no score
+  * 121: the busted turn uses all three darts right away, the rest goes back to the start of the turn
+  * Animated "No Score" overlay for 2 s on a bust, also when a correction makes a turn bust; still with reduced motion

@@ -149,6 +149,8 @@ export const en = {
   "run.correctDart": "Dart {n}: {dart}. Click to correct it",
   "run.nextTurn": "Next turn (empty boxes count as misses)",
   "run.pickHint": "Click where dart {n} landed. Off the board = miss.",
+  "run.noScore": "No Score",
+  "run.noScoreHint": "Bust: the turn does not count",
   "summary.title": "Routine finished",
   "summary.noResult": "No result for this game.",
   "summary.saved": "Results are saved. See them under History.",

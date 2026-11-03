@@ -38,6 +38,11 @@ export interface GameResult {
   targets?: BoardField[];
   /** Darts drawn as icons under the focus: how many there are, how many are thrown, and how many form a group. */
   darts?: { label: string; total: number; used: number; group: number };
+  /**
+   * Checkout games: the latest turn went bust (scored past the rest or left 1), so it counts as no score.
+   * Holds that turn's index, so a bust in the next turn is a new one, even right after another.
+   */
+  noScore?: number;
   /** True when the game has been completed before the time cap. */
   done: boolean;
 }

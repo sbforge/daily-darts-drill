@@ -151,6 +151,8 @@ export const de: Record<Key, string> = {
   "run.correctDart": "Dart {n}: {dart}. Klicken zum Korrigieren",
   "run.nextTurn": "Nächste Aufnahme (leere Felder zählen als Fehlwurf)",
   "run.pickHint": "Klick, wo Dart {n} steckt. Neben die Scheibe = Fehlwurf.",
+  "run.noScore": "No Score",
+  "run.noScoreHint": "Überworfen: die Aufnahme zählt nicht",
   "summary.title": "Routine abgeschlossen",
   "summary.noResult": "Kein Ergebnis für dieses Spiel.",
   "summary.saved": "Die Ergebnisse sind gespeichert. Du findest sie im Verlauf.",
