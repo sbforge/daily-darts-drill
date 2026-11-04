@@ -28,7 +28,7 @@ export const oneTwentyOne: GameDef = {
   hasResult: true,
   defaultMinutes: 10,
   // Fast-forward on and no safehouse is how 121 was played before both became settings.
-  defaultSettings: { start: 121, fastForward: "on", safehouse: "off", instantCount: "off" },
+  defaultSettings: { start: 121, fastForward: "on", safehouse: "off", instantCount: "default" },
   fields: [
     {
       key: "start",

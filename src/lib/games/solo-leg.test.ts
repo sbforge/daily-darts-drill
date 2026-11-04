@@ -82,3 +82,13 @@ describe("Solo Leg", () => {
     expect(r.lines.find((l) => l.key === "legAverage")?.liveOnly).toBe(true);
   });
 });
+
+describe("counting setting", () => {
+  it("a game set to follow the setting gets what the player chose, an explicit choice stays", async () => {
+    const { withCounting } = await import("./shared");
+    expect(withCounting({ instantCount: "default" }, true, true).instantCount).toBe("on");
+    expect(withCounting({ instantCount: "default" }, true, false).instantCount).toBe("off");
+    expect(withCounting({ instantCount: "off" }, true, true).instantCount).toBe("off");
+    expect(withCounting({}, false, true)).toEqual({});
+  });
+});

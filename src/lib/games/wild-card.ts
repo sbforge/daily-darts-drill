@@ -66,7 +66,7 @@ export const wildCard: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { range: "61-100", darts: 6, instantCount: "off" },
+  defaultSettings: { range: "61-100", darts: 6, instantCount: "default" },
   fields: [
     {
       key: "range",

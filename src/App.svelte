@@ -38,7 +38,8 @@
     type Trend,
   } from "./lib/dpi";
   import { BUILTIN_ROUTINES, makeBuiltin, missingBuiltins } from "./lib/routines/builtin";
-  import { NON_COMPARABLE } from "./lib/games/shared";
+  import { NON_COMPARABLE, withCounting } from "./lib/games/shared";
+  import { prefs } from "./lib/prefs.svelte";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
@@ -387,7 +388,8 @@
   function startGame() {
     if (!item || !def) return;
     // With a time cap a game completed early starts over and plays on until the clock runs out.
-    session = new Session(def, def.prepare ? def.prepare({ ...item.settings }) : { ...item.settings }, totalMs > 0);
+    const played = withCounting(item.settings, def.fields.some((f) => f.key === "instantCount"), prefs.instantCount);
+    session = new Session(def, def.prepare ? def.prepare({ ...played }) : { ...played }, totalMs > 0);
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();
@@ -1113,6 +1115,11 @@
     db.setSetting("animations", on ? "on" : "off").catch(failed);
   }
 
+  function setInstantCount(on: boolean) {
+    prefs.instantCount = on;
+    db.setSetting("game.instantCount", on ? "on" : "off").catch(failed);
+  }
+
   function changeLanguage(l: Locale) {
     setLocale(l);
     db.setSetting("language", l).catch(failed);
@@ -1154,6 +1161,7 @@
         setLocale(isLocale(lang) ? lang : getLocale());
         // The first start takes the system's "reduce motion" as its starting value, later only the setting counts.
         const anim = await db.getSetting("animations");
+        prefs.instantCount = (await db.getSetting("game.instantCount")) === "on";
         if (anim) fx.enabled = anim === "on";
         else setAnimations(fx.enabled);
         const saved = await db.hasConfig();
@@ -1534,6 +1542,22 @@
             />
           </label>
           <p class="hint">{t("settings.animationsHint")}</p>
+        </section>
+
+        <section class="group" aria-labelledby="playing-title">
+          <h3 id="playing-title">{t("settings.playingTitle")}</h3>
+          <label>
+            {t("game.counting")}
+            <Select
+              value={prefs.instantCount ? "on" : "off"}
+              options={[
+                { value: "off", label: t("game.countingVisit") },
+                { value: "on", label: t("game.countingInstant") },
+              ]}
+              onchange={(v) => setInstantCount(v === "on")}
+            />
+          </label>
+          <p class="hint">{t("settings.countingHint")}</p>
         </section>
 
         <section class="group wide" aria-labelledby="updates-title">

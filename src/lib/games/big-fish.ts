@@ -25,7 +25,7 @@ export const bigFish: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
-  defaultSettings: { legs: 0, giveUp: 0, instantCount: "off" },
+  defaultSettings: { legs: 0, giveUp: 0, instantCount: "default" },
   fields: [
     legsField("legs"),
     {

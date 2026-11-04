@@ -39,7 +39,7 @@ export const soloLeg: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { start: 501, legs: 0, instantCount: "off" },
+  defaultSettings: { start: 501, legs: 0, instantCount: "default" },
   fields: [
     {
       key: "start",

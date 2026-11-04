@@ -33,7 +33,7 @@ export const catch40: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { instantCount: "off" },
+  defaultSettings: { instantCount: "default" },
   fields: [instantCountField],
   canEnd: () => true,
   estimateMinutes: () => 10,
