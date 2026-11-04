@@ -51,8 +51,8 @@ Legend: 🔶 a real decision you may want to turn around · ⚪ a detail, fine u
 
 ## Responsive layout (`feature/responsive-layout`)
 
-- ⚪ Fullscreen is **not** remembered across starts (plan ❓: proposed no). F11 toggles it, Esc leaves it, and there is
-  a button in the header while a routine runs.
+- ⚪ Fullscreen is **not** remembered across starts (plan ❓: proposed no). F11 toggles it, Esc leaves it (unless a dialog
+  is open), and there is a button in the header at all times.
 - ⚪ The footer stays (no Autodarts status in the header). In a routine its version and coffee link are hidden.
 - ⚪ The first start maximises the window when the monitor's **work area** is smaller than 1100 × 760 and no window
   state was saved yet (`setup()` in `main.rs`). Later starts use the window state plugin.
