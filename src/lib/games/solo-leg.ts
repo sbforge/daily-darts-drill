@@ -1,5 +1,5 @@
 import { num, t } from "../i18n/index.svelte";
-import { routeFocus, showRouteField } from "./route-focus";
+import { routeFocus } from "./route-focus";
 import { great, opt, pct } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
@@ -39,7 +39,7 @@ export const soloLeg: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { start: 501, legs: 0, showRoute: "on" },
+  defaultSettings: { start: 501, legs: 0 },
   fields: [
     {
       key: "start",
@@ -53,7 +53,6 @@ export const soloLeg: GameDef = {
       options: STARTS.map((n) => opt(n, () => String(n))),
     },
     legsField("legs"),
-    showRouteField,
   ],
   describe: (s) =>
     Number(s.legs) > 0 ? t("solo.describeLegs", { n: s.start, legs: s.legs }) : t("solo.describe", { n: s.start }),
