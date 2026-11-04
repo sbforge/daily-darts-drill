@@ -6,10 +6,10 @@ import { pickMoments } from "../fx/moments";
 const play = (t: string, s = {}) => bigFish.compute(turns(t), { ...bigFish.defaultSettings, ...s }, { open: false });
 
 describe("Big Fish", () => {
-  it("starts at 170 and shows the route", () => {
+  it("starts at 170 and shows no route (switched off)", () => {
     const r = play("");
     expect(r.focus?.value).toBe("170");
-    expect(r.focus?.hint).toBe("T20 T20 Bull");
+    expect(r.focus?.hint).toBeUndefined();
   });
   it("170 in three darts is the big fish and beats a 180's stamp", () => {
     const r = play("T20 T20 bull");
