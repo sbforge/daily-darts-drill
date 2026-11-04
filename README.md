@@ -70,6 +70,8 @@ The games so far:
 | **Big Fish** (170) | Leg after leg from 170, double out, bust is no score. | The high finishes and the nerve for them. |
 | **Solo Leg** (solo 501) | A normal leg against yourself (301, 501 or 701), leg after leg or a set number of legs: match and leg average side by side. | Your whole game in one number. |
 
+> **A note on the games:** I know the original names of these games, and I know that some rules here differ from the originals. These are the variations I play most myself. I am happy to add more games or change the rules.
+
 ### Live board
 
 While you play, D³ shows every dart on the board as it lands, with the score of the current turn and the
