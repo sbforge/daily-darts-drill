@@ -164,8 +164,7 @@
         <div class="art" aria-hidden="true">
           <img class="board" src={cardArt} alt="" draggable="false" style:--tint={`${hue(r.id) - 190}deg`} />
           <span class="count">
-            {r.items.length === 1 ? t("carousel.game") : t("carousel.games", { n: r.items.length })}{#if r.items.length}
-              · {t(hasEstimate(r) ? "carousel.durationEstimate" : "carousel.duration", { n: minutes(r) })}{/if}
+            {r.items.length === 1 ? t("carousel.game") : t("carousel.games", { n: r.items.length })}{#if r.items.length}{" · "}{t(hasEstimate(r) ? "carousel.durationEstimate" : "carousel.duration", { n: minutes(r) })}{/if}
           </span>
         </div>
         <button

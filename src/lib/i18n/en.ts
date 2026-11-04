@@ -107,6 +107,8 @@ export const en = {
   "updates.notDuringTraining": "Not while a routine runs.",
   "updates.downloading": "Downloading…",
   "updates.installing": "Installing, D³ restarts…",
+  "updates.buttonLabel": "Update {v}",
+  "updates.notesOnline": "Read the release notes on GitHub",
   "updates.badge": "Update available",
   "updates.updated": "D³ was updated to version {v}.",
   "updates.blockedMac": "Move D³ to the Applications folder to get updates in the app.",

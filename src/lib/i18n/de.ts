@@ -109,6 +109,8 @@ export const de: Record<Key, string> = {
   "updates.notDuringTraining": "Nicht während eine Routine läuft.",
   "updates.downloading": "Wird heruntergeladen…",
   "updates.installing": "Wird installiert, D³ startet neu…",
+  "updates.buttonLabel": "Update {v}",
+  "updates.notesOnline": "Release Notes auf GitHub lesen",
   "updates.badge": "Update verfügbar",
   "updates.updated": "D³ wurde auf Version {v} aktualisiert.",
   "updates.blockedMac": "Verschiebe D³ in den Ordner „Programme“, um Updates in der App zu erhalten.",

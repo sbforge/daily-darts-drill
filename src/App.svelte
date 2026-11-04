@@ -61,6 +61,7 @@
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
+  import ReleaseNotes from "./lib/ReleaseNotes.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
@@ -129,6 +130,11 @@
   );
   let detailSession = $state<db.HistorySession | null>(null);
   let detailDialog = $state<HTMLDialogElement>();
+  let updateDialog = $state<HTMLDialogElement>();
+  // "Later" and "Skip" take the update away: the dialog goes with it.
+  $effect(() => {
+    if (!updateAvailable() && updates.status !== "downloading" && updates.status !== "installing") updateDialog?.close();
+  });
   let deleteTarget = $state<db.HistorySession | null>(null);
   let deleteDialog = $state<HTMLDialogElement>();
   // The performance index, calculated from all stored results each time they change.
@@ -1221,6 +1227,31 @@
   }}
 />
 
+{#snippet updatePanel()}
+  <h4>{t("updates.available", { v: updates.version })}</h4>
+  {#if updates.notes}
+    <div class="notes"><ReleaseNotes text={updates.notes} /></div>
+  {:else}
+    <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.notesOnline")}</a>
+  {/if}
+  {#if updates.status === "available"}
+    {#if updates.blocker}
+      <p class="hint">{t(updates.blocker === "macos-not-installed" ? "updates.blockedMac" : "updates.blockedLinux")}</p>
+      <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+    {:else}
+      <div class="row">
+        <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
+        <button class="ghost" onclick={later}>{t("updates.later")}</button>
+        <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
+      </div>
+      {#if inRun}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
+    {/if}
+  {:else}
+    <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
+    <p class="hint">{t(updates.status === "installing" ? "updates.installing" : "updates.downloading")}{updates.total ? ` ${Math.round((updates.done / updates.total) * 100)}%` : ""}</p>
+  {/if}
+{/snippet}
+
 <header class:compact={fit}>
   <h1><Logo height={26} /></h1>
   <nav aria-label={t("nav.main")}>
@@ -1234,6 +1265,14 @@
       {t("nav.stats")}
     </button>
   </nav>
+  {#if updateAvailable()}
+    <button class="update-btn" onclick={() => updateDialog?.showModal()} title={t("updates.badge")}>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.6l3.3-3.3 1.4 1.4-5.7 5.7-5.7-5.7 1.4-1.4 3.3 3.3V4a1 1 0 0 1 1-1ZM5 19h14v2H5z" />
+      </svg>
+      {t("updates.buttonLabel", { v: updates.version })}
+    </button>
+  {/if}
   {#if inRun}
     <div class="run-controls" role="group" aria-label={t("run.controls")}>
       <button
@@ -1309,7 +1348,6 @@
     aria-current={view === "settings" ? "page" : undefined}
     onclick={() => go("settings")}
   >
-    {#if updateAvailable()}<span class="update-dot" aria-label={t("updates.badge")}></span>{/if}
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path
         fill="currentColor"
@@ -1525,24 +1563,7 @@
             <p class="hint">{updates.error}</p>
             <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
           {:else if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
-            <h4>{t("updates.available", { v: updates.version })}</h4>
-            {#if updates.notes}<pre class="notes">{updates.notes}</pre>{/if}
-            {#if updates.status === "available"}
-              {#if updates.blocker}
-                <p class="hint">{t(updates.blocker === "macos-not-installed" ? "updates.blockedMac" : "updates.blockedLinux")}</p>
-                <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
-              {:else}
-                <div class="row">
-                  <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
-                  <button class="ghost" onclick={later}>{t("updates.later")}</button>
-                  <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
-                </div>
-                {#if inRun}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
-              {/if}
-            {:else}
-              <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
-              <p class="hint">{t(updates.status === "installing" ? "updates.installing" : "updates.downloading")}{updates.total ? ` ${Math.round((updates.done / updates.total) * 100)}%` : ""}</p>
-            {/if}
+            {@render updatePanel()}
           {/if}
         </section>
 
@@ -2335,6 +2356,24 @@
 
 <!-- The games of one session. Escape, the backdrop or the button closes it. -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<!-- The update: what is new, read in the app, and the choice to install now, later or never. -->
+<dialog
+  class="confirm update-dialog"
+  bind:this={updateDialog}
+  aria-label={t("updates.badge")}
+  onclick={(e) => {
+    if (e.target === updateDialog) updateDialog?.close();
+  }}
+>
+  <p class="hint">{t("updates.current", { v: __APP_VERSION__ })}</p>
+  {#if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
+    {@render updatePanel()}
+  {/if}
+  <div class="foot">
+    <button class="ghost" onclick={() => updateDialog?.close()}>{t("history.close")}</button>
+  </div>
+</dialog>
+
 <dialog
   class="confirm details"
   bind:this={detailDialog}
@@ -2892,11 +2931,29 @@
     .summary-split.single { grid-template-columns: minmax(0, 46rem); }
   }
 
-  /* The dot on the settings icon when an update is ready. Not ".badge": that is the pill used in History. */
-  .update-dot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
   button.icon { position: relative; }
   .banner.ok { background: #1f4a2c; color: #d8f5e0; }
-  .notes { white-space: pre-wrap; font: inherit; font-size: 0.85rem; max-height: 10rem; overflow: auto; background: var(--panel); padding: 0.6rem; border-radius: 6px; }
+  .notes { max-height: 16rem; overflow: auto; background: var(--panel); padding: 0.2rem 0.8rem 0.6rem; border-radius: 6px; }
+  .update-dialog { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 4rem); overflow-y: auto; }
+  .update-dialog .notes { max-height: 50vh; }
+  /* In the top navigation, so a new version is hard to miss; a click opens the notes. */
+  .update-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    background: rgb(34 211 238 / 0.14);
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    animation: update-glow 2.4s ease-in-out infinite;
+  }
+  .update-btn:hover { background: var(--accent); color: var(--bg); }
+  @keyframes update-glow { 50% { box-shadow: 0 0 0.9rem rgb(34 211 238 / 0.55); } }
   progress { width: 100%; }
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   .closed-badly { display: flex; align-items: center; gap: 0.5rem 1.25rem; flex-wrap: wrap; padding-right: 0.75rem; }
