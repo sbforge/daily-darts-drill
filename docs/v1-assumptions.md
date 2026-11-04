@@ -191,6 +191,16 @@ Branches: `feature/game-shot`, `feature/solo-leg-averages`, `feature/ton-machine
 - ⚪ DPI version 2 recalculates the whole history: old Clockwork, Double Trouble and Bob's 27 results drop on the
   tougher scales. Old Bob's 27 results have no finished score and are rated on the hit rate alone.
 
+## 0.9.2: fixes from the 0.9.1 test
+
+- ⚪ Release: one draft per tag, created before the builds (`release` job); a last job (`check`) fails when
+  `latest.json` misses a platform.
+- ⚪ The first start of a new version never shows "closed unexpectedly"; the marker is also removed right before an
+  in-app update installs. A real crash right before an update is therefore not reported either.
+- ⚪ The banner closes with ×, "Show log" shows the last 300 lines of `d3.log` in the app (with "Copy log").
+- ⚪ After a bust or a Game shot, darts Autodarts still detects are not shown: the boxes stay closed (✕), the board
+  doesn't draw them. Earlier turns on the board still show all their darts.
+
 ## Real-world test list (before tagging 1.0.0)
 
 1. Install the 0.9.0 build over your real data: the database opens, the old routines are there, **Everyday Drill** and
@@ -215,4 +225,6 @@ Branches: `feature/game-shot`, `feature/solo-leg-averages`, `feature/ton-machine
 12. Solo Leg panel (match / leg average, no visit counts), result screen (best leg average, 80+, 100+, 140+, 180).
 13. Plan B chain (D16 → D8 → D4, bust restart, S-set-up, bull on dart 3), Ton Machine band grid, Bull-X target staying
     until the takeout, Wild Card without darts per checkout, the DPI chart after the recalculation.
+14. 0.9.2 over 0.9.1 by OTA: one draft with all files, no "closed unexpectedly" after the update.
+15. Bust and Game shot: a dart thrown after them doesn't appear in the boxes or on the board.
 
