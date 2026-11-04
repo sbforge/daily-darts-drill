@@ -136,6 +136,7 @@ export const en = {
   "solo.average": "3-dart average",
   "solo.matchAverage": "Match average",
   "solo.legAverage": "Leg average",
+  "solo.highestFinish": "Highest finish",
   "solo.bestLegAverage": "Best leg average",
   "solo.eighties": "80+ visits",
   "solo.first9": "First 9 average",

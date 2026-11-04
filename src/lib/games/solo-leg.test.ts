@@ -70,8 +70,10 @@ describe("Solo Leg", () => {
   it("counts 80+ and keeps the visit counts off the panel", () => {
     const r = play("T20 S20 miss | T20 T20 S20 | T20 T20 T20");
     expect(r.values).toMatchObject({ eighties: 1, ton40s: 1, oneEighties: 1, tons: 0 });
-    const hidden = r.lines.filter((l) => l.live === false).map((l) => l.key);
-    expect(hidden).toEqual(["bestLegAverage", "eighties", "tons", "ton40s", "oneEighties"]);
+    // The panel: both averages, best leg, highest finish; everything else only in the result screen.
+    const panel = r.lines.filter((l) => l.live !== false).map((l) => l.key);
+    expect(panel).toEqual(["average", "legAverage", "bestLeg", "highestCheckout"]);
+    expect(r.lines.filter((l) => l.hero).map((l) => l.key)).toEqual(["average", "legAverage"]);
     expect(r.lines.find((l) => l.key === "legAverage")?.liveOnly).toBe(true);
   });
 });

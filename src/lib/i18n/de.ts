@@ -138,6 +138,7 @@ export const de: Record<Key, string> = {
   "solo.average": "3-Dart-Average",
   "solo.matchAverage": "Match-Average",
   "solo.legAverage": "Leg-Average",
+  "solo.highestFinish": "Höchstes Finish",
   "solo.bestLegAverage": "Bestes Leg-Average",
   "solo.eighties": "Aufnahmen ab 80",
   "solo.first9": "Average der ersten 9",

@@ -196,7 +196,8 @@
   const lastSeconds = $derived(phase === "running" && totalMs > 0 && !paused && remaining > 0 && remaining <= LAST_SECONDS_MS);
   const elapsed = $derived(Math.max(0, (paused ? pausedAt : now) - startsAt));
   const result = $derived(session ? session.result : null);
-  const hero = $derived(result?.lines.find((l) => l.hero));
+  // The headline numbers, usually one; Solo Leg has two (match and leg average), shown side by side.
+  const heroes = $derived(result?.lines.filter((l) => l.hero && l.live !== false) ?? []);
   const others = $derived(result?.lines.filter((l) => !l.hero && l.live !== false && !l.grid) ?? []);
   const gridLines = $derived(result?.lines.filter((l) => l.grid && l.live !== false) ?? []);
   // After a bust or a checkout (Game shot) the turn is over: darts of the shown turn from here on don't count,
@@ -1992,10 +1993,16 @@
           <DartMeter {...result.darts} />
         {/if}
 
-        {#if hero}
+        {#if heroes.length === 1}
           <div class="hero">
-            <span class="big">{hero.value}</span>
-            <span class="cap">{hero.label}</span>
+            <span class="big">{heroes[0].value}</span>
+            <span class="cap">{heroes[0].label}</span>
+          </div>
+        {:else if heroes.length}
+          <div class="hero pair">
+            {#each heroes as h (h.key)}
+              <div><span class="big">{h.value}</span><span class="cap">{h.label}</span></div>
+            {/each}
           </div>
         {/if}
 
@@ -2814,6 +2821,9 @@
   .focus .big { font-size: 6.5rem; line-height: 1; }
   .focus .big.long { font-size: 3.6rem; line-height: 1.2; }
   .hero { display: flex; align-items: baseline; justify-content: center; gap: 0.75rem; margin-bottom: 1.25rem; }
+  /* Two headline numbers side by side, each with its label under it. */
+  .hero.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: center; }
+  .hero.pair > div { display: flex; flex-direction: column; align-items: center; }
   .big { font-size: 3.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .cap { color: var(--dim); }
   .stats { margin: 0; border-top: 1px solid var(--line); }
