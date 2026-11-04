@@ -122,11 +122,11 @@ Legend: 🔶 a real decision you may want to turn around · ⚪ a detail, fine u
 ## The six games
 
 General:
-- 🔶 **Routes** are generated, not typed from a book (`games/routes.ts`): fewest darts, then the best double to be
-  left on (D20, D16, D8, …), then the highest first dart. They are valid and usually familiar (170 = T20 T20 Bull,
-  121 = T20 T11 D14) but may differ from a route you'd choose. Change `DOUBLE_ORDER` to taste, or hand-fix single rests.
-- ⚪ "Show route" and the random seed are **ignored when results are compared** (same settings), so switching the route
-  off doesn't hide your earlier results.
+- 🔶 **Checkout routes are switched off** (your decision after the build: in a real match you can't look one up).
+  The code stays (`games/routes.ts`, the hint under the rest, the lit field on the board); `ROUTES_ENABLED` in
+  `games/route-focus.ts` is `false` and there is no setting to turn it on. `routes.ts` is still used to know which
+  rests can't be checked out (Wild Card never draws them). To bring routes back: set the flag to `true` and add a
+  "Show route" setting to the games' `fields`. The routes themselves are generated, not typed from a book.
 - ⚪ All checkout games share `games/checkout.ts` (121, Catch 40, Wild Card), the leg games `games/x01.ts` (Solo Leg,
   Big Fish). 121 behaves exactly as before (its tests still pass unchanged).
 - 🔶 **DPI baselines and targets** are the plan's where given; the rest are mine and should be tuned with real results:
