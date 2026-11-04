@@ -50,7 +50,7 @@ be made smaller.
   the window instead of opening it too big.
 - **Remember the window** (size, position, maximised) with `tauri-plugin-window-state`, so the player sets it up once
   at the oche.
-- **Fullscreen with F11** (and a button in the header while a routine runs): gives back the title bar and the taskbar,
+- ✅ **Fullscreen with F11** (and a button in the header, always shown): gives back the title bar and the taskbar,
   about 80 px on Windows. Esc leaves it. ❓ Remember fullscreen across starts? Proposal: no, the window state plugin
   remembers the size only; fullscreen is one key.
 

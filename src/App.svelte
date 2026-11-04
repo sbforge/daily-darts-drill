@@ -62,8 +62,8 @@
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
+  import { fullscreen, fullscreenKeys, toggleFullscreen, watchFullscreen } from "./lib/fullscreen.svelte";
   import { AUTODARTS_URL, COFFEE_ICON, COFFEE_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, openExternal } from "./lib/links";
-  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
   interface RunResult {
@@ -237,20 +237,6 @@
     const add = missingBuiltins($state.snapshot(routines));
     routines = [...routines, ...add];
     restoreNote = add.length ? t("builtin.restored", { n: add.length }) : t("builtin.nothingToRestore");
-  }
-
-  // F11 (and a button in the header while a routine runs) gives back the title bar and the taskbar; Esc leaves it.
-  let fullscreen = $state(false);
-  async function toggleFullscreen() {
-    const next = !fullscreen;
-    try {
-      await getCurrentWindow().setFullscreen(next);
-    } catch {
-      // Outside Tauri (the browser preview): the page's own fullscreen.
-      if (next) await document.documentElement.requestFullscreen?.().catch(() => {});
-      else await document.exitFullscreen?.().catch(() => {});
-    }
-    fullscreen = next;
   }
 
   function failed(e: unknown) {
@@ -1055,6 +1041,7 @@
     db.setSetting("language", l).catch(failed);
   }
 
+  onMount(() => watchFullscreen());
   onMount(() => {
     installCrashHandlers();
     setCrashContext(() => ({
@@ -1152,16 +1139,14 @@
   {/if}
 {/snippet}
 
-<!-- Escape stops correcting a dart. -->
+<!-- Escape stops correcting a dart; otherwise it leaves fullscreen. F11 toggles fullscreen. -->
 <svelte:window
   onkeydown={(e) => {
-    if (e.key === "F11") {
+    if (e.key === "Escape" && session?.editing) {
+      session.editing = null;
       e.preventDefault();
-      toggleFullscreen();
-    } else if (e.key === "Escape") {
-      if (session?.editing) session.editing = null;
-      else if (fullscreen) toggleFullscreen();
     }
+    fullscreenKeys(e);
   }}
 />
 
@@ -1180,11 +1165,6 @@
   </nav>
   {#if inRun}
     <div class="run-controls" role="group" aria-label={t("run.controls")}>
-      <button class="icon" class:active={fullscreen} aria-label={t("run.fullscreen")} title={t("run.fullscreen")} onclick={toggleFullscreen}>
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path fill="currentColor" d="M5 5h5v2H7v3H5V5Zm9 0h5v5h-2V7h-3V5ZM5 14h2v3h3v2H5v-5Zm12 0h2v5h-5v-2h3v-3Z" />
-        </svg>
-      </button>
       <button
         class="icon"
         class:active={paused}
@@ -1263,6 +1243,26 @@
       <path
         fill="currentColor"
         d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"
+      />
+    </svg>
+  </button>
+  <button
+    class="icon fullscreen"
+    class:active={fullscreen.on}
+    aria-label={t(fullscreen.on ? "nav.exitFullscreen" : "nav.fullscreen")}
+    title={t(fullscreen.on ? "nav.exitFullscreen" : "nav.fullscreen")}
+    onclick={toggleFullscreen}
+  >
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d={fullscreen.on
+          ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"
+          : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}
       />
     </svg>
   </button>
@@ -2367,11 +2367,13 @@
   :global(body) {
     margin: 0;
     min-height: 100vh;
-    /* The D³ backdrop artwork sits behind every view, dimmed so it never competes with the content. */
+    /* The D³ backdrop artwork sits behind every view, dimmed so it never competes with the content.
+       Not "fixed": the body never scrolls (only main does), and WebKit, the webview on macOS, leaves bits of the
+       scrolled content behind in the header when a fixed background sits under a scrolling box. */
     background:
-      radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed,
-      linear-gradient(rgb(6 13 18 / 0.5), rgb(6 13 18 / 0.5)) fixed,
-      url("./assets/brand/art/backdrop.webp") var(--backdrop-pos, center) / var(--backdrop-size, cover) no-repeat fixed,
+      radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%),
+      linear-gradient(rgb(6 13 18 / 0.5), rgb(6 13 18 / 0.5)),
+      url("./assets/brand/art/backdrop.webp") var(--backdrop-pos, center) / var(--backdrop-size, cover) no-repeat,
       var(--bg);
   }
   /* Header and footer stay put; only the content between them scrolls. */
@@ -2424,7 +2426,7 @@
     cursor: pointer;
   }
   button.icon:hover { color: var(--chalk); background: var(--panel); }
-  button.icon[aria-current="page"] { color: var(--accent); background: var(--panel); }
+  button.icon[aria-current="page"], button.icon.fullscreen.active { color: var(--accent); background: var(--panel); }
   button.icon:disabled { opacity: 0.35; cursor: not-allowed; background: none; color: var(--dim); }
   .run-controls { display: flex; gap: 0.25rem; padding-right: 0.75rem; margin-right: -1.25rem; border-right: 1px solid var(--line); }
   .run-controls button.icon.active { color: var(--accent); background: var(--panel); }

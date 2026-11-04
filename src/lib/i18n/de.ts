@@ -8,6 +8,8 @@ export const de: Record<Key, string> = {
   "nav.history": "Verlauf",
   "nav.stats": "Statistik",
   "nav.about": "Über D³",
+  "nav.fullscreen": "Vollbild (F11)",
+  "nav.exitFullscreen": "Vollbild beenden (Esc)",
   "nav.settings": "Einstellungen",
   "footer.coffee": "Spendier mir einen Kaffee",
   "conn.connected": "Autodarts verbunden",
@@ -210,7 +212,6 @@ export const de: Record<Key, string> = {
   "routines.untilDone": "bis fertig",
   "train.totalEstimate": "Etwa {n} Minuten insgesamt.",
   "settings.routinesTitle": "Routinen",
-  "run.fullscreen": "Vollbild (F11)",
   "db.title": "Die Datenbank lässt sich nicht öffnen",
   "db.hintBefore":
     "D³ speichert alle Einstellungen, Routinen und Ergebnisse in einer lokalen SQLite-Datenbank. Starte die App mit",
