@@ -126,6 +126,19 @@ fn prepare_update_backup(app: tauri::AppHandle) -> Result<String, String> {
     Ok(dir.join(backup::DB_FILE).display().to_string())
 }
 
+/// A place for the copy made right before "Erase all data": `backups/erase/<version>-<date>-<time>/darttrainer.db`.
+/// Keeps the last 3, so an erase by mistake can still be undone by hand.
+#[tauri::command]
+fn prepare_erase_backup(app: tauri::AppHandle) -> Result<String, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let erase = backup::backups_dir(&config).join("erase");
+    let time = chrono::Local::now().format("%H%M%S");
+    let dir = erase.join(format!("{}-{}-{}", env!("CARGO_PKG_VERSION"), backup::today(), time));
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    backup::prune(&erase, 3);
+    Ok(dir.join(backup::DB_FILE).display().to_string())
+}
+
 /// Opens one of the app's folders in the file manager.
 #[tauri::command]
 fn open_folder(app: tauri::AppHandle, kind: String) -> Result<(), String> {
@@ -296,8 +309,13 @@ fn main() {
             save_crash_report,
             clear_export_target,
             update_blocker,
+<<<<<<< HEAD
             set_running_marker,
             prepare_update_backup
+=======
+            prepare_update_backup,
+            prepare_erase_backup
+>>>>>>> feature/erase-all-data
         ])
         .build(tauri::generate_context!())
         .expect("error while building D³ – Daily Darts Drill")

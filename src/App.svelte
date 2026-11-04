@@ -37,13 +37,13 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
-  import { missingBuiltins } from "./lib/routines/builtin";
+  import { BUILTIN_ROUTINES, makeBuiltin, missingBuiltins } from "./lib/routines/builtin";
   import { NON_COMPARABLE } from "./lib/games/shared";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
   import { checkForUpdate, initUpdates, installUpdate, later, RELEASES_URL, setAutoCheck, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
-  import { chooseExportFile, lastBackup } from "./lib/backend";
+  import { chooseExportFile, lastBackup, prepareEraseBackup } from "./lib/backend";
   import CrashToasts from "./lib/CrashToasts.svelte";
   import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
@@ -247,6 +247,35 @@
   }
 
   let restoreNote = $state("");
+
+  // "Erase all data": asked twice, then a copy goes to backups/erase, everything the player made is deleted,
+  // the built-in routines are added as new, and the app starts over (a reload reads the empty database).
+  let eraseDialog = $state<HTMLDialogElement>();
+  let eraseStep = $state<1 | 2>(1);
+  let erasing = $state(false);
+  let eraseError = $state("");
+
+  function askErase() {
+    eraseStep = 1;
+    eraseError = "";
+    eraseDialog?.showModal();
+  }
+
+  async function eraseAll() {
+    erasing = true;
+    eraseError = "";
+    try {
+      await db.exportTo(await prepareEraseBackup());
+      await db.eraseAllData();
+      await db.saveRoutines(BUILTIN_ROUTINES.map((b) => makeBuiltin(b)));
+      log.info("all data erased, built-in routines added");
+      location.reload();
+    } catch (e) {
+      log.error(`erase failed: ${e}`);
+      eraseError = t("erase.failed", { msg: e instanceof Error ? e.message : String(e) });
+      erasing = false;
+    }
+  }
 
   /** Adds back the built-in routines that are missing; never overwrites what the player changed. */
   function restoreBuiltins() {
@@ -1528,6 +1557,15 @@
           </label>
           <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
         </section>
+
+        <!-- Always the last group: the one button that can't be taken back. -->
+        <section class="group danger-zone" aria-labelledby="erase-title">
+          <h3 id="erase-title">{t("erase.title")}</h3>
+          <p class="hint">{t("erase.hint")}</p>
+          <div class="row">
+            <button class="danger-solid" disabled={inRun} onclick={askErase}>{t("erase.button")}</button>
+          </div>
+        </section>
       </div>
     </section>
   {:else if view === "about"}
@@ -2195,6 +2233,36 @@
 
 <FxLayer />
 
+<!-- "Erase all data", asked twice. Escape or the backdrop cancels, except while it runs. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm erase"
+  bind:this={eraseDialog}
+  aria-labelledby="erase-dialog-title"
+  oncancel={(e) => erasing && e.preventDefault()}
+  onclick={(e) => {
+    if (e.target === eraseDialog && !erasing) eraseDialog.close();
+  }}
+>
+  <h3 id="erase-dialog-title">{t(eraseStep === 1 ? "erase.step1Title" : "erase.step2Title")}</h3>
+  {#if eraseStep === 1}
+    <p class="warning">{t("erase.step1Lost")}</p>
+    <p class="lede">{t("erase.step1Body")}</p>
+  {:else}
+    <p class="warning">{t("erase.step2Body")}</p>
+    <p class="hint">{t("erase.backupNote")}</p>
+  {/if}
+  {#if eraseError}<p class="error" role="alert">{eraseError}</p>{/if}
+  <div class="foot">
+    <button class="ghost" disabled={erasing} onclick={() => eraseDialog?.close()}>{t("erase.cancel")}</button>
+    {#if eraseStep === 1}
+      <button class="danger-solid" onclick={() => (eraseStep = 2)}>{t("erase.step1Yes")}</button>
+    {:else}
+      <button class="danger-solid" disabled={erasing} onclick={eraseAll}>{erasing ? t("erase.erasing") : t("erase.step2Yes")}</button>
+    {/if}
+  </div>
+</dialog>
+
 <!-- Asked when leaving the editor of a new routine that still has no games. Escape or the backdrop stays. -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
@@ -2638,7 +2706,7 @@
     .found { margin-top: 0.5rem; }
     .found .picked { border-color: var(--chalk); }
     .row { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; align-items: center; }
-    button.primary, button.ghost {
+    button.primary, button.ghost, button.danger-solid {
       font: inherit;
       font-weight: 600;
       border-radius: 6px;
@@ -2653,6 +2721,12 @@
     button.ghost { background: none; color: var(--chalk); border-color: var(--line); }
     button.ghost:hover:not(:disabled) { background: var(--panel); }
     button.danger { color: #ff9b8f; }
+    button.danger-solid { border: 1px solid #ff6b5b; background: #b3261e; color: #fff; font-weight: 700; }
+    button.danger-solid:hover:not(:disabled) { background: #d0342a; }
+    button.danger-solid:disabled { opacity: 0.5; cursor: not-allowed; }
+    .confirm.erase { border-color: #ff6b5b; }
+    .confirm.erase h3 { color: #ff9b8f; }
+    .confirm.erase .warning { padding: 0.6rem 0.8rem; border-left: 3px solid #ff6b5b; background: rgb(179 38 30 / 0.18); color: #ffd9d3; font-weight: 600; }
   }
   .url { font-family: ui-monospace, Consolas, monospace; color: var(--dim); font-size: 0.9rem; margin: 0 0 1rem; word-break: break-all; }
   .recent { font-size: 1.2rem; letter-spacing: 0.04em; }
@@ -2813,6 +2887,9 @@
   .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
   .group { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .group.wide { grid-column: 1 / -1; }
+  /* Across the whole width, below everything else in Settings. */
+  .group.danger-zone { grid-column: 1 / -1; border-color: rgb(255 107 91 / 0.6); background: rgb(179 38 30 / 0.14); }
+  .group.danger-zone h3 { color: #ff9b8f; }
   .group h3 { margin: 0 0 0.75rem; }
   .group > :last-child, .group label:last-child { margin-bottom: 0; }
   .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
