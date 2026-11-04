@@ -37,8 +37,17 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
-  import { GAMES, gameById, type GameDef, type Moment, type Settings, type StatLine } from "./lib/games";
+  import { missingBuiltins } from "./lib/routines/builtin";
+  import { NON_COMPARABLE } from "./lib/games/shared";
+  import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
+  import { log } from "./lib/log";
+  import { checkForUpdate, initUpdates, installUpdate, later, RELEASES_URL, setAutoCheck, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
+  import { chooseExportFile, lastBackup } from "./lib/backend";
+  import CrashToasts from "./lib/CrashToasts.svelte";
+  import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
+  import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
+  import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
@@ -53,6 +62,7 @@
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
+  import { fullscreen, fullscreenKeys, toggleFullscreen, watchFullscreen } from "./lib/fullscreen.svelte";
   import { AUTODARTS_URL, COFFEE_ICON, COFFEE_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
@@ -78,6 +88,11 @@
   let loadDone = $state(0);
   let loadLabel = $state<Key>("loading.data");
   let dbError = $state("");
+  let updateBackup = $state("");
+  let backupError = $state("");
+  let lastBackupAt = $state<string | null>(null);
+  // The last run didn't close normally (the Rust side left its "running" marker behind).
+  let closedBadly = $state(false);
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
@@ -141,6 +156,8 @@
     startedAt: string;
   } | null>(null);
   let phase = $state<"idle" | "countdown" | "ready" | "break" | "running" | "summary">("idle");
+  // Countdown, game and break never scroll: the layout fits the window instead (see main.fit).
+  const fit = $derived(view === "train" && (phase === "countdown" || phase === "running" || phase === "break"));
   let session = $state<Session | null>(null);
   let gameStartedAt = "";
   let endsAt = $state<number | null>(null);
@@ -197,7 +214,33 @@
     return i.minutes > 0 ? t("run.settingsLine", { desc, n: i.minutes }) : t("quick.settingsLineNoCap", { desc });
   }
 
+  let exportNote = $state<{ text: string; failed: boolean } | null>(null);
+
+  async function exportData() {
+    exportNote = null;
+    try {
+      const path = await chooseExportFile();
+      if (!path) return;
+      await db.exportTo(path);
+      log.info("data exported");
+      exportNote = { text: t("export.done"), failed: false };
+    } catch (e) {
+      log.error(`export failed: ${e}`);
+      exportNote = { text: t("export.failed", { msg: e instanceof Error ? e.message : String(e) }), failed: true };
+    }
+  }
+
+  let restoreNote = $state("");
+
+  /** Adds back the built-in routines that are missing; never overwrites what the player changed. */
+  function restoreBuiltins() {
+    const add = missingBuiltins($state.snapshot(routines));
+    routines = [...routines, ...add];
+    restoreNote = add.length ? t("builtin.restored", { n: add.length }) : t("builtin.nothingToRestore");
+  }
+
   function failed(e: unknown) {
+    log.error(`save failed: ${e instanceof Error ? e.message : String(e)}`);
     saveError = t("error.save", { msg: e instanceof Error ? e.message : String(e) });
   }
 
@@ -264,6 +307,7 @@
   }
 
   function begin(routine: Routine, quick: boolean) {
+    log.info(`${quick ? "quick game" : "routine"} started: ${routine.items.map((i) => i.gameId).join(", ")}`);
     run = {
       routine,
       quick,
@@ -291,7 +335,7 @@
   function startGame() {
     if (!item || !def) return;
     // With a time cap a game completed early starts over and plays on until the clock runs out.
-    session = new Session(def, { ...item.settings }, totalMs > 0);
+    session = new Session(def, def.prepare ? def.prepare({ ...item.settings }) : { ...item.settings }, totalMs > 0);
     paused = false;
     now = Date.now();
     gameStartedAt = new Date(now).toISOString();
@@ -308,6 +352,7 @@
     const settings = $state.snapshot(session.settings);
     const finishedAt = new Date().toISOString();
     session.finish();
+    log.info(`game finished: ${def.id}, ${item.minutes} min${early ? ", early" : ""}`);
     // Moments still waiting belong to the game that just ended; the one on screen plays out.
     fx.dropQueued();
     paused = false;
@@ -403,7 +448,7 @@
   );
 
   const sameSettings = (a: Settings, b: Settings) =>
-    [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => String(a[k]) === String(b[k]));
+    [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => NON_COMPARABLE.includes(k) || String(a[k]) === String(b[k]));
 
   /**
    * The earlier results of a game, played with the same settings, oldest first: what it is compared with.
@@ -486,6 +531,7 @@
       setTimeout(() => (pendingAbort = false), 4000);
       return;
     }
+    log.info("routine aborted");
     db.endSession(sessionInfo(run), "aborted").then(refreshHistory, failed);
     closeRun();
   }
@@ -587,8 +633,8 @@
   function resetBoard() {
     if (!canReset) return;
     client.reset().then(
-      () => noteBoard(t("board.resetDone"), false),
-      () => noteBoard(t("board.resetFailed"), true),
+      () => (log.info("autodarts reset"), noteBoard(t("board.resetDone"), false)),
+      (e) => (log.warn(`autodarts reset failed: ${e}`), noteBoard(t("board.resetFailed"), true)),
     );
   }
 
@@ -610,8 +656,8 @@
   function calibrateBoard() {
     if (!canCalibrate) return;
     client.calibrate().then(
-      () => noteBoard(t("board.calibrateStarted"), false),
-      () => noteBoard(t("board.calibrateFailed"), true),
+      () => (log.info("autodarts calibration started"), noteBoard(t("board.calibrateStarted"), false)),
+      (e) => (log.warn(`autodarts calibration failed: ${e}`), noteBoard(t("board.calibrateFailed"), true)),
     );
   }
 
@@ -673,22 +719,12 @@
   // plus a 180 and No Score for every game. Each plays once, so a correction that makes a turn great
   // or bust shows it too, and a game recomputing on every dart doesn't repeat it. Keys carry the
   // game's start, so turn 4 of the next game is a new moment.
-  const is180 = (turn: Dart[]) => turn.length === 3 && turn.every((d) => d.kind === "triple" && d.number === 20);
   $effect(() => {
     if (phase !== "running" || !session || !result) return;
     const game = gameStartedAt;
-    const moments: Moment[] = [...(result.moments ?? [])];
-    const bust = result.noScore;
-    if (bust) moments.push({ key: `noscore:${bust.turn}`, turn: bust.turn, effect: "stamp", text: t("run.noScore"), tone: "bad", priority: 4 });
-    session.allTurns.forEach((turn, i) => {
-      if (is180(turn)) moments.push({ key: `180:${i}`, turn: i, effect: "stamp", text: "180", tone: "great", priority: 3 });
-    });
-    // One stamp per turn: the highest priority plays, the others count as played. A bust is never great,
-    // so No Score beats a 180 thrown past the rest.
-    const top = new Map<number, Moment>();
-    for (const m of moments) if ((m.priority ?? 0) > (top.get(m.turn)?.priority ?? -1)) top.set(m.turn, m);
-    for (const m of moments) if (top.get(m.turn) !== m) fx.skip(`${game}:${m.key}`);
-    for (const m of top.values()) {
+    const { play, skip } = pickMoments(result, session.allTurns);
+    for (const m of skip) fx.skip(`${game}:${m.key}`);
+    for (const m of play) {
       fx.play(m.effect, { text: m.text, tone: m.tone, size: "big", key: `${game}:${m.key}`, priority: m.priority });
     }
   });
@@ -966,6 +1002,7 @@
 
   async function autoDiscover() {
     const boards = await discoverBoards().catch(() => [] as FoundBoard[]);
+    log.info(`autodarts discovery: ${boards.length} found`);
     if (conn === "connected" || !boards.length) return;
     const b = boards[0];
     if (b.host === config.host && b.port === config.port) return;
@@ -985,6 +1022,7 @@
   }
 
   function onConnState(s: ConnState) {
+    if (s !== conn) log.info(`autodarts ${s} (${config.host}:${config.port})`);
     conn = s;
     if (s !== "connected" || !candidate) return;
     config = candidate;
@@ -1003,7 +1041,20 @@
     db.setSetting("language", l).catch(failed);
   }
 
+  onMount(() => watchFullscreen());
   onMount(() => {
+    installCrashHandlers();
+    setCrashContext(() => ({
+      screen: view,
+      phase,
+      routine: run?.routine.name,
+      game: session && def ? { id: def.id, settings: $state.snapshot(session.settings) } : undefined,
+      turns: session?.allTurns.length,
+      connection: conn,
+      board,
+      animations: fx.enabled,
+      language: getLocale(),
+    }));
     client = new AutodartsClient({ onState: onConnState, onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
     const started = performance.now();
     const loaded = (next?: Key) => {
@@ -1012,6 +1063,14 @@
     };
     (async () => {
       try {
+        const startup = await startupReport();
+        updateBackup = startup.updateBackup ?? "";
+        if (startup.backupError) {
+          log.error(`backup failed: ${startup.backupError}`);
+          backupError = startup.backupError;
+        }
+        lastBackupAt = await lastBackup();
+        if (startup.crashedLastTime) closedBadly = true;
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
@@ -1023,6 +1082,10 @@
         const saved = await db.hasConfig();
         config = await db.loadConfig();
         draft = { ...config };
+        initUpdates(
+          { get: db.getSetting, set: db.setSetting, busy: () => phase !== "idle", backup: db.exportTo },
+          __APP_VERSION__,
+        ).catch((e) => log.warn(`updates: ${e}`));
         loaded("loading.routines");
         routines = await db.loadRoutines();
         const last = await db.getSetting("selected_routine");
@@ -1039,11 +1102,13 @@
         await new Promise((r) => setTimeout(r, MIN_LOADING_MS - (performance.now() - started)));
         ready = true;
         client.connect(config.host, config.port);
+        checkForUpdate({ manual: false });
         // First start: look for a board right away. Later: only if the saved one doesn't answer.
         if (!saved) autoDiscover();
         else setTimeout(() => conn !== "connected" && autoDiscover(), AUTO_DISCOVER_AFTER_MS);
       } catch (e) {
         dbError = e instanceof Error ? e.message : String(e);
+        log.error(`database could not be opened: ${dbError}${updateBackup ? ` (backup: ${updateBackup})` : ""}`);
       }
     })();
     return () => client.disconnect();
@@ -1074,10 +1139,18 @@
   {/if}
 {/snippet}
 
-<!-- Escape stops correcting a dart. -->
-<svelte:window onkeydown={(e) => e.key === "Escape" && session?.editing && (session.editing = null)} />
+<!-- Escape stops correcting a dart; otherwise it leaves fullscreen. F11 toggles fullscreen. -->
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === "Escape" && session?.editing) {
+      session.editing = null;
+      e.preventDefault();
+    }
+    fullscreenKeys(e);
+  }}
+/>
 
-<header>
+<header class:compact={fit}>
   <h1><Logo height={26} /></h1>
   <nav aria-label={t("nav.main")}>
     <button class="tab" aria-current={view === "train" || view === "routines" ? "page" : undefined} onclick={() => go("train")}>
@@ -1165,10 +1238,31 @@
     aria-current={view === "settings" ? "page" : undefined}
     onclick={() => go("settings")}
   >
+    {#if updateAvailable()}<span class="update-dot" aria-label={t("updates.badge")}></span>{/if}
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path
         fill="currentColor"
         d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"
+      />
+    </svg>
+  </button>
+  <button
+    class="icon fullscreen"
+    class:active={fullscreen.on}
+    aria-label={t(fullscreen.on ? "nav.exitFullscreen" : "nav.fullscreen")}
+    title={t(fullscreen.on ? "nav.exitFullscreen" : "nav.fullscreen")}
+    onclick={toggleFullscreen}
+  >
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d={fullscreen.on
+          ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"
+          : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}
       />
     </svg>
   </button>
@@ -1177,15 +1271,46 @@
 {#if saveError}
   <p class="banner" role="alert">{saveError}</p>
 {/if}
+{#if updates.updatedTo}
+  <p class="banner ok" role="status">
+    {t("updates.updated", { v: updates.updatedTo })}
+    <button class="link" onclick={() => (updates.updatedTo = "")}>{t("updates.dismiss")}</button>
+  </p>
+{/if}
+{#if backupError}
+  <p class="banner" role="alert">
+    {t("backup.failed", { msg: backupError })}
+    <button class="link" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+    <button class="link" onclick={() => (backupError = "")}>{t("crash.dismiss")}</button>
+  </p>
+{/if}
+{#if closedBadly}
+  <p class="banner" role="alert">
+    {t("crash.closedBadly")}
+    <button class="link" onclick={() => openFolder("logs")}>{t("about.openLogs")}</button>
+    <button class="link" onclick={() => (closedBadly = false)}>{t("crash.dismiss")}</button>
+  </p>
+{/if}
 
-<main>
+<CrashToasts />
+
+<!-- The boundary wraps <main class:fit> (not its content), because snippets declared directly inside a boundary become its props. -->
+<svelte:boundary onerror={(e) => reportCrash(e, "render")}>
+<main class:fit>
   {#if dbError}
     <section class="narrow">
-      <h2>{t("db.title")}</h2>
+      <h2>{t(isNewerDatabase(dbError) ? "db.newerTitle" : "db.title")}</h2>
       <p class="error" role="alert">{dbError}</p>
-      <p class="hint">
-        {t("db.hintBefore")} <code>npm run tauri dev</code> {t("db.hintAfter")}
-      </p>
+      {#if isNewerDatabase(dbError)}
+        <p class="hint">{t("db.newerHint")}</p>
+      {:else}
+        <p class="hint">{t("db.migrationHint")}</p>
+        {#if updateBackup}<p class="hint">{t("db.backupAt", { path: updateBackup })}</p>{/if}
+        <p class="hint">
+          {t("db.hintBefore")} <code>npm run tauri dev</code> {t("db.hintAfter")}
+        </p>
+      {/if}
+      <button type="button" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
     </section>
   {:else if !ready}
     <!-- The loading screen covers the window, see below. -->
@@ -1296,6 +1421,75 @@
           <p class="hint">{t("settings.animationsHint")}</p>
         </section>
 
+        <section class="group wide" aria-labelledby="updates-title">
+          <h3 id="updates-title">{t("updates.title")}</h3>
+          <p>{t("updates.current", { v: __APP_VERSION__ })}</p>
+          <label>
+            {t("updates.auto")}
+            <Select
+              value={updates.autoCheck ? "on" : "off"}
+              options={[
+                { value: "on", label: t("updates.autoOn") },
+                { value: "off", label: t("updates.autoOff") },
+              ]}
+              onchange={(v) => setAutoCheck(v === "on")}
+            />
+          </label>
+          <p class="hint">{t("updates.privacy")}</p>
+          <div class="row">
+            <button class="ghost" disabled={updates.status === "checking" || updates.status === "downloading" || updates.status === "installing"} onclick={() => checkForUpdate({ manual: true })}>
+              {t(updates.status === "checking" ? "updates.checking" : "updates.check")}
+            </button>
+          </div>
+          {#if updates.status === "upToDate"}
+            <p class="hint" role="status">{t("updates.upToDate", { v: __APP_VERSION__ })}</p>
+          {:else if updates.status === "error"}
+            <p class="error" role="alert">{t("updates.error")}</p>
+            <p class="hint">{updates.error}</p>
+            <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+          {:else if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
+            <h4>{t("updates.available", { v: updates.version })}</h4>
+            {#if updates.notes}<pre class="notes">{updates.notes}</pre>{/if}
+            {#if updates.status === "available"}
+              {#if updates.blocker}
+                <p class="hint">{t(updates.blocker === "macos-not-installed" ? "updates.blockedMac" : "updates.blockedLinux")}</p>
+                <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+              {:else}
+                <div class="row">
+                  <button class="primary" disabled={phase !== "idle"} onclick={installUpdate}>{t("updates.now")}</button>
+                  <button class="ghost" onclick={later}>{t("updates.later")}</button>
+                  <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
+                </div>
+                {#if phase !== "idle"}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
+              {/if}
+            {:else}
+              <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
+              <p class="hint">{t(updates.status === "installing" ? "updates.installing" : "updates.downloading")}{updates.total ? ` ${Math.round((updates.done / updates.total) * 100)}%` : ""}</p>
+            {/if}
+          {/if}
+        </section>
+
+        <section class="group" aria-labelledby="data-title">
+          <h3 id="data-title">{t("settings.dataTitle")}</h3>
+          <p>{lastBackupAt ? t("backup.last", { when: dateTime(lastBackupAt) }) : t("backup.none")}</p>
+          <p class="hint">{t("backup.hint")}</p>
+          <div class="row">
+            <button class="ghost" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+            <button class="ghost" disabled={phase !== "idle"} onclick={exportData}>{t("export.button")}</button>
+          </div>
+          <p class="hint">{t("export.hint")}</p>
+          {#if exportNote}<p class={exportNote.failed ? "error" : "hint"} role="status">{exportNote.text}</p>{/if}
+        </section>
+
+        <section class="group" aria-labelledby="routines-title">
+          <h3 id="routines-title">{t("settings.routinesTitle")}</h3>
+          <p class="hint">{t("builtin.restoreHint")}</p>
+          <div class="row">
+            <button class="ghost" onclick={restoreBuiltins}>{t("builtin.restore")}</button>
+          </div>
+          {#if restoreNote}<p class="hint" role="status">{restoreNote}</p>{/if}
+        </section>
+
         <section class="group" aria-labelledby="stats-title">
           <h3 id="stats-title">{t("settings.statsTitle")}</h3>
           <label>
@@ -1341,6 +1535,14 @@
           <p class="hint">{t("about.thirdParty")}</p>
           <div class="row">
             <button class="ghost" onclick={() => sbomDialog?.open()}>{t("about.sbom")}</button>
+          </div>
+        </section>
+
+        <section class="group" aria-labelledby="about-logs">
+          <h3 id="about-logs">{t("about.logsTitle")}</h3>
+          <p class="hint">{t("about.logsHint")}</p>
+          <div class="row">
+            <button class="ghost" onclick={() => openFolder("logs")}>{t("about.openLogs")}</button>
           </div>
         </section>
       </div>
@@ -1696,7 +1898,7 @@
         <div class="clock" class:paused class:last={lastSeconds} use:useFx={{ effect: "pulse", active: lastSeconds }}>
           {totalMs ? fmt(remaining) : fmt(elapsed, true)}
         </div>
-        <p class="note">
+        <p class="note" class:quiet={!waiting && !paused}>
           {#if waiting}
             {t("run.waitingForBoard")}
           {:else if paused}
@@ -1714,6 +1916,7 @@
             <span class="cap">{result.focus.label}</span>
             <!-- Words ("Single bull", "Success") get a smaller size so they fit the box. -->
             <span class="big" class:long={result.focus.value.length > 4}>{result.focus.value}</span>
+            {#if result.focus.hint}<span class="route">{result.focus.hint}</span>{/if}
           </div>
         {/if}
 
@@ -1934,6 +2137,22 @@
     </section>
   {/if}
 </main>
+  {#snippet failed(_error, reset)}
+    <main>
+      <section class="narrow">
+        <h2>{t("crash.screenTitle")}</h2>
+        <p class="hint">{t("crash.screenHint")}</p>
+        <button
+          class="primary"
+          onclick={() => {
+            view = "train";
+            reset();
+          }}>{t("crash.backToTrain")}</button
+        >
+      </section>
+    </main>
+  {/snippet}
+</svelte:boundary>
 
 <FxLayer />
 
@@ -2056,7 +2275,7 @@
   <LoadingScreen progress={loadDone / LOAD_STEPS} label={t(loadLabel)} fillMs={MIN_LOADING_MS - 250} />
 {/if}
 
-<footer>
+<footer class:compact={fit}>
   <div class="meta">
     <span>D³ v{__APP_VERSION__}</span>
     <a class="coffee" href={COFFEE_URL} onclick={(e) => openExternal(e, COFFEE_URL)}>
@@ -2205,7 +2424,7 @@
     cursor: pointer;
   }
   button.icon:hover { color: var(--chalk); background: var(--panel); }
-  button.icon[aria-current="page"] { color: var(--accent); background: var(--panel); }
+  button.icon[aria-current="page"], button.icon.fullscreen.active { color: var(--accent); background: var(--panel); }
   button.icon:disabled { opacity: 0.35; cursor: not-allowed; background: none; color: var(--dim); }
   .run-controls { display: flex; gap: 0.25rem; padding-right: 0.75rem; margin-right: -1.25rem; border-right: 1px solid var(--line); }
   .run-controls button.icon.active { color: var(--accent); background: var(--panel); }
@@ -2478,6 +2697,7 @@
     background: var(--panel);
     box-shadow: 0 0 0 4px rgb(26 159 174 / 0.12);
   }
+  .focus .route { margin-top: 0.4rem; color: var(--dim); letter-spacing: 0.04em; }
   .focus .big { font-size: 6.5rem; line-height: 1; }
   .focus .big.long { font-size: 3.6rem; line-height: 1.2; }
   .hero { display: flex; align-items: baseline; justify-content: center; gap: 0.75rem; margin-bottom: 1.25rem; }
@@ -2527,6 +2747,12 @@
     .summary-split.single { grid-template-columns: minmax(0, 46rem); }
   }
 
+  /* The dot on the settings icon when an update is ready. Not ".badge": that is the pill used in History. */
+  .update-dot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  button.icon { position: relative; }
+  .banner.ok { background: #1f4a2c; color: #d8f5e0; }
+  .notes { white-space: pre-wrap; font: inherit; font-size: 0.85rem; max-height: 10rem; overflow: auto; background: var(--panel); padding: 0.6rem; border-radius: 6px; }
+  progress { width: 100%; }
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
   .narrow { max-width: 34rem; }
@@ -2716,5 +2942,93 @@
   .pick-hint { max-width: 400px; width: 100%; height: 1.4em; line-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
   .pick-hint.show { visibility: visible; }
 
-  @media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }
+  /* ------------------------------------------------------------------------------------------------
+     Nothing scrolls inside a routine (countdown, game, break): main.fit is exactly as high as the window
+     allows, both columns are as high as main, and the board and the left panel scale with their own size
+     (container query units) instead of fixed rem sizes. See docs/responsive-layout-plan.md. */
+  header.compact { padding: 0.4rem 1.5rem; gap: 1.5rem; }
+  footer.compact { padding: 0.35rem 1.5rem; }
+  footer.compact .meta { display: none; }
+
+  main.fit {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.75rem max(1rem, calc((100% - 1600px) / 2 + 1rem));
+  }
+  main.fit > section { flex: 1; min-height: 0; }
+
+  main.fit .stage {
+    height: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: stretch;
+  }
+  .lost { inset: -0.5rem; }
+  .lost-card { max-height: calc(100% - 2rem); overflow: auto; }
+
+  /* The board takes what's left of its column: the dart boxes above it keep their fixed height. */
+  main.fit .views {
+    --bs: min(100cqw, calc(100cqh - 5.6rem), 800px);
+    container-type: size;
+    min-height: 0;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  main.fit .board, main.fit .darts, main.fit .pick-hint { width: var(--bs); max-width: none; }
+  main.fit .pick-hint { height: 1.2rem; line-height: 1.2rem; margin: 0; }
+
+  /* The left panel: sizes follow its own height, with floors so text stays readable. */
+  main.fit .stage .panel { container-type: size; min-height: 0; justify-content: center; }
+  main.fit .panel .progress { margin: 0 0 0.2rem; font-size: clamp(0.8rem, 2.4cqh, 0.95rem); }
+  main.fit .panel .clock { font-size: clamp(2.2rem, 11cqh, 5rem); }
+  main.fit .panel .note { margin: 0.25rem 0 clamp(0.25rem, 1.8cqh, 1.25rem); font-size: clamp(0.8rem, 2.4cqh, 1rem); }
+  main.fit .panel .focus {
+    margin: clamp(0.15rem, 1cqh, 0.5rem) 0 clamp(0.4rem, 2cqh, 1.25rem);
+    padding: clamp(0.35rem, 2cqh, 1rem) clamp(1rem, 6cqw, 2.5rem) clamp(0.45rem, 2.4cqh, 1.25rem);
+  }
+  main.fit .panel .focus .big { font-size: clamp(2.6rem, 17cqh, 6.5rem); }
+  main.fit .panel .focus .big.long { font-size: clamp(1.8rem, 9cqh, 3.6rem); line-height: 1.15; }
+  main.fit .panel .focus :global(.route) { margin-top: 0.15rem; font-size: clamp(0.75rem, 2.2cqh, 1rem); }
+  main.fit .panel :global(.meter) { margin-bottom: clamp(0.25rem, 1.6cqh, 1.25rem); gap: clamp(0.15rem, 1cqh, 0.45rem); }
+  main.fit .panel :global(.meter .dart) { height: clamp(24px, 6.5cqh, 50px); width: auto; }
+  main.fit .panel .hero { margin-bottom: clamp(0.25rem, 1.6cqh, 1.25rem); }
+  main.fit .panel .hero .big { font-size: clamp(1.8rem, 8cqh, 3.2rem); }
+  main.fit .panel .stats div { padding: clamp(0.15rem, 0.9cqh, 0.55rem) 0; }
+
+  /* What gives way when the panel is still too short, in this order:
+     1. the stats become one wrapped line of numbers, 2. the dart meter loses its label,
+     3. the quiet "Keep throwing" note goes (paused / waiting stay). */
+  @container (max-height: 470px) {
+    .stage .stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.1rem 1rem; border-top: 0; }
+    .stage .stats div { border: 0; padding: 0; gap: 0.35rem; }
+    .stage .stats dt::after { content: ":"; }
+  }
+  @container (max-height: 400px) {
+    main.fit .panel :global(.meter .cap) { display: none; }
+  }
+  @container (max-height: 340px) {
+    main.fit .panel .note.quiet { display: none; }
+  }
+
+  /* Countdown: the number grows with the window. */
+  main.fit .countdown { width: 100%; height: 100%; justify-content: center; padding-top: 0; container-type: size; }
+  main.fit .count { font-size: clamp(5rem, 40cqh, 14rem); }
+
+  /* Break: the cards sit in one row, the clock and "Next game" stay visible. */
+  main.fit .break { width: 100%; height: 100%; max-width: 70rem; justify-content: center; container-type: size; }
+  main.fit .break .clock { font-size: clamp(2.2rem, 12cqh, 4rem); }
+  main.fit .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: 0; margin-top: 0.25rem; }
+  main.fit .card { min-height: 0; overflow: hidden; padding: 0.75rem 1rem 0.25rem; }
+  main.fit .card h2 { font-size: clamp(1.1rem, 3.4cqh, 1.6rem); }
+  main.fit .card .lede, main.fit .card .game-goal { font-size: 0.9rem; margin-bottom: 0.4rem; }
+  /* At most three lines of the goal; the full text is in the add-game dialog and before the game. */
+  main.fit .card .lede, main.fit .card .game-goal {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+  }
 </style>

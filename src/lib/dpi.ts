@@ -29,7 +29,7 @@ export interface GameIndexConfig {
   area: SkillArea;
   metrics: MetricConfig[];
   /** Metrics that depend on a setting (e.g. the ring in Around the clock): they replace `metrics` for that value. */
-  bySetting?: { key: string; metrics: Record<string, MetricConfig[]> };
+  bySetting?: { key: string | string[]; metrics: Record<string, MetricConfig[]> };
   /** A result only counts with at least `min` of these values added up (darts, rounds, ...). Too short a game says little. */
   sample: { keys: string[]; min: number };
 }
@@ -52,6 +52,31 @@ const higher = (key: string, baseline: number, target: number, weight = 1): Metr
   direction: "higher",
   weight,
 });
+
+const lower = (key: string, baseline: number, target: number, weight = 1): MetricConfig => ({
+  key,
+  baseline,
+  target,
+  direction: "lower",
+  weight,
+});
+
+/** Success rate (baseline, target) per range, for 3, 6 and 9 darts. */
+const WILD_SCALES: Record<string, [number, number][]> = {
+  "2-40": [[20, 70], [40, 90], [60, 95]],
+  "41-80": [[10, 50], [25, 75], [40, 90]],
+  "61-100": [[5, 35], [10, 50], [20, 70]],
+  "81-120": [[3, 25], [8, 40], [15, 55]],
+  "101-170": [[2, 15], [3, 25], [5, 35]],
+  "2-170": [[5, 30], [8, 40], [12, 50]],
+};
+function wildCardScales(): Record<string, MetricConfig[]> {
+  const out: Record<string, MetricConfig[]> = {};
+  for (const [range, scales] of Object.entries(WILD_SCALES)) {
+    [3, 6, 9].forEach((darts, i) => (out[`${range}|${darts}`] = [higher("successRate", scales[i][0], scales[i][1])]));
+  }
+  return out;
+}
 
 /** "Results per comparison" until it is changed in the settings. Small, so the line follows the results closely. */
 export const DEFAULT_SAMPLE = 3;
@@ -92,6 +117,65 @@ export const DPI_CONFIG: IndexConfig = {
       sample: { keys: ["checkouts", "fails"], min: 3 },
     },
     {
+      gameId: "catch-40",
+      area: "checkout",
+      // 60 points over the 40 numbers is the "professional" mark.
+      metrics: [higher("pointsPerNumber", 0.4, 1.5)],
+      sample: { keys: ["numbers"], min: 10 },
+    },
+    {
+      gameId: "solo-leg",
+      // Its own area, so a session with a Solo Leg doesn't count twice for scoring.
+      area: "consistency",
+      metrics: [lower("dartsPerLeg", 45, 18, 0.6), higher("checkoutRate", 10, 40, 0.4)],
+      // 301 and 701 are scaled from 501.
+      bySetting: {
+        key: "start",
+        metrics: {
+          "301": [lower("dartsPerLeg", 27, 11, 0.6), higher("checkoutRate", 10, 40, 0.4)],
+          "701": [lower("dartsPerLeg", 63, 25, 0.6), higher("checkoutRate", 10, 40, 0.4)],
+        },
+      },
+      sample: { keys: ["legs"], min: 1 },
+    },
+    {
+      gameId: "big-fish",
+      area: "checkout",
+      // Darts per leg from 170: 18 is three visits of three too many, 6 is two visits.
+      metrics: [lower("dartsPerLeg", 18, 6)],
+      sample: { keys: ["legs"], min: 2 },
+    },
+    {
+      gameId: "wild-card",
+      area: "checkout",
+      metrics: [higher("successRate", 5, 35)],
+      // Every range and number of darts has its own scale: a 3-dart 40 is not a 3-dart 140.
+      bySetting: { key: ["range", "darts"], metrics: wildCardScales() },
+      sample: { keys: ["attempts"], min: 5 },
+    },
+    {
+      gameId: "bobs-27",
+      area: "doubles",
+      // The score is shown and charted but not part of the index: it depends on how far you get.
+      metrics: [higher("hitRate", 5, 35)],
+      sample: { keys: ["targets"], min: 5 },
+    },
+    {
+      gameId: "bull-x",
+      area: "accuracy",
+      metrics: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 5, 40, 0.4)],
+      // Trebles and Shanghai are harder to hit as a second chance.
+      bySetting: {
+        key: "variant",
+        metrics: {
+          doubles: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 5, 40, 0.4)],
+          trebles: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 3, 30, 0.4)],
+          shanghai: [higher("firstDartBullRate", 5, 35, 0.6), higher("recoveryRate", 2, 20, 0.4)],
+        },
+      },
+      sample: { keys: ["turns"], min: 10 },
+    },
+    {
       gameId: "around-the-clock",
       area: "accuracy",
       metrics: [higher("accuracy", 20, 60)],
@@ -130,6 +214,10 @@ export function weighted(parts: { score: number; weight: number }[]): number | n
   return total > 0 ? parts.reduce((s, p) => s + p.score * p.weight, 0) / total : null;
 }
 
+/** The value a `bySetting` table is looked up by: one setting, or several joined with "|" (e.g. "61-100|6"). */
+const settingKey = (key: string | string[], settings: Settings) =>
+  (Array.isArray(key) ? key : [key]).map((k) => String(settings[k])).join("|");
+
 function gameConfig(gameId: string, config: IndexConfig): GameIndexConfig | undefined {
   return config.games.find((g) => g.gameId === gameId);
 }
@@ -160,7 +248,7 @@ export function metricScores(
   const g = gameConfig(gameId, config);
   if (!g) return null;
   const sample = g.sample.keys.reduce((s, k) => s + (Number(values[k]) || 0), 0);
-  const metrics = (g.bySetting && g.bySetting.metrics[String(settings[g.bySetting.key])]) ?? g.metrics;
+  const metrics = (g.bySetting && g.bySetting.metrics[settingKey(g.bySetting.key, settings)]) ?? g.metrics;
   const total = metrics.reduce((s, m) => s + m.weight, 0) || 1;
   return {
     counts: sample >= g.sample.min,

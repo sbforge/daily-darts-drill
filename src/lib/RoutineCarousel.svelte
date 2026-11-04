@@ -4,7 +4,7 @@
   import { gameById } from "./games";
   import cardArt from "../assets/brand/art/routine-card.webp";
   import { getLocale, t } from "./i18n/index.svelte";
-  import { totalSeconds, type Routine } from "./store";
+  import { hasEstimate, totalSeconds, type Routine } from "./store";
 
   let {
     routines,
@@ -279,13 +279,13 @@
             {@const g = gameById(it.gameId)}
             <li>
               <span class="g-name">{g.name}</span>
-              <span class="g-min">{t("common.minutes", { n: it.minutes })}</span>
+              <span class="g-min">{it.minutes > 0 ? t("common.minutes", { n: it.minutes }) : t("routines.untilDone")}</span>
               <span class="g-desc">{g.describe(it.settings)}</span>
             </li>
           {/each}
         </ol>
         <p class="note">
-          {t("train.total", { n: minutes(info) })}
+          {t(hasEstimate(info) ? "train.totalEstimate" : "train.total", { n: minutes(info) })}
         </p>
       {:else}
         <p class="note">{t("train.noGames")}</p>
@@ -299,14 +299,14 @@
   .carousel {
     position: relative;
     flex: 1;
-    min-height: 26rem;
+    min-height: 19rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
     border-radius: 12px;
     touch-action: pan-y;
     user-select: none;
-    --h: clamp(20rem, calc(var(--ch) - 4.5rem), 36rem);
+    --h: clamp(16rem, calc(var(--ch) - 4.5rem), 36rem);
     --w: min(calc(var(--h) * 0.68), calc(var(--cw) * 0.7));
     --card-h: min(var(--h), calc(var(--w) / 0.68));
     /* How far each neighbour sits from the front card; wider screens spread them out. */

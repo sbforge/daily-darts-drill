@@ -1,31 +1,16 @@
 # Todos
+## Next
+Version 1 is built and merged in `release/v1-prerelease` (0.9.0). What is left before tagging 1.0.0:
+1. **Real-world test** of the prerelease on the board: the list is at the end of docs/v1-assumptions.md
+2. Look through docs/v1-assumptions.md and change the guesses you don't like (🔶 first)
+3. Updater key for the release (docs/v1-assumptions.md → "Needs you"), then `npm version 1.0.0`, tag, publish the draft
+
 ## Found bugs while testing
-* Low-resolution screens (Windows, 1366 × 768 at 125 %): the game view scrolls, the window is taller than the screen,
-  space unused on big screens → docs/responsive-layout-plan.md
-
-
-## Next (in priority order)
-Version 1 checklist with a plan per item: docs/v1-scope.md
-1. Fix GitHub Actions asset creation (docs/release-plan.md)
-
+* (none open; the low-resolution layout is built, docs/responsive-layout-plan.md, needs the Windows laptop test)
 
 ## Training Games
-* Routines: Predefined training routines (part of v1: Everyday Drill, Intense Doubles → docs/predefined-routines-plan.md)
-  * deletable? → yes, normal routines; recoverable? → "Restore built-in routines" in Settings
-  * More ideas: pre match routine
-    
-* New games (part of v1): plan with rules, settings, stats and DPI per game in docs/new-games-plan.md (all points decided, build order at the end)
-* Random Checkout
-* Bobs 27
-* 170
-* Bull-X
-  * If bull was hit on first dart -> the other two darts also need to be thrown at the bullseye
-  * Bull, if miss, then double
-  * Bull, if miss, then treble
-  * Bull, if miss, then shanghai
-* Catch 40
-* Solo 501
-  * just for good measure
+* More ideas: pre match routine
+* Catch 40 variants: start/end number (e.g. 61–80 only)
 
 ## Design & Artwork
 * Create Artwork for every Training game
@@ -52,6 +37,13 @@ Version 1 checklist with a plan per item: docs/v1-scope.md
 
 
 ## Done ✅
+* Version 1 (2026-11-04, one branch per feature, merged in release/v1-prerelease; plans in docs/, guesses in docs/v1-assumptions.md)
+  * Responsive layout: nothing scrolls in a routine from 900 × 540, F11 fullscreen, window size remembered
+  * Six new games: Catch 40, Wild Card (random checkout), Bob's 27, Bull-X, Big Fish (170), Solo Leg (solo 501); checkout routes with a "Show route" setting
+  * Predefined routines Everyday Drill and Intense Doubles, "Restore built-in routines", no time cap for games that end by themselves, 15 s breaks
+  * Versioned database migrations, daily backup, backup before an update, export, log file, crash reports
+  * OTA updates (check on start, Settings → Updates), release workflow on tauri-action with a draft release, CI, one version source, Linux build, macOS ad-hoc signing
+  * Tests (vitest and cargo test), README for v1
 * README: "Why I built this" (motivation, what D³ is and isn't)
 * A routine or quick game resets Autodarts during its countdown (once the detection runs), so the first game starts on a clean board
 * Game names & descriptions: every game has a catchy name (Loose Arm, Clockwork, Double Trouble, Plan B, Ton Machine, Checkout Ladder) with its usual name under it, a short description and a "Why play" goal, in the add game dialog, before a game and on the break screen

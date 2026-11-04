@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Daily Darts Drill",
-  "version": "0.1.0",
+  "version": "../package.json",
   "identifier": "dev.darttrainer.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -15,8 +15,8 @@
         "title": "D³ – Daily Darts Drill",
         "width": 1100,
         "height": 760,
-        "minWidth": 880,
-        "minHeight": 620
+        "minWidth": 900,
+        "minHeight": 540
       }
     ],
     "security": {
@@ -32,6 +32,20 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "-"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU5MDM2QUZENkQ4OUUxMDUKUldRRjRZbHQvV29ENmM0MUxyTXJVUUxIVUJXUU14bDNsUG9heHdESGR1ZWl3QVhSN2tUVS9JcjIK",
+      "endpoints": [
+        "https://github.com/sbforge/daily-darts-drill/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

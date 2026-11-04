@@ -10,6 +10,13 @@
     "sql:allow-execute",
     "sql:allow-select",
     "sql:allow-close",
-    "opener:default"
+    "opener:default",
+    "dialog:allow-save",
+    "log:default",
+    "updater:default",
+    "process:allow-restart",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
+    "window-state:default"
   ]
 }

@@ -13,6 +13,9 @@ export const great = (turn: number, text: string): Moment => ({
   priority: 1,
 });
 
+/** Settings set by the app, not by the player: results with different ones still compare. */
+export const NON_COMPARABLE = ["seed"];
+
 export const pct = (hits: number, total: number) => (total ? (hits / total) * 100 : 0);
 export const sum = (darts: Dart[]) => darts.reduce((s, d) => s + d.score, 0);
 export const opt = (value: string | number, label: () => string) => ({

@@ -1,9 +1,133 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod backup;
+
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use serde::Serialize;
+use tauri::{Manager, State};
+use tauri_plugin_sql::{Migration, MigrationKind};
+
+/// Every schema change is a new file here and a new line below. Never edit or delete a released one.
+fn migrations() -> Vec<Migration> {
+    vec![Migration {
+        version: 1,
+        description: "baseline",
+        sql: include_str!("../migrations/0001_baseline.sql"),
+        kind: MigrationKind::Up,
+    }]
+}
+
+/// What happened before the window opened, for the app to show.
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct Startup {
+    /// A backup taken because the app version changed.
+    update_backup: Option<String>,
+    /// Today's backup, if this start made it.
+    daily_backup: Option<String>,
+    /// Why a backup failed, if it did.
+    backup_error: Option<String>,
+    /// The `running` marker of the last start was still there: the app didn't close normally.
+    crashed_last_time: bool,
+}
+
+#[tauri::command]
+fn startup_report(startup: State<'_, Startup>) -> &Startup {
+    startup.inner()
+}
+
+/// When the newest backup was made.
+#[tauri::command]
+fn last_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(backup::last_backup(&config))
+}
+
+/// The last lines of the log, for a crash report.
+#[tauri::command]
+fn log_tail(app: tauri::AppHandle, lines: usize) -> Vec<String> {
+    let Ok(dir) = app.path().app_log_dir() else { return vec![] };
+    let text = std::fs::read_to_string(dir.join("d3.log")).unwrap_or_default();
+    let all: Vec<&str> = text.lines().collect();
+    all[all.len().saturating_sub(lines.min(500))..].iter().map(|l| l.to_string()).collect()
+}
+
+/// Writes a crash report next to the log (`crash-<time>.json`), keeps the last 20. Returns the file's path.
+#[tauri::command]
+fn save_crash_report(app: tauri::AppHandle, json: String) -> Result<String, String> {
+    let dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let name = format!("crash-{}.json", chrono::Local::now().format("%Y-%m-%dT%H-%M-%S"));
+    let path = dir.join(&name);
+    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    log::error!("crash report written: {name}");
+    let mut old: Vec<_> = std::fs::read_dir(&dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("crash-"))
+        .collect();
+    old.sort_by_key(|e| e.file_name());
+    let extra = old.len().saturating_sub(20);
+    for e in old.into_iter().take(extra) {
+        let _ = std::fs::remove_file(e.path());
+    }
+    Ok(path.display().to_string())
+}
+
+/// The "Save as" dialog already asked about replacing the file; `VACUUM INTO` refuses to write over one.
+#[tauri::command]
+fn clear_export_target(path: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if p.is_file() {
+        std::fs::remove_file(p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Where D³ runs from decides whether it can replace itself: macOS runs an app opened from a disk image (or the
+/// Downloads folder, "App Translocation") from a read-only place, a `.deb` install on Linux is updated by hand.
+/// Returns `null` when updating in place works, else the reason: `"macos-not-installed"` or `"linux-package"`.
+#[tauri::command]
+fn update_blocker() -> Option<&'static str> {
+    let exe = std::env::current_exe().ok()?.to_string_lossy().to_string();
+    if cfg!(target_os = "macos") && (exe.starts_with("/Volumes/") || exe.contains("/AppTranslocation/")) {
+        return Some("macos-not-installed");
+    }
+    if cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none() {
+        return Some("linux-package");
+    }
+    None
+}
+
+/// A place for the backup right before an in-app update, written by the app itself (`VACUUM INTO`, the database
+/// is open): `backups/update/<version>-<date>-install/darttrainer.db`. Keeps the last 3 update backups.
+#[tauri::command]
+fn prepare_update_backup(app: tauri::AppHandle) -> Result<String, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let update = backup::backups_dir(&config).join("update");
+    let dir = update.join(format!("{}-{}-install", env!("CARGO_PKG_VERSION"), backup::today()));
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    backup::prune(&update, 3);
+    Ok(dir.join(backup::DB_FILE).display().to_string())
+}
+
+/// Opens one of the app's folders in the file manager.
+#[tauri::command]
+fn open_folder(app: tauri::AppHandle, kind: String) -> Result<(), String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let path: PathBuf = match kind.as_str() {
+        "backups" => backup::backups_dir(&config),
+        "logs" => app.path().app_log_dir().map_err(|e| e.to_string())?,
+        _ => return Err(format!("unknown folder: {kind}")),
+    };
+    std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
 
 /// The service type the Autodarts client announces on the local network.
 const AUTODARTS_SERVICE: &str = "_autodarts-board._tcp.local.";
@@ -62,11 +186,110 @@ fn browse(timeout: Duration) -> Result<Vec<Board>, String> {
     Ok(boards)
 }
 
+/// The log: `d3.log` in the app's log folder, about 1 MB each, the last 3 kept. Also on stdout in development.
+fn logger() -> tauri_plugin_log::Builder {
+    use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
+    tauri_plugin_log::Builder::new()
+        .targets([
+            Target::new(TargetKind::LogDir { file_name: Some("d3".into()) }),
+            Target::new(TargetKind::Stdout),
+        ])
+        .max_file_size(1_000_000)
+        .rotation_strategy(RotationStrategy::KeepSome(3))
+        .level(if cfg!(debug_assertions) { log::LevelFilter::Debug } else { log::LevelFilter::Info })
+}
+
 fn main() {
+    // A panic on the main thread ends the app: write it down first, so the next start can say so.
+    std::panic::set_hook(Box::new(|info| {
+        log::error!("panic: {info}");
+    }));
     tauri::Builder::default()
-        .plugin(tauri_plugin_sql::Builder::default().build())
+        .plugin(logger().build())
+        .plugin(
+            tauri_plugin_sql::Builder::default()
+                .add_migrations("sqlite:darttrainer.db", migrations())
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![discover_boards])
-        .run(tauri::generate_context!())
-        .expect("error while running D³ – Daily Darts Drill");
+        // Size, position and maximised state are remembered, so the player sets the window up once at the oche.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .setup(|app| {
+            // Before any window can open the database: the files are not in use, a plain copy is complete.
+            let config = app.path().app_config_dir()?;
+            log::info!("D³ {} on {} starting", env!("CARGO_PKG_VERSION"), std::env::consts::OS);
+            let mut startup = Startup::default();
+            // A marker for "the app is running": a clean exit removes it, so finding it means the last run crashed.
+            let marker = app.path().app_log_dir()?.join("running");
+            startup.crashed_last_time = marker.exists();
+            if startup.crashed_last_time {
+                log::warn!("the last run did not close normally");
+            }
+            let _ = std::fs::create_dir_all(marker.parent().unwrap());
+            let _ = std::fs::write(&marker, "");
+            match backup::update_backup(&config, env!("CARGO_PKG_VERSION")) {
+                Ok(Some(dir)) => {
+                    log::info!("backup before the update: {}", dir.display());
+                    startup.update_backup = Some(dir.display().to_string());
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    log::error!("backup before the update failed: {e}");
+                    startup.backup_error = Some(e);
+                }
+            }
+            // One backup step for all reasons, each with its own folder and count.
+            match backup::daily_backup(&config) {
+                Ok(Some(dir)) => {
+                    log::info!("daily backup: {}", dir.display());
+                    startup.daily_backup = Some(dir.display().to_string());
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    log::error!("daily backup failed: {e}");
+                    startup.backup_error = Some(e);
+                }
+            }
+            app.manage(startup);
+
+            // The first start fits the screen: on a small one (a 1366 x 768 laptop at 125 %) the 1100 x 760 window
+            // would be taller than the screen and can't be made smaller, so it opens maximised instead.
+            // Once the window state plugin has saved a state, that state wins.
+            if !config.join(".window-state.json").exists() {
+                if let Some(win) = app.get_webview_window("main") {
+                    if let Ok(Some(monitor)) = win.current_monitor() {
+                        let area = monitor.work_area();
+                        let scale = monitor.scale_factor();
+                        let (w, h) = (area.size.width as f64 / scale, area.size.height as f64 / scale);
+                        if w < 1100.0 || h < 760.0 {
+                            let _ = win.maximize();
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            discover_boards,
+            startup_report,
+            last_backup,
+            open_folder,
+            log_tail,
+            save_crash_report,
+            clear_export_target,
+            update_blocker,
+            prepare_update_backup
+        ])
+        .build(tauri::generate_context!())
+        .expect("error while building D³ – Daily Darts Drill")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                if let Ok(dir) = app.path().app_log_dir() {
+                    let _ = std::fs::remove_file(dir.join("running"));
+                }
+            }
+        });
 }

@@ -103,6 +103,8 @@ export const aroundTheClock: GameDef = {
       options: FINISHES.map((f) => opt(f, () => t(`atc.finish.${f}`))),
     },
   ],
+  canEnd: () => true,
+  estimateMinutes: () => 5,
   describe: (s) =>
     t("atc.describe", {
       direction: t(s.direction === "ccw" ? "atc.ccw" : "atc.cw"),
