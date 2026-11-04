@@ -670,6 +670,7 @@ export const de: Record<Key, string> = {
   "121.name": "Checkout Ladder",
   "121.start": "Start-Checkout",
   "121.startInfo": "Der Checkout, mit dem das Spiel beginnt (2-170). Von dort geht es mit jedem Checkout nach oben und mit jedem Fehlversuch nach unten, aber nie unter den Start. Üblich ist der Start bei 121.",
+  "game.rulesNote": "Mir sind die Originalnamen dieser Spiele bekannt, und mir ist klar, dass einige Regeln hier von den Originalen abweichen. Das sind die Varianten, die ich selbst am meisten spiele. Ich ergänze gern weitere Spiele oder ändere die Regeln.",
   "game.counting": "Punkte zählen",
   "game.countingInfo": "Wie der Rest heruntergezählt wird. „Wie Einstellungen“ folgt Einstellungen → Spielen. „Nach dem Besuch“ ändert den Rest erst, wenn der Besuch vorbei ist (dritter Dart), wie im Match, wo du selbst rechnest. „Nach jedem Dart“ zieht jeden Dart sofort ab.",
   "game.countingDefault": "Wie Einstellungen",

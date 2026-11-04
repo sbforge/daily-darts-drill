@@ -148,6 +148,8 @@
       </div>
     </div>
 
+    <p class="rules-note">{t("game.rulesNote")}</p>
+
     <div class="foot">
       <button type="button" class="ghost" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
       <button type="submit" class="primary">{t(quick ? "run.startGame" : "routines.addGame")}</button>
@@ -156,6 +158,7 @@
 </dialog>
 
 <style>
+  .rules-note { margin: 0; padding: 0.6rem 1.5rem 0.75rem; border-top: 1px solid var(--line); color: var(--dim); font-size: 0.85rem; line-height: 1.45; }
   /* One height whatever game is picked, so the dialog doesn't jump while browsing the list. */
   dialog {
     width: min(58rem, calc(100vw - 2rem));

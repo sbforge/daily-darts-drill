@@ -670,6 +670,7 @@ export const en = {
   "121.name": "Checkout Ladder",
   "121.start": "Starting checkout",
   "121.startInfo": "The checkout the game starts with (2-170). From there it goes up with every checkout and down with every miss, but never below the start. The usual start is 121.",
+  "game.rulesNote": "I know the original names of these games, and I know that some rules here differ from the originals. These are the variations I play most myself. I am happy to add more games or change the rules.",
   "game.counting": "Counting the score",
   "game.countingInfo": "How the rest is counted down. “Like Settings” follows Settings → Playing. “After the visit” changes the rest only once the visit is over (third dart), as in a match where you do the sums yourself. “After every dart” takes each dart off at once.",
   "game.countingDefault": "Like Settings",
