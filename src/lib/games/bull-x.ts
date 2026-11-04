@@ -121,8 +121,7 @@ export const bullX: GameDef = {
       get info() {
         return t("bullx.bullseyeOnlyInfo");
       },
-      kind: "select",
-      options: [opt("off", () => t("bullx.outerCounts")), opt("on", () => t("bullx.onlyBullseye"))],
+      kind: "checkbox",
     },
   ],
   describe: (s) => t("bullx.describe", { variant: t(`bullx.variant.${variantOf(s.variant)}`) }) + (s.bullseyeOnly === "on" ? `, ${t("bullx.onlyBullseye")}` : ""),

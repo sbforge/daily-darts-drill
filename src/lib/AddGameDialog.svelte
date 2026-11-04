@@ -59,13 +59,7 @@
     get info() {
       return t("quick.capInfo");
     },
-    kind: "select",
-    get options() {
-      return [
-        { value: "on", label: t("quick.capOn") },
-        { value: "off", label: t("quick.capOff") },
-      ];
-    },
+    kind: "checkbox",
   };
 
   function load(item: RoutineItem | undefined, id: string) {

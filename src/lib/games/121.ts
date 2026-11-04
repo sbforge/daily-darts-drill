@@ -1,7 +1,7 @@
 import { num, t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
-import { great, opt, pct } from "./shared";
+import { great, pct } from "./shared";
 import type { GameDef, Moment } from "./types";
 
 const DARTS_PER_ATTEMPT = 9;
@@ -50,8 +50,7 @@ export const oneTwentyOne: GameDef = {
       get info() {
         return t("121.fastForwardInfo");
       },
-      kind: "select",
-      options: [opt("on", () => t("121.fastForwardOn")), opt("off", () => t("121.fastForwardOff"))],
+      kind: "checkbox",
     },
     {
       key: "safehouse",
@@ -61,8 +60,7 @@ export const oneTwentyOne: GameDef = {
       get info() {
         return t("121.safehouseInfo");
       },
-      kind: "select",
-      options: [opt("on", () => t("121.safehouseOn")), opt("off", () => t("121.safehouseOff"))],
+      kind: "checkbox",
     },
   ],
   describe: (s) =>

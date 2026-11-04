@@ -1,5 +1,5 @@
 import { num, t } from "../i18n/index.svelte";
-import { doubleField, great, opt, pct } from "./shared";
+import { doubleField, great, pct } from "./shared";
 import type { GameDef, Moment } from "./types";
 import type { Dart } from "../autodarts";
 
@@ -37,8 +37,7 @@ export const bobs27: GameDef = {
       get info() {
         return t("bob.playOnInfo");
       },
-      kind: "select",
-      options: [opt("off", () => t("bob.playOnOff")), opt("on", () => t("bob.playOnOn"))],
+      kind: "checkbox",
     },
   ],
   canEnd: () => true,
