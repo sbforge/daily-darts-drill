@@ -118,6 +118,10 @@ export const de: Record<Key, string> = {
   "solo.describeLegs": "{n}, Double Out, {legs} Legs",
   "solo.summary": "Average {average}, {legs} Legs, {darts} Darts pro Leg",
   "solo.average": "3-Dart-Average",
+  "solo.matchAverage": "Match-Average",
+  "solo.legAverage": "Leg-Average",
+  "solo.bestLegAverage": "Bestes Leg-Average",
+  "solo.eighties": "Aufnahmen ab 80",
   "solo.first9": "Average der ersten 9",
   "solo.legs": "Legs",
   "solo.dartsPerLeg": "Darts pro Leg",
@@ -155,7 +159,6 @@ export const de: Record<Key, string> = {
   "wild.summary": "{rate}% Erfolg ({checkouts} von {attempts})",
   "wild.checkout": "Checkout {n}",
   "wild.attempts": "Versuche",
-  "wild.dartsPerCheckout": "Darts pro Checkout",
   "wild.great": "Sauber!",
   "bob.name": "Bob's 27",
   "bob.blurb": "Starte mit 27 Punkten und geh um die Doubles, D1 bis D20 und das Bull, je drei Darts. Jedes getroffene Double bringt seinen Wert, zweimal getroffen zählt zweimal. Triffst du mit allen drei Darts nicht, geht der Wert des Doubles ab. Bei null oder darunter ist das Spiel vorbei.",
@@ -468,6 +471,14 @@ export const de: Record<Key, string> = {
   "run.noScore": "No Score",
   "run.time": "Zeit",
   "run.noScoreHint": "Überworfen: die Aufnahme zählt nicht",
+  "shot.title": "Game Shot!",
+  "shot.nextLeg": "Als Nächstes Leg {n}",
+  "shot.lastLeg": "Letztes Leg",
+  "shot.next": "Als Nächstes: {n}",
+  "shot.lastNumber": "Letzte Zahl",
+  "shot.pull": "Darts ziehen",
+  "shot.pulling": "Darts werden gezogen …",
+  "shot.lockedHint": "Game Shot: Darts zählen erst nach dem Ziehen wieder",
   "summary.title": "Routine abgeschlossen",
   "summary.noResult": "Kein Ergebnis für dieses Spiel.",
   "summary.saved": "Die Ergebnisse sind gespeichert. Du findest sie im Verlauf.",
@@ -586,7 +597,7 @@ export const de: Record<Key, string> = {
   "atc.rounds": "Runden geschafft",
   "atc.progress": "Fortschritt",
   "atc.complete": "Geschafft",
-  "atc.great": "3 in Folge!",
+  "game.threeInARow": "3 in Folge!",
   "atc.nextTarget": "Nächstes Ziel",
   "atc.nextTargetZone": "Nächstes Ziel, {zone}",
 
@@ -602,7 +613,7 @@ export const de: Record<Key, string> = {
   // Plan B (was "Complex doubles"; the keys keep the old name)
   "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
-    "Checke das Double mit drei Darts aus. Single-Treffer werden abgezogen, das nächste Ziel ergibt sich aus dem Rest. Bleibt nach Dart 2 eine ungerade Zahl, ist das Bull das Ziel.",
+    "Checke das Double mit drei Darts aus. Bei einem Treffer geht die Aufnahme mit der Hälfte weiter: D20, dann D10, dann D5. Ein Fehlwurf wird vom Rest abgezogen, das nächste Ziel ergibt sich daraus; ein ungerader Rest wird gestellt, der dritte Dart geht aufs Bull. Nach einem Überwerfen geht es wieder beim Double los. Jeder Dart hat ein Ziel, du ziehst nie früher.",
   "complexDoubles.classic": "Komplexe Doubles",
   "complexDoubles.goal": "Lehrt dich, nach einem Fehlwurf umzuplanen: den neuen Rest lesen und mit den übrigen Darts trotzdem checken.",
   "complexDoubles.describe": "Ziel D{n}",
@@ -626,10 +637,6 @@ export const de: Record<Key, string> = {
   "scoring.summary": "{average} 3-Dart-Schnitt",
   "scoring.total": "Gesamtpunkte",
   "scoring.bestTurn": "Beste Aufnahme",
-  "scoring.tonPlus": "Aufnahmen ab 100",
-  "scoring.triples": "Triples",
-  "scoring.bulls": "Bulls",
-  "scoring.misses": "Fehlwürfe",
 
   // 121
   "121.blurb":

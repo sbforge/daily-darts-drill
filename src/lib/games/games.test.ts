@@ -26,10 +26,28 @@ describe("Plan B (complex doubles)", () => {
     expect(r.focus?.value).toBeTruthy();
     expect(r.targets).toEqual([{ bed: "bull" }]);
   });
-  it("going past the rest is a lost round with No Score", () => {
-    const r = play("T20 T20 T20");
+  it("going past the rest loses the round, the next dart starts over at the double", () => {
+    const r = complexDoubles.compute(turns("T20"), { double: 16 }, { open: true });
     expect(r.values).toMatchObject({ successes: 0, rounds: 1 });
-    expect(r.noScore).toBeDefined();
+    expect(r.focus?.value).toBe("D16");
+    // A hit after the restart counts for the hit rate, not for the lost round.
+    expect(play("T20 D16").values).toMatchObject({ successes: 0, rounds: 1, doubleDarts: 2, doubleHits: 1 });
+  });
+  it("after a hit the visit goes on at half the double", () => {
+    expect(complexDoubles.compute(turns("D16"), { double: 16 }, { open: true }).focus?.value).toBe("D8");
+    const r = play("D16 D8 D4");
+    expect(r.values).toMatchObject({ successes: 1, rounds: 1, firstDart: 1, doubleDarts: 3, doubleHits: 3, hitRate: 100 });
+    expect(r.moments?.[0].priority).toBe(1.5); // 3 in a row beats "First dart!"
+    // D20 hit, then S4 on D10 leaves 16: D8
+    expect(complexDoubles.compute(turns("D20 S4"), { double: 20 }, { open: true }).focus?.value).toBe("D8");
+  });
+  it("an odd leave is set up with the route's first dart, dart 3 goes at the bull", () => {
+    // 32 - 1 = 31: route S15 D8; the set-up dart doesn't count for the hit rate
+    const r = complexDoubles.compute(turns("S1"), { double: 16 }, { open: true });
+    expect(r.focus?.value).toBe("S15");
+    expect(r.values).toMatchObject({ doubleDarts: 1 });
+    const d3 = complexDoubles.compute(turns("D16 S5"), { double: 16 }, { open: true });
+    expect(d3.targets).toEqual([{ bed: "bull" }]);
   });
 });
 
@@ -45,9 +63,17 @@ describe("Double Trouble (simple doubles)", () => {
 });
 
 describe("Ton Machine (scoring)", () => {
-  it("three-dart average, best turn, ton-plus", () => {
+  it("three-dart average, best turn", () => {
     const r = scoring.compute(turns("T20 T20 T20 | S1 S1 S1"), {}, open);
-    expect(r.values).toMatchObject({ average: 91.5, bestTurn: 180, tonPlus: 1, triples: 3 });
+    expect(r.values).toMatchObject({ average: 91.5, bestTurn: 180 });
+    expect(r.values.triples).toBeUndefined();
+  });
+  it("counts each visit in exactly one band; the visit on the board only once it is over", () => {
+    const t = "T20 T20 T20 | T19 T19 T19 | T20 T20 S20 | T20 S20 S20 | S20 S20 S20 | S20 S20 S1 | S5 S5 S5 | T20 T20 T20";
+    const r = scoring.compute(turns(t), {}, open);
+    expect(r.values).toMatchObject({ v180: 2, v171: 1, v140: 1, v100: 1, v80: 0, v60: 1, v0: 2 });
+    expect(scoring.compute(turns(t), {}, { open: true }).values.v180).toBe(1);
+    expect(r.lines.filter((l) => l.grid).map((l) => l.grid)).toEqual(["cell", "cell", "cell", "cell", "cell", "cell", "wide"]);
   });
 });
 

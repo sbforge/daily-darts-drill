@@ -1,7 +1,7 @@
 import { t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
-import { great } from "./shared";
+import { gameShotOf, great } from "./shared";
 import type { GameDef } from "./types";
 
 const FIRST = 61;
@@ -55,6 +55,11 @@ export const catch40: GameDef = {
     const perNumber = numbers ? points / numbers : 0;
     const route = routeFocus(state.remaining, s);
     const done = state.over;
+    const shot = gameShotOf(
+      state.gameShot,
+      state.attempts[state.attempts.length - 1]?.target ?? 0,
+      state.gameShot?.last ? t("shot.lastNumber") : t("shot.next", { n: state.target }),
+    );
 
     return {
       values: { points, numbers, checkouts, threePointers, rounds, pointsPerNumber: perNumber },
@@ -65,10 +70,13 @@ export const catch40: GameDef = {
         { key: "threePointers", label: t("catch40.threePointers"), value: String(threePointers) },
         ...(rounds ? [{ key: "rounds", label: t("atc.rounds"), value: String(rounds) }] : []),
       ],
-      focus: done
-        ? { label: t("atc.complete"), value: t("game.xOfY", { n: NUMBERS, total: NUMBERS }) }
-        : { label: t("catch40.restOf", { n: state.target }), value: String(state.remaining), hint: route.hint },
-      targets: done ? [] : route.targets,
+      focus: shot
+        ? shot.focus
+        : done
+          ? { label: t("atc.complete"), value: t("game.xOfY", { n: NUMBERS, total: NUMBERS }) }
+          : { label: t("catch40.restOf", { n: state.target }), value: String(state.remaining), hint: route.hint },
+      targets: done || shot ? [] : route.targets,
+      gameShot: shot?.gameShot,
       darts: done ? undefined : { label: t("121.dartsLeftN", { n: Math.max(0, DARTS - state.used) }), total: DARTS, used: state.used, group: 3 },
       noScore: state.noScore,
       moments: state.attempts.filter((a) => a.ok && pointsFor(a.target, a.dart) === 3).map((a) => great(a.turn, t("catch40.great"))),

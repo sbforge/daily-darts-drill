@@ -51,4 +51,27 @@ describe("Solo Leg", () => {
     expect(play("", { start: 301 }).focus?.value).toBe("301");
     expect(play("", { start: 701 }).focus?.value).toBe("701");
   });
+  it("match average goes on over all legs, leg average starts again with each leg", () => {
+    const line = (r: ReturnType<typeof play>, k: string) => r.lines.find((l) => l.key === k)?.value;
+    // Leg 1: nine-darter (167), leg 2: one visit of 60
+    const r = play(NINE + " | T20 miss miss");
+    expect(line(r, "legAverage")).toBe("60.0");
+    expect(r.values.average).toBeCloseTo(((501 + 60) / 12) * 3);
+    expect(r.values.bestLegAverage).toBeCloseTo(167);
+    // During the Game shot the leg just won is shown; after the takeout the new leg has none yet.
+    expect(line(play(NINE, {}, true), "legAverage")).toBe("167.0");
+    expect(line(play(NINE), "legAverage")).not.toMatch(/\d/);
+  });
+  it("a bust counts its darts but no points in the leg average", () => {
+    const r = play("T20 T20 T20 | T20 T20 T20 | T20 T20 T20 | S1", {}, true);
+    // 361 points in 10 darts: the bust's three darts count, its points don't
+    expect(r.lines.find((l) => l.key === "legAverage")?.value).toBe(((361 / 10) * 3).toFixed(1));
+  });
+  it("counts 80+ and keeps the visit counts off the panel", () => {
+    const r = play("T20 S20 miss | T20 T20 S20 | T20 T20 T20");
+    expect(r.values).toMatchObject({ eighties: 1, ton40s: 1, oneEighties: 1, tons: 0 });
+    const hidden = r.lines.filter((l) => l.live === false).map((l) => l.key);
+    expect(hidden).toEqual(["bestLegAverage", "eighties", "tons", "ton40s", "oneEighties"]);
+    expect(r.lines.find((l) => l.key === "legAverage")?.liveOnly).toBe(true);
+  });
 });

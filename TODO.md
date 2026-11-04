@@ -5,6 +5,10 @@ Version 1 is built and merged in `release/v1-prerelease` (0.9.0). What is left b
 2. Look through docs/v1-assumptions.md and change the guesses you don't like (🔶 first)
 3. Updater key for the release (docs/v1-assumptions.md → "Needs you"), then `npm version 1.0.0`, tag, publish the draft
 
+## 0.9.1 (from the 0.9.0 test)
+Built and merged in `release/v1-prerelease`: Game shot, Solo Leg averages, DPI v2, Plan B chain, Ton Machine bands,
+Wild Card / Bull-X fixes (docs/v1.0-feedback-plan.md). Test list: docs/v1-assumptions.md, items 10-13.
+
 ## Found bugs while testing
 * (none open; the low-resolution layout is built, docs/responsive-layout-plan.md, needs the Windows laptop test)
 

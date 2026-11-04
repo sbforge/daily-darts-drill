@@ -139,14 +139,19 @@ export class Session {
     return this.current.length > 0 && this.result.noScore?.turn === this.turns.length;
   }
 
+  /** The turn on the board checked out (Game shot): it is over until the takeout, further darts don't count. */
+  get gameShot(): boolean {
+    return this.current.length > 0 && this.result.gameShot?.turn === this.turns.length;
+  }
+
   /**
    * A dart can be set by hand as the next one: it fills up the turn on the board, or after the
    * takeout starts the next turn. A full turn set by hand makes way for the next; a full turn
-   * from Autodarts waits for its takeout. A busted turn takes no dart at all until one of its
-   * darts is corrected, the darts are taken out, or the turn is ended with "next turn".
+   * from Autodarts waits for its takeout. A busted or checked-out turn takes no dart at all until
+   * one of its darts is corrected, the darts are taken out, or the turn is ended with "next turn".
    */
   get canAdd(): boolean {
-    return !this.finished && !this.busted && (this.current.length < 3 || this.source.every((at) => at === null));
+    return !this.finished && !this.busted && !this.gameShot && (this.current.length < 3 || this.source.every((at) => at === null));
   }
 
   /** Adds a dart set by hand, for one Autodarts did not detect or when playing without it. */

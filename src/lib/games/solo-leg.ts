@@ -1,6 +1,6 @@
 import { num, t } from "../i18n/index.svelte";
 import { routeFocus } from "./route-focus";
-import { great, opt, pct } from "./shared";
+import { gameShotOf, great, opt, pct } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
 
@@ -72,6 +72,14 @@ export const soloLeg: GameDef = {
     const dartsPerLeg = won.length ? won.reduce((n, l) => n + l.darts, 0) / won.length : 0;
     const bestLeg = won.length ? Math.min(...won.map((l) => l.darts)) : 0;
     const highest = Math.max(0, ...won.map((l) => l.checkout));
+    const bestLegAverage = Math.max(0, ...won.map((l) => average(l.points, l.darts)));
+    // The leg being played; during the Game shot (and until its first dart) still the leg just won.
+    const lastLeg = x.legs[x.legs.length - 1];
+    const legAvg = x.legDarts
+      ? average(x.legPoints, x.legDarts)
+      : x.gameShot && lastLeg
+        ? average(lastLeg.points, lastLeg.darts)
+        : null;
     // Checkout rate: legs checked out per dart thrown at a double.
     const checkoutRate = pct(won.length, x.dartsAtDouble);
     const route = routeFocus(x.rest, s);
@@ -84,6 +92,11 @@ export const soloLeg: GameDef = {
     }
 
     const legsGoal = Number(s.legs) > 0 ? Number(s.legs) : 0;
+    const shot = gameShotOf(
+      x.gameShot,
+      x.legs[x.legs.length - 1]?.checkout ?? 0,
+      x.gameShot?.last ? t("shot.lastLeg") : t("shot.nextLeg", { n: x.legs.length + 1 }),
+    );
     return {
       values: {
         average: avg,
@@ -93,6 +106,8 @@ export const soloLeg: GameDef = {
         bestLeg,
         checkoutRate,
         highestCheckout: highest,
+        bestLegAverage,
+        eighties: x.eighties,
         tons: x.tons,
         ton40s: x.ton40s,
         oneEighties: x.oneEighties,
@@ -100,26 +115,33 @@ export const soloLeg: GameDef = {
         dartsAtDouble: x.dartsAtDouble,
       },
       lines: [
-        { key: "average", label: t("solo.average"), value: num(avg, 1), hero: true },
+        { key: "average", label: t("solo.matchAverage"), value: num(avg, 1), hero: true },
+        { key: "legAverage", label: t("solo.legAverage"), value: legAvg === null ? t("game.noneYet") : num(legAvg, 1), liveOnly: true },
         { key: "first9", label: t("solo.first9"), value: x.darts ? num(first9, 1) : t("game.noneYet") },
         { key: "legs", label: t("solo.legs"), value: legsGoal ? t("game.xOfY", { n: won.length, total: legsGoal }) : String(won.length) },
         { key: "dartsPerLeg", label: t("solo.dartsPerLeg"), value: won.length ? num(dartsPerLeg, 1) : t("game.noneYet") },
         { key: "bestLeg", label: t("solo.bestLeg"), value: bestLeg ? String(bestLeg) : t("game.noneYet") },
         { key: "checkoutRate", label: t("solo.checkoutRate"), value: x.dartsAtDouble ? `${num(checkoutRate, 1)}%` : t("game.noneYet") },
         { key: "highestCheckout", label: t("121.best"), value: highest ? String(highest) : t("game.noneYet") },
-        { key: "tons", label: t("solo.tons"), value: String(x.tons) },
-        { key: "ton40s", label: t("solo.ton40s"), value: String(x.ton40s) },
-        { key: "oneEighties", label: "180", value: String(x.oneEighties) },
+        // Saved and in the result screen, but not on the panel while playing.
+        { key: "bestLegAverage", label: t("solo.bestLegAverage"), value: bestLegAverage ? num(bestLegAverage, 1) : t("game.noneYet"), live: false },
+        { key: "eighties", label: t("solo.eighties"), value: String(x.eighties), live: false },
+        { key: "tons", label: t("solo.tons"), value: String(x.tons), live: false },
+        { key: "ton40s", label: t("solo.ton40s"), value: String(x.ton40s), live: false },
+        { key: "oneEighties", label: "180", value: String(x.oneEighties), live: false },
       ],
-      focus: x.over
-        ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
-        : {
-            label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }),
-            value: String(x.rest),
-            hint: route.hint,
-          },
-      targets: x.over ? [] : route.targets,
+      focus: shot
+        ? shot.focus
+        : x.over
+          ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
+          : {
+              label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }),
+              value: String(x.rest),
+              hint: route.hint,
+            },
+      targets: x.over || shot ? [] : route.targets,
       noScore: x.noScore,
+      gameShot: shot?.gameShot,
       moments,
       done: x.over,
     };

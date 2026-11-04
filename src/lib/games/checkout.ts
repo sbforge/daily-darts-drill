@@ -37,6 +37,12 @@ export interface CheckoutState {
   noScore?: GameResult["noScore"];
   /** `next` said the game is over. */
   over: boolean;
+  /**
+   * The turn on the board checked out: the attempt is counted and `target` is already the next checkout, but it
+   * (or the end of the game) waits until the turn is closed by the takeout. `darts` is the checkout dart's place in
+   * the turn, `last` says the game ends then.
+   */
+  gameShot?: { turn: number; darts: number; last: boolean };
 }
 
 const isOut = (d: Dart) => d.kind === "double" || d.kind === "bull";
@@ -49,6 +55,7 @@ export function playAttempts(turns: Dart[][], open: boolean, cfg: CheckoutConfig
   let base = 0; // darts already used in this attempt (finished visits, three each)
   let openUsed = 0;
   let noScore: GameResult["noScore"];
+  let gameShot: CheckoutState["gameShot"];
   let over = false;
 
   const finishAttempt = (a: Attempt) => {
@@ -74,6 +81,7 @@ export function playAttempts(turns: Dart[][], open: boolean, cfg: CheckoutConfig
       if (rem === 0 && isOut(turn[i])) {
         ended = "out";
         outAt = base + i + 1;
+        if (open && ti === turns.length - 1) gameShot = { turn: ti, darts: i + 1, last: false };
       } else if (rem <= 1) {
         // Past the rest, a rest of 1, or 0 without a double: no double can finish from there.
         ended = "bust";
@@ -89,6 +97,10 @@ export function playAttempts(turns: Dart[][], open: boolean, cfg: CheckoutConfig
     if (ended === "bust" && ti === turns.length - 1) noScore = { turn: ti, darts: bustAt };
     if (ended === "out") {
       finishAttempt({ target, ok: true, dart: outAt, turn: ti });
+      if (gameShot) {
+        gameShot.last = over;
+        over = false;
+      }
     } else if (open && ended === "none" && ti === turns.length - 1) {
       openUsed = turn.length;
     } else {
@@ -97,5 +109,5 @@ export function playAttempts(turns: Dart[][], open: boolean, cfg: CheckoutConfig
     }
   }
 
-  return { attempts, target, remaining, used: over ? 0 : base + openUsed, noScore, over };
+  return { attempts, target, remaining, used: over || gameShot ? 0 : base + openUsed, noScore, over, gameShot };
 }

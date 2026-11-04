@@ -147,7 +147,9 @@ export const bullX: GameDef = {
     });
 
     const last = turns[turns.length - 1] ?? [];
-    const aim = nextAim(ctx.open ? last : [], variant, bullseyeOnly);
+    // With three darts on the board the next turn's bull only shows after the takeout: until then the third
+    // dart's target stays, so nothing jumps while the darts are still in the board.
+    const aim = nextAim(ctx.open ? (last.length >= 3 ? last.slice(0, 2) : last) : [], variant, bullseyeOnly);
     const firstRate = pct(firstBulls, played);
     const recoveryRate = pct(recoveries, recoveryDarts);
     const result: GameResult = {

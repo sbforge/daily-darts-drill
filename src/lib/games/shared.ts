@@ -1,7 +1,7 @@
 // Helpers used by more than one game.
 import type { Dart } from "../autodarts";
 import { t } from "../i18n/index.svelte";
-import type { BoardField, Moment } from "./types";
+import type { BoardField, GameResult, Moment } from "./types";
 
 /** A great turn, as the game defines it: a big stamp, below a 180 in the same turn. */
 export const great = (turn: number, text: string): Moment => ({
@@ -36,3 +36,19 @@ export const doubleField = (n: number): BoardField => (n === 25 ? { bed: "bull" 
 /** Both bulls: a dart in either counts. */
 export const anyBull: BoardField[] = [{ bed: "bull" }, { bed: "outerBull" }];
 
+
+/**
+ * A Game shot (see `GameResult.gameShot`): the focus shows what was checked out and what comes after the takeout.
+ * `shot` is the state of `playLegs` / `playAttempts`, `next` the line under it ("Leg 3 next", ...).
+ */
+export function gameShotOf(
+  shot: { turn: number; darts: number } | undefined,
+  checkout: number,
+  next: string,
+): { gameShot: NonNullable<GameResult["gameShot"]>; focus: NonNullable<GameResult["focus"]> } | null {
+  if (!shot) return null;
+  return {
+    gameShot: { turn: shot.turn, darts: shot.darts, next },
+    focus: { label: t("shot.title"), value: String(checkout), hint: next },
+  };
+}

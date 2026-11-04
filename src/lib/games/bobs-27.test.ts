@@ -54,4 +54,14 @@ describe("Bob's 27", () => {
   it("3 of 3 is a great turn", () => {
     expect(play("D1 D1 D1").moments).toHaveLength(1);
   });
+  it("saves the average score of the finished games only", () => {
+    const s = { ...bobs27.defaultSettings };
+    const miss = "miss miss miss";
+    // D1 missed: 27 - 2 = 25, nothing finished yet
+    expect(bobs27.compute(turns(miss), s, { open: false }).values.finishedScore).toBeUndefined();
+    // Missing everything goes below zero by D5 (27-2-4-6-8-10 < 0): a finished game
+    const out = bobs27.compute(turns(Array(5).fill(miss).join(" | ")), s, { open: false });
+    expect(out.done).toBe(true);
+    expect(out.values.finishedScore).toBe(-3);
+  });
 });

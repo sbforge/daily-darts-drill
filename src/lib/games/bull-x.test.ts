@@ -47,4 +47,10 @@ describe("Bull-X", () => {
     expect(strict.values.firstDartBullRate).toBe(0);
     expect(strict.values.bulls).toBe(2); // no segment: darts 2 and 3 go at the bull again
   });
+  it("with three darts on the board the next bull waits for the takeout", () => {
+    const onBoard = play("S14 miss miss", {}, true);
+    expect(onBoard.focus?.value).toBe("D14");
+    expect(onBoard.targets).toEqual([{ bed: "double", number: 14 }]);
+    expect(play("S14 miss miss").focus?.value).toBe("Bull");
+  });
 });

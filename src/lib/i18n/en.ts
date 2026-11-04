@@ -116,6 +116,10 @@ export const en = {
   "solo.describeLegs": "{n}, double out, {legs} legs",
   "solo.summary": "Average {average}, {legs} legs, {darts} darts per leg",
   "solo.average": "3-dart average",
+  "solo.matchAverage": "Match average",
+  "solo.legAverage": "Leg average",
+  "solo.bestLegAverage": "Best leg average",
+  "solo.eighties": "80+ visits",
   "solo.first9": "First 9 average",
   "solo.legs": "Legs",
   "solo.dartsPerLeg": "Darts per leg",
@@ -153,7 +157,6 @@ export const en = {
   "wild.summary": "{rate}% success ({checkouts} of {attempts})",
   "wild.checkout": "Checkout {n}",
   "wild.attempts": "Attempts",
-  "wild.dartsPerCheckout": "Darts per checkout",
   "wild.great": "Clean!",
   "bob.name": "Bob's 27",
   "bob.blurb": "Start with 27 points and go round the doubles, D1 to D20 and the bull, three darts at each. Every double you hit adds its value, hit it twice and it counts twice. Miss with all three darts and that double’s value comes off. At zero or below the game is over.",
@@ -466,6 +469,14 @@ export const en = {
   "run.noScore": "No Score",
   "run.time": "Time",
   "run.noScoreHint": "Bust: the turn does not count",
+  "shot.title": "Game shot!",
+  "shot.nextLeg": "Leg {n} next",
+  "shot.lastLeg": "Last leg",
+  "shot.next": "Next: {n}",
+  "shot.lastNumber": "Last number",
+  "shot.pull": "Pull your darts",
+  "shot.pulling": "Pulling the darts …",
+  "shot.lockedHint": "Game shot: darts don't count until the takeout",
   "summary.title": "Routine finished",
   "summary.noResult": "No result for this game.",
   "summary.saved": "Results are saved. See them under History.",
@@ -586,7 +597,7 @@ export const en = {
   "atc.rounds": "Rounds complete",
   "atc.progress": "Progress",
   "atc.complete": "Complete",
-  "atc.great": "3 in a row!",
+  "game.threeInARow": "3 in a row!",
   "atc.nextTarget": "Next target",
   "atc.nextTargetZone": "Next target, {zone}",
 
@@ -602,7 +613,7 @@ export const en = {
   // Plan B (was "Complex doubles"; the keys keep the old name)
   "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
-    "Check out the double over three darts. Single hits are subtracted and the next target follows from what is left. With an odd leave after dart 2, the bull is the target.",
+    "Check out the double over three darts. Hit it and the visit goes on at half of it: D20, then D10, then D5. A miss counts off what is left and the next target follows from it; an odd leave is set up, the third dart goes at the bull. A bust starts over at the double. Every dart has a target, so you never pull darts early.",
   "complexDoubles.classic": "Complex doubles",
   "complexDoubles.goal": "Teaches you to recover when the first dart misses: read the new leave and still check out with the darts left.",
   "complexDoubles.describe": "Target D{n}",
@@ -626,10 +637,6 @@ export const en = {
   "scoring.summary": "{average} three-dart average",
   "scoring.total": "Total score",
   "scoring.bestTurn": "Best turn",
-  "scoring.tonPlus": "Turns of 100+",
-  "scoring.triples": "Triples",
-  "scoring.bulls": "Bulls",
-  "scoring.misses": "Misses",
 
   // 121
   "121.blurb":

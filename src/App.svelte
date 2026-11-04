@@ -52,6 +52,7 @@
   import { Session } from "./lib/session.svelte";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
+  import GameShot from "./lib/GameShot.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
   import DpiChart from "./lib/DpiChart.svelte";
   import LoadingScreen from "./lib/LoadingScreen.svelte";
@@ -194,9 +195,19 @@
   const elapsed = $derived(Math.max(0, (paused ? pausedAt : now) - startsAt));
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
-  const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
-  // After a bust the turn is over: darts of the shown turn from here on don't count, its empty boxes are closed.
-  const bustAt = $derived(session && result?.noScore?.turn === session.shownTurn ? result.noScore.darts : 3);
+  const others = $derived(result?.lines.filter((l) => !l.hero && l.live !== false && !l.grid) ?? []);
+  const gridLines = $derived(result?.lines.filter((l) => l.grid && l.live !== false) ?? []);
+  // After a bust or a checkout (Game shot) the turn is over: darts of the shown turn from here on don't count,
+  // its empty boxes are closed.
+  const shot = $derived(session && result?.gameShot?.turn === session.shownTurn ? result.gameShot : null);
+  const bustAt = $derived(
+    shot ? shot.darts : session && result?.noScore?.turn === session.shownTurn ? result.noScore.darts : 3,
+  );
+  const closedHint = $derived(shot ? t("shot.lockedHint") : t("run.noScoreHint"));
+  // The game's own moment of the checkout ("Ton out!") is shown on the Game shot overlay instead of a stamp.
+  const shotMoment = $derived(
+    shot && session && result ? (pickMoments(result, session.allTurns).play.find((m) => m.turn === shot.turn)?.text ?? "") : "",
+  );
   const canStart = $derived(!!def && (detecting || !def.needsDarts));
   // A game with darts can't go on without the detection, so it waits paused until Autodarts is back.
   const waiting = $derived(phase === "running" && !!def?.needsDarts && !detecting);
@@ -362,7 +373,7 @@
       early,
       completed: res.done,
       hasResult: def.hasResult,
-      lines: res.lines,
+      lines: res.lines.filter((l) => !l.liveOnly),
       settings,
       values: res.values,
       startedAt: gameStartedAt,
@@ -723,8 +734,14 @@
     if (phase !== "running" || !session || !result) return;
     const game = gameStartedAt;
     const { play, skip } = pickMoments(result, session.allTurns);
+    const shotTurn = result.gameShot?.turn;
     for (const m of skip) fx.skip(`${game}:${m.key}`);
     for (const m of play) {
+      // A checkout's moment is on the Game shot overlay; it isn't stamped later either.
+      if (m.turn === shotTurn) {
+        fx.skip(`${game}:${m.key}`);
+        continue;
+      }
       fx.play(m.effect, { text: m.text, tone: m.tone, size: "big", key: `${game}:${m.key}`, priority: m.priority });
     }
   });
@@ -1938,6 +1955,13 @@
             {/each}
           </dl>
         {/if}
+        {#if gridLines.length}
+          <dl class="stats stats-grid">
+            {#each gridLines as l (l.key)}
+              <div class:wide={l.grid === "wide"}><dt>{l.label}</dt><dd>{l.value}</dd></div>
+            {/each}
+          </dl>
+        {/if}
       </div>
 
       <div class="views">
@@ -1980,7 +2004,7 @@
                 onclick={() => session?.toggleEdit(i)}
               >{dartLabel(d)}</button>
             {:else}
-              <div class="dart-box" class:closed={i >= bustAt} title={i >= bustAt ? t("run.noScoreHint") : undefined}>{i >= bustAt ? "✕" : "–"}</div>
+              <div class="dart-box" class:closed={i >= bustAt} title={i >= bustAt ? closedHint : undefined}>{i >= bustAt ? "✕" : "–"}</div>
             {/if}
           {/each}
         </div>
@@ -1995,6 +2019,9 @@
             picking={session.edit !== null || (!paused && session.canAdd)}
             onpick={(d) => (session?.edit !== null ? session?.correct(d) : !paused && session?.add(d))}
           />
+          {#if shot}
+            <GameShot next={shot.next} moment={shotMoment} pulling={throwPhase === "takeoutInProgress"} />
+          {/if}
         </div>
       </div>
 
@@ -2706,6 +2733,9 @@
   .stats { margin: 0; border-top: 1px solid var(--line); }
   .stage .stats { width: min(100%, 24rem); text-align: left; }
   .stats div { display: flex; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
+  /* Small counts side by side (Ton Machine's visit bands), the wide one across both columns. */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 1.5rem; border-top: 0; }
+  .stats-grid div.wide { grid-column: 1 / -1; }
   dt { color: var(--dim); }
   dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 
@@ -2876,6 +2906,7 @@
 
   .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
   .board, .darts { max-width: 400px; width: 100%; }
+  .board { position: relative; }
   .darts { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
   /* Beside the boxes, so they stay lined up with the board. */
   .darts .next-turn {

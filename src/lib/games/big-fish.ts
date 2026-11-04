@@ -1,7 +1,7 @@
 import { num, t } from "../i18n/index.svelte";
 import { routeFocus } from "./route-focus";
 import { legsField } from "./solo-leg";
-import { great, opt } from "./shared";
+import { gameShotOf, great, opt } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
 
@@ -63,6 +63,11 @@ export const bigFish: GameDef = {
       else if (l.darts <= 6) moments.push(great(l.turn, t("fish.quick")));
     }
 
+    const shot = gameShotOf(
+      x.gameShot,
+      START,
+      x.gameShot?.last ? t("shot.lastLeg") : t("shot.nextLeg", { n: x.legs.length + 1 }),
+    );
     return {
       values: { legs: x.legs.length, checkouts: won.length, darts, dartsPerLeg, bestLeg, bigFish, average: avg },
       lines: [
@@ -72,11 +77,14 @@ export const bigFish: GameDef = {
         { key: "bigFish", label: t("fish.bigFish"), value: String(bigFish) },
         { key: "average", label: t("solo.average"), value: x.darts ? num(avg, 1) : t("game.noneYet") },
       ],
-      focus: x.over
-        ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
-        : { label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }), value: String(x.rest), hint: route.hint },
-      targets: x.over ? [] : route.targets,
+      focus: shot
+        ? shot.focus
+        : x.over
+          ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
+          : { label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }), value: String(x.rest), hint: route.hint },
+      targets: x.over || shot ? [] : route.targets,
       noScore: x.noScore,
+      gameShot: shot?.gameShot,
       moments,
       done: x.over,
     };
