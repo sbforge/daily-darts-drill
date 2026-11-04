@@ -1238,7 +1238,7 @@
     aria-current={view === "settings" ? "page" : undefined}
     onclick={() => go("settings")}
   >
-    {#if updateAvailable()}<span class="badge" aria-label={t("updates.badge")}></span>{/if}
+    {#if updateAvailable()}<span class="update-dot" aria-label={t("updates.badge")}></span>{/if}
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path
         fill="currentColor"
@@ -2753,7 +2753,8 @@
     .summary-split.single { grid-template-columns: minmax(0, 46rem); }
   }
 
-  .badge { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  /* The dot on the settings icon when an update is ready. Not ".badge": that is the pill used in History. */
+  .update-dot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
   button.icon { position: relative; }
   .banner.ok { background: #1f4a2c; color: #d8f5e0; }
   .notes { white-space: pre-wrap; font: inherit; font-size: 0.85rem; max-height: 10rem; overflow: auto; background: var(--panel); padding: 0.6rem; border-radius: 6px; }
