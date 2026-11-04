@@ -8,6 +8,8 @@ export interface Leg {
   darts: number;
   /** Checked out, or given up on. */
   ok: boolean;
+  /** Points scored in the leg (busts count nothing). */
+  points: number;
   /** Points scored in the leg's first nine darts, and how many darts that covers. */
   first9: number;
   first9Darts: number;
@@ -30,12 +32,14 @@ export interface X01State {
   /** Points and darts of the leg being played that count for the first-nine average. */
   first9: number;
   first9Darts: number;
-  /** Darts thrown in the leg being played, the turn on the board included. */
+  /** Darts thrown in the leg being played, the turn on the board included, and the points they scored. */
   legDarts: number;
+  legPoints: number;
   /** Over all legs, the one being played included. */
   points: number;
   darts: number;
-  /** Visits of 100-139, 140-179 and 180. */
+  /** Visits of 80-99, 100-139, 140-179 and 180. */
+  eighties: number;
   tons: number;
   ton40s: number;
   oneEighties: number;
@@ -58,13 +62,15 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
   let rest = cfg.start;
   let legDarts = 0;
   let first9 = 0;
-  const s: X01State = { legs, rest, first9: 0, first9Darts: 0, legDarts: 0, points: 0, darts: 0, tons: 0, ton40s: 0, oneEighties: 0, dartsAtDouble: 0, over: false };
+  let legPoints = 0;
+  const s: X01State = { legs, rest, first9: 0, first9Darts: 0, legDarts: 0, legPoints: 0, points: 0, darts: 0, eighties: 0, tons: 0, ton40s: 0, oneEighties: 0, dartsAtDouble: 0, over: false };
 
   const endLeg = (ok: boolean, darts: number, checkout: number, turn: number) => {
-    legs.push({ darts, ok, first9, first9Darts: Math.min(darts, 9), checkout, turn });
+    legs.push({ darts, ok, points: legPoints, first9, first9Darts: Math.min(darts, 9), checkout, turn });
     rest = cfg.start;
     legDarts = 0;
     first9 = 0;
+    legPoints = 0;
     if (cfg.legs > 0 && legs.length >= cfg.legs) s.over = true;
   };
 
@@ -116,9 +122,11 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
       if (ti === turns.length - 1) s.noScore = { turn: ti, darts: bustAt };
     }
     first9 += visit9;
+    legPoints += visit;
     if (visit >= 180) s.oneEighties++;
     else if (visit >= 140) s.ton40s++;
     else if (visit >= 100) s.tons++;
+    else if (visit >= 80) s.eighties++;
 
     if (ended === "out") {
       endLeg(true, legDarts, turnStart, ti);
@@ -141,6 +149,7 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
   s.rest = rest;
   s.legDarts = s.over ? 0 : legDarts;
   s.first9 = s.over ? 0 : first9;
+  s.legPoints = s.over ? 0 : legPoints;
   s.first9Darts = Math.min(s.legDarts, 9);
   return s;
 }

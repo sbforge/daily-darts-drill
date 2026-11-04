@@ -22,6 +22,10 @@ export interface StatLine {
   hero?: boolean;
   /** The stored value this line shows, to compare it with earlier results. Defaults to `key`. */
   stored?: string;
+  /** false: left out of the panel while playing, only in the result screen (and saved). */
+  live?: false;
+  /** true: only on the panel while playing, not in the result screen (e.g. the average of the leg being played). */
+  liveOnly?: true;
 }
 
 /** A field of the board. Segment fields have a number; the bulls have none. */

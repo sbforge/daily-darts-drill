@@ -195,7 +195,7 @@
   const elapsed = $derived(Math.max(0, (paused ? pausedAt : now) - startsAt));
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
-  const others = $derived(result?.lines.filter((l) => !l.hero) ?? []);
+  const others = $derived(result?.lines.filter((l) => !l.hero && l.live !== false) ?? []);
   // After a bust or a checkout (Game shot) the turn is over: darts of the shown turn from here on don't count,
   // its empty boxes are closed.
   const shot = $derived(session && result?.gameShot?.turn === session.shownTurn ? result.gameShot : null);
@@ -372,7 +372,7 @@
       early,
       completed: res.done,
       hasResult: def.hasResult,
-      lines: res.lines,
+      lines: res.lines.filter((l) => !l.liveOnly),
       settings,
       values: res.values,
       startedAt: gameStartedAt,
