@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "tauri": "tauri",
     "version": "node scripts/sync-version.js && git add src-tauri/Cargo.toml src-tauri/Cargo.lock",
-    "check:version": "node scripts/sync-version.js --check"
+    "check:version": "node scripts/sync-version.js --check",
+    "release-notes": "node scripts/release-notes.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",

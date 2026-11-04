@@ -21,6 +21,8 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/sync-version.js --check --tag "${{ github.ref_name }}"
+      # No release without its notes: CHANGELOG.md needs a section for this version.
+      - run: node scripts/release-notes.js "${{ github.ref_name }}" > /dev/null
 
   # One draft for the tag, made before the builds: when every build job looked for the draft itself, two jobs
   # could each create one (a draft can't be found by its tag), and the installers ended up split between them.
@@ -32,18 +34,26 @@ jobs:
     outputs:
       id: ${{ steps.draft.outputs.id }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - id: draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
-          # A re-run reuses the draft of the first run.
+          # The notes of this version from CHANGELOG.md: the release text, and through latest.json what the app shows.
+          node scripts/release-notes.js "$TAG" > notes.md
+          # A re-run reuses the draft of the first run (and refreshes its notes).
           id=$(gh api "repos/$REPO/releases?per_page=100" --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -n 1)
-          if [ -z "$id" ]; then
+          if [ -n "$id" ]; then
+            gh api "repos/$REPO/releases/$id" -X PATCH -F body=@notes.md > /dev/null
+          else
             # v1.1.0-beta.1 and the like are pre-releases: "latest" ignores them, so no player is offered them.
             pre=false; case "$TAG" in *-*) pre=true;; esac
-            id=$(gh api "repos/$REPO/releases" -X POST -f tag_name="$TAG" -f name="D³ $TAG" -F draft=true -F prerelease=$pre --jq .id)
+            id=$(gh api "repos/$REPO/releases" -X POST -f tag_name="$TAG" -f name="D³ $TAG" -F draft=true -F prerelease=$pre -F body=@notes.md --jq .id)
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
 

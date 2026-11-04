@@ -403,14 +403,10 @@
     if (recordGame(early)) nextGame();
   }
 
-  /** A routine stopped mid-game keeps that game when it was played long enough to say something. */
+  /** A routine stopped mid-game keeps that game when it had at least this many darts: shorter says too little. */
   const STOP_KEEPS_DARTS = 30;
-  const STOP_KEEPS_MS = 3 * 60_000;
   const stoppedGameCounts = $derived(
-    phase === "running" &&
-      !!session &&
-      !!def?.hasResult &&
-      (session.allTurns.flat().length >= STOP_KEEPS_DARTS || elapsed >= STOP_KEEPS_MS),
+    phase === "running" && !!session && !!def?.hasResult && session.allTurns.flat().length >= STOP_KEEPS_DARTS,
   );
 
   /** Saves the game in play as a result of the run. Returns false when there is no game to save. */
@@ -585,7 +581,7 @@
 
   /**
    * Stops the routine at any point. It is recorded as stopped and keeps the games finished so far;
-   * the game in play too, when it had 30 darts or 3 minutes; otherwise it is dropped.
+   * the game in play too, when it had 30 darts; otherwise it is dropped.
    * A quick game is stopped instead: a game in play ends and its result is kept, so it needs no
    * second click. Before its game started there is nothing to keep and nothing is recorded.
    */
