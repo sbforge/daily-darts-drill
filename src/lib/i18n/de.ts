@@ -377,10 +377,6 @@ export const de: Record<Key, string> = {
   "board.aria": "Dartscheibe mit deinen geworfenen Darts",
 
   // shared game texts
-  "game.showRoute": "Weg anzeigen",
-  "game.showRouteInfo": "Zeigt den üblichen Drei-Dart-Weg unter dem Rest und leuchtet das erste Feld auf dem Board auf. Schalte es aus, um den Finish selbst zu finden.",
-  "game.showRouteOn": "Weg wird gezeigt",
-  "game.showRouteOff": "Weg ist versteckt",
   "game.noResult": "Kein Ergebnis",
   "game.accuracy": "Trefferquote",
   "game.dartsThrown": "Geworfene Darts",
