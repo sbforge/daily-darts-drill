@@ -50,6 +50,7 @@ export const bobs27: GameDef = {
     let idx = 0; // the target of the next turn
     let games = 0;
     let best = 0;
+    let finishedSum = 0; // scores of the finished games
     let darts = 0;
     let hits = 0;
     let played = 0; // turns over all games
@@ -72,6 +73,7 @@ export const bobs27: GameDef = {
       const ended = idx >= TARGETS || (score <= 0 && !playOn);
       if (!ended) continue;
       games++;
+      finishedSum += score;
       best = Math.max(best, score);
       if (score > START) moments.push(great(ti, t("bob.survived")));
       if (ctx.repeat) {
@@ -85,7 +87,18 @@ export const bobs27: GameDef = {
     const shownScore = over || games ? score : score;
     const current = Math.min(idx, TARGETS - 1);
     return {
-      values: { score: shownScore, reached, darts, hits, hitRate: rate, games, bestScore: Math.max(best, shownScore), targets: played },
+      values: {
+        score: shownScore,
+        reached,
+        darts,
+        hits,
+        hitRate: rate,
+        games,
+        bestScore: Math.max(best, shownScore),
+        targets: played,
+        // The average score of the finished games, for the index; left out while none is finished.
+        ...(games ? { finishedScore: finishedSum / games } : {}),
+      },
       lines: [
         { key: "score", label: t("bob.score"), value: String(shownScore), hero: true },
         { key: "reached", label: t("bob.reached"), value: t("game.xOfY", { n: over ? Math.min(idx, TARGETS) : idx, total: TARGETS }) },
