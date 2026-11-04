@@ -482,10 +482,6 @@ export const en = {
   "board.aria": "Dartboard with the darts you have thrown",
 
   // shared game texts
-  "game.showRoute": "Show route",
-  "game.showRouteInfo": "Shows the usual three-dart route under the rest and lights the first field on the board. Switch it off to work out the finish yourself.",
-  "game.showRouteOn": "Route shown",
-  "game.showRouteOff": "Route hidden",
   "game.noResult": "No result",
   "game.accuracy": "Accuracy",
   "game.dartsThrown": "Darts thrown",
