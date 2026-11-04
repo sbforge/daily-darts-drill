@@ -90,6 +90,18 @@ fn clear_export_target(path: String) -> Result<(), String> {
 /// Where D³ runs from decides whether it can replace itself: macOS runs an app opened from a disk image (or the
 /// Downloads folder, "App Translocation") from a read-only place, a `.deb` install on Linux is updated by hand.
 /// Returns `null` when updating in place works, else the reason: `"macos-not-installed"` or `"linux-package"`.
+/// Removes the "running" marker right before an update closes the app, and puts it back if the update failed.
+#[tauri::command]
+fn set_running_marker(app: tauri::AppHandle, running: bool) -> Result<(), String> {
+    let marker = app.path().app_log_dir().map_err(|e| e.to_string())?.join("running");
+    if running {
+        std::fs::write(&marker, "").map_err(|e| e.to_string())
+    } else {
+        let _ = std::fs::remove_file(&marker);
+        Ok(())
+    }
+}
+
 #[tauri::command]
 fn update_blocker() -> Option<&'static str> {
     let exe = std::env::current_exe().ok()?.to_string_lossy().to_string();
@@ -224,7 +236,10 @@ fn main() {
             let mut startup = Startup::default();
             // A marker for "the app is running": a clean exit removes it, so finding it means the last run crashed.
             let marker = app.path().app_log_dir()?.join("running");
-            startup.crashed_last_time = marker.exists();
+            // An update closes the app however its installer likes (the Windows installer just ends it), so the
+            // first start of a new version never counts the last run as a crash.
+            let updated = backup::last_version(&config).is_some_and(|v| v != env!("CARGO_PKG_VERSION"));
+            startup.crashed_last_time = marker.exists() && !updated;
             if startup.crashed_last_time {
                 log::warn!("the last run did not close normally");
             }
@@ -281,6 +296,7 @@ fn main() {
             save_crash_report,
             clear_export_target,
             update_blocker,
+            set_running_marker,
             prepare_update_backup
         ])
         .build(tauri::generate_context!())

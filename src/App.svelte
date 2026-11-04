@@ -57,6 +57,7 @@
   import DpiChart from "./lib/DpiChart.svelte";
   import LoadingScreen from "./lib/LoadingScreen.svelte";
   import SbomDialog from "./lib/SbomDialog.svelte";
+  import LogDialog from "./lib/LogDialog.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
@@ -94,6 +95,7 @@
   let lastBackupAt = $state<string | null>(null);
   // The last run didn't close normally (the Rust side left its "running" marker behind).
   let closedBadly = $state(false);
+  let logDialog = $state<LogDialog>();
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
@@ -1302,12 +1304,18 @@
   </p>
 {/if}
 {#if closedBadly}
-  <p class="banner" role="alert">
-    {t("crash.closedBadly")}
+  <div class="banner closed-badly" role="alert">
+    <span>{t("crash.closedBadly")}</span>
+    <button class="link" onclick={() => logDialog?.open()}>{t("log.show")}</button>
     <button class="link" onclick={() => openFolder("logs")}>{t("about.openLogs")}</button>
-    <button class="link" onclick={() => (closedBadly = false)}>{t("crash.dismiss")}</button>
-  </p>
+    <button class="icon dismiss" onclick={() => (closedBadly = false)} title={t("crash.dismiss")} aria-label={t("crash.dismiss")}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L12.59 13.4 6.3 19.71 4.89 18.3 11.17 12 4.89 5.71 6.3 4.29l6.29 6.3 6.3-6.3z" />
+      </svg>
+    </button>
+  </div>
 {/if}
+<LogDialog bind:this={logDialog} />
 
 <CrashToasts />
 
@@ -2784,6 +2792,10 @@
   .notes { white-space: pre-wrap; font: inherit; font-size: 0.85rem; max-height: 10rem; overflow: auto; background: var(--panel); padding: 0.6rem; border-radius: 6px; }
   progress { width: 100%; }
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
+  .closed-badly { display: flex; align-items: center; gap: 0.5rem 1.25rem; flex-wrap: wrap; padding-right: 0.75rem; }
+  .closed-badly span { flex: 1 1 18rem; }
+  .closed-badly .dismiss { display: grid; place-items: center; padding: 0.3rem; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
+  .closed-badly .dismiss:hover { background: rgb(255 255 255 / 0.12); }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
   .narrow { max-width: 34rem; }
   .about-hero { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
