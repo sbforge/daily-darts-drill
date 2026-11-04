@@ -1,6 +1,6 @@
 import { t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
-import { routeFocus, showRouteField } from "./route-focus";
+import { routeFocus } from "./route-focus";
 import { great } from "./shared";
 import type { GameDef } from "./types";
 
@@ -33,8 +33,8 @@ export const catch40: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { showRoute: "on" },
-  fields: [showRouteField],
+  defaultSettings: {},
+  fields: [],
   describe: () => t("catch40.describe"),
   summary: (v) => t("catch40.summary", { points: v.points, numbers: v.numbers, checkouts: v.checkouts }),
   compute(turns, s, ctx) {
