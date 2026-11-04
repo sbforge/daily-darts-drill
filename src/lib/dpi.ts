@@ -90,7 +90,7 @@ export function withSample(n: number, config = DPI_CONFIG): IndexConfig {
 
 /** The index config. Changing a baseline, target or weight means a new version: the whole history is recalculated with it. */
 export const DPI_CONFIG: IndexConfig = {
-  version: 1,
+  version: 2,
   games: [
     {
       gameId: "scoring",
@@ -101,7 +101,8 @@ export const DPI_CONFIG: IndexConfig = {
     {
       gameId: "simple-doubles",
       area: "doubles",
-      metrics: [higher("accuracy", 5, 40)],
+      // 50 % on one double is tough on purpose: 100 points should stay out of reach for a while.
+      metrics: [higher("accuracy", 5, 50)],
       sample: { keys: ["darts"], min: 15 },
     },
     {
@@ -156,8 +157,9 @@ export const DPI_CONFIG: IndexConfig = {
     {
       gameId: "bobs-27",
       area: "doubles",
-      // The score is shown and charted but not part of the index: it depends on how far you get.
-      metrics: [higher("hitRate", 5, 35)],
+      // Hit rate on the doubles, plus the score of the finished games: 862 is 60 % of the maximum 1437
+      // (27 + 3 hits on D1-D20 + 3 bulls). A game cut off by the clock has no finished score; then the hit rate counts alone.
+      metrics: [higher("hitRate", 5, 50, 0.7), higher("finishedScore", 0, 862, 0.3)],
       sample: { keys: ["targets"], min: 5 },
     },
     {
@@ -178,15 +180,16 @@ export const DPI_CONFIG: IndexConfig = {
     {
       gameId: "around-the-clock",
       area: "accuracy",
-      metrics: [higher("accuracy", 20, 60)],
-      // The rings differ a lot in size, so each has its own scale.
+      metrics: [higher("accuracy", 20, 80)],
+      // The rings differ a lot in size, so each has its own scale. The baselines are the "luck" level, the
+      // targets tough on purpose (version 2): 100 points should stay out of reach for a while.
       bySetting: {
         key: "zone",
         metrics: {
-          innerSingle: [higher("accuracy", 20, 60)],
-          outerSingle: [higher("accuracy", 15, 50)],
-          triple: [higher("accuracy", 5, 35)],
-          double: [higher("accuracy", 5, 35)],
+          innerSingle: [higher("accuracy", 20, 80)],
+          outerSingle: [higher("accuracy", 15, 80)],
+          triple: [higher("accuracy", 5, 50)],
+          double: [higher("accuracy", 5, 50)],
         },
       },
       sample: { keys: ["darts"], min: 15 },
@@ -248,7 +251,11 @@ export function metricScores(
   const g = gameConfig(gameId, config);
   if (!g) return null;
   const sample = g.sample.keys.reduce((s, k) => s + (Number(values[k]) || 0), 0);
-  const metrics = (g.bySetting && g.bySetting.metrics[settingKey(g.bySetting.key, settings)]) ?? g.metrics;
+  // A metric the result has no value for (an older result, a game without a finished score) is left out,
+  // and the other weights are scaled up, instead of counting as 0.
+  const metrics = ((g.bySetting && g.bySetting.metrics[settingKey(g.bySetting.key, settings)]) ?? g.metrics).filter(
+    (m) => values[m.key] !== undefined && values[m.key] !== null,
+  );
   const total = metrics.reduce((s, m) => s + m.weight, 0) || 1;
   return {
     counts: sample >= g.sample.min,

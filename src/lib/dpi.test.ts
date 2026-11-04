@@ -28,9 +28,18 @@ describe("game index", () => {
     expect(gameIndex("scoring", {}, { average: 80, darts: 30 })).toBe(100);
   });
   it("Around the clock has a scale per ring", () => {
-    const v = { accuracy: 35, darts: 30 };
+    const v = { accuracy: 50, darts: 30 };
     expect(gameIndex("around-the-clock", { zone: "triple" }, v)).toBe(100);
     expect(gameIndex("around-the-clock", { zone: "innerSingle" }, v)!).toBeLessThan(100);
+  });
+  it("Clockwork doubles: 25 % is 44 points (baseline 5, target 50)", () => {
+    expect(gameIndex("around-the-clock", { zone: "double" }, { accuracy: 25, darts: 30 })).toBeCloseTo((20 / 45) * 100);
+  });
+  it("Bob's 27: hit rate 70 %, finished score 30 %; without a finished game the hit rate counts alone", () => {
+    const v = { hitRate: 50, targets: 21 };
+    expect(gameIndex("bobs-27", {}, { ...v, finishedScore: 862 })).toBeCloseTo(100);
+    expect(gameIndex("bobs-27", {}, { ...v, finishedScore: 0 })).toBeCloseTo(70);
+    expect(gameIndex("bobs-27", {}, v)).toBeCloseTo(100);
   });
   it("the warm-up has no index", () => {
     expect(hasIndex("warm-up")).toBe(false);
