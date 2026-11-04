@@ -206,6 +206,9 @@
     shot ? shot.darts : session && result?.noScore?.turn === session.shownTurn ? result.noScore.darts : 3,
   );
   const closedHint = $derived(shot ? t("shot.lockedHint") : t("run.noScoreHint"));
+  // Autodarts keeps detecting after a bust or a checkout (that can't be stopped), but those darts are neither
+  // counted nor shown: the boxes after it stay closed and the board doesn't draw them.
+  const shownDarts = $derived(session ? session.shown.slice(0, bustAt) : []);
   // The game's own moment of the checkout ("Ton out!") is shown on the Game shot overlay instead of a stamp.
   const shotMoment = $derived(
     shot && session && result ? (pickMoments(result, session.allTurns).play.find((m) => m.turn === shot.turn)?.text ?? "") : "",
@@ -2000,11 +2003,10 @@
             </button>
           {/if}
           {#each [0, 1, 2] as i (i)}
-            {@const d = session.shown[i]}
+            {@const d = shownDarts[i]}
             {#if d}
               <button
                 class="dart-box filled"
-                class:void={i >= bustAt}
                 class:editing={session.edit === i}
                 class:fixed={d.method === "manual"}
                 aria-pressed={session.edit === i}
@@ -2022,7 +2024,7 @@
         <div class="board" bind:this={boardEl}>
           <Board
             turns={session.allTurns.filter((_, k) => k !== session?.shownTurn)}
-            current={session.shown}
+            current={shownDarts}
             targets={result.targets}
             picking={session.edit !== null || (!paused && session.canAdd)}
             onpick={(d) => (session?.edit !== null ? session?.correct(d) : !paused && session?.add(d))}
@@ -2979,7 +2981,6 @@
     background: var(--accent);
   }
   /* Thrown after a bust, or never to be thrown: the turn is over. */
-  .dart-box.void:not(.editing) { color: var(--dim); border-color: var(--line); border-style: dashed; text-decoration: line-through; }
   .dart-box.closed { color: #ff6b5b; opacity: 0.55; border-style: dashed; font-size: 1.2rem; }
   .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
   .pick-hint { max-width: 400px; width: 100%; height: 1.4em; line-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
