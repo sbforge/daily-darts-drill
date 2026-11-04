@@ -200,6 +200,8 @@ Branches: `feature/game-shot`, `feature/solo-leg-averages`, `feature/ton-machine
 - ⚪ The banner closes with ×, "Show log" shows the last 300 lines of `d3.log` in the app (with "Copy log").
 - ⚪ After a bust or a Game shot, darts Autodarts still detects are not shown: the boxes stay closed (✕), the board
   doesn't draw them. Earlier turns on the board still show all their darts.
+- ⚪ "Export my data" and "Update now" are locked only while a game, countdown or break runs; the summary of a
+  stopped or finished routine no longer locks them.
 
 ## Real-world test list (before tagging 1.0.0)
 
@@ -227,4 +229,5 @@ Branches: `feature/game-shot`, `feature/solo-leg-averages`, `feature/ton-machine
     until the takeout, Wild Card without darts per checkout, the DPI chart after the recalculation.
 14. 0.9.2 over 0.9.1 by OTA: one draft with all files, no "closed unexpectedly" after the update.
 15. Bust and Game shot: a dart thrown after them doesn't appear in the boxes or on the board.
+16. Stop a routine, stay on its summary, go to Settings: "Export my data" works and writes the file.
 
