@@ -2,7 +2,7 @@ import { num, t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
 import { checkoutsIn } from "./routes";
-import { gameShotOf, great, opt, pct } from "./shared";
+import { gameShotOf, great, opt, pct, instantCountField, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 
 export const RANGES = {
@@ -66,7 +66,7 @@ export const wildCard: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { range: "61-100", darts: 6 },
+  defaultSettings: { range: "61-100", darts: 6, instantCount: "off" },
   fields: [
     {
       key: "range",
@@ -90,6 +90,7 @@ export const wildCard: GameDef = {
       kind: "select",
       options: DARTS.map((n) => opt(n, () => String(n))),
     },
+    instantCountField,
   ],
   // The order of checkouts is drawn from a seed the app sets when the game starts, so replays agree.
   prepare: (s) => ({ ...s, seed: Math.floor(Math.random() * 2 ** 31) }),
@@ -124,7 +125,7 @@ export const wildCard: GameDef = {
         { key: "attempts", label: t("wild.attempts"), value: String(attempts) },
         { key: "highest", stored: "highestCheckout", label: t("121.best"), value: highest ? String(highest) : t("game.noneYet") },
       ],
-      focus: shot ? shot.focus : { label: t("wild.checkout", { n: state.target }), value: String(state.remaining), hint: route.hint },
+      focus: shot ? shot.focus : { label: t("wild.checkout", { n: state.target }), value: String(shownRest(s, state.remaining, state.remainingAtVisit)), hint: route.hint },
       targets: shot ? [] : route.targets,
       gameShot: shot?.gameShot,
       darts: { label: t("121.dartsLeftN", { n: Math.max(0, darts - state.used) }), total: darts, used: state.used, group: 3 },

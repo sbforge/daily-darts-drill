@@ -18,6 +18,11 @@ describe("Solo Leg", () => {
     expect(r.focus?.value).toBe("441");
     expect(r.focus?.label).toContain("2");
   });
+  it("the rest changes after the visit, or after every dart when counting instantly", () => {
+    expect(play("T20 T20 T20 | T20 T20", {}, true).focus?.value).toBe("321"); // 501 - 180 so far
+    expect(play("T20 T20 T20 | T20 T20", { instantCount: "on" }, true).focus?.value).toBe("201");
+    expect(play("T20 T20 T20 | T20 T20 T20", {}, true).focus?.value).toBe("141"); // the visit is full
+  });
   it("a bust is no score, uses three darts and sets the rest back", () => {
     const r = play("T20 T20 T20 | T20 T20 T20 | T20 T20 T20 | T20");
     // 501-360 = 141, T20 T20 T20 busts (past the rest after two), rest stays 141

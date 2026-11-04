@@ -668,6 +668,8 @@ export const en = {
   "121.name": "Checkout Ladder",
   "121.start": "Starting checkout",
   "121.startInfo": "The checkout the game starts with (2-170). From there it goes up with every checkout and down with every miss, but never below the start. The usual start is 121.",
+  "game.instantCount": "Count darts instantly",
+  "game.instantCountInfo": "Off (default): the rest changes when the visit is over, after the third dart, as in a match where you do the sums yourself. On: every dart is taken off at once.",
   "121.fastForward": "Fast-forward",
   "121.fastForwardInfo": "Rewards a quick checkout. With darts 1-3 the next checkout is 3 higher, with darts 4-6 2 higher, with darts 7-9 1 higher. When it is off, every checkout raises the next one by 1.",
   "121.fastForwardOn": "Fast-forward on",

@@ -1,7 +1,7 @@
 // Helpers used by more than one game.
 import type { Dart } from "../autodarts";
 import { t } from "../i18n/index.svelte";
-import type { BoardField, GameResult, Moment } from "./types";
+import type { BoardField, Field, GameResult, Moment, Settings } from "./types";
 
 /** A great turn, as the game defines it: a big stamp, below a 180 in the same turn. */
 export const great = (turn: number, text: string): Moment => ({
@@ -14,7 +14,24 @@ export const great = (turn: number, text: string): Moment => ({
 });
 
 /** Settings set by the app, not by the player: results with different ones still compare. */
-export const NON_COMPARABLE = ["seed"];
+export const NON_COMPARABLE = ["seed", "instantCount"];
+
+/**
+ * "Count darts instantly": the games that count a rest down take off a dart's score at once when it is on. Off (the
+ * default) the rest changes only when the visit is over, as in a match where you do the sums yourself.
+ */
+export const instantCountField: Field = {
+  key: "instantCount",
+  get label() {
+    return t("game.instantCount");
+  },
+  get info() {
+    return t("game.instantCountInfo");
+  },
+  kind: "checkbox",
+};
+/** The rest to show: after every dart when counting instantly, else as it was when the visit began. */
+export const shownRest = (s: Settings, live: number, atVisit: number) => (s.instantCount === "on" ? live : atVisit);
 
 export const pct = (hits: number, total: number) => (total ? (hits / total) * 100 : 0);
 export const sum = (darts: Dart[]) => darts.reduce((s, d) => s + d.score, 0);
