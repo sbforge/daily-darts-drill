@@ -392,7 +392,22 @@
   }
 
   function finish(early: boolean) {
-    if (phase !== "running" || !session || !run || !item || !def) return;
+    if (recordGame(early)) nextGame();
+  }
+
+  /** A routine stopped mid-game keeps that game when it was played long enough to say something. */
+  const STOP_KEEPS_DARTS = 30;
+  const STOP_KEEPS_MS = 3 * 60_000;
+  const stoppedGameCounts = $derived(
+    phase === "running" &&
+      !!session &&
+      !!def?.hasResult &&
+      (session.allTurns.flat().length >= STOP_KEEPS_DARTS || elapsed >= STOP_KEEPS_MS),
+  );
+
+  /** Saves the game in play as a result of the run. Returns false when there is no game to save. */
+  function recordGame(early: boolean): boolean {
+    if (phase !== "running" || !session || !run || !item || !def) return false;
     const res = session.result;
     const turns = $state.snapshot(session.allTurns);
     const settings = $state.snapshot(session.settings);
@@ -432,7 +447,7 @@
         turns,
       }).then(refreshHistory, failed);
     }
-    nextGame();
+    return true;
   }
 
   function sessionInfo(r: NonNullable<typeof run>): db.SessionInfo {
@@ -562,7 +577,7 @@
 
   /**
    * Stops the routine at any point. It is recorded as stopped and keeps the games finished so far;
-   * the game in play is dropped.
+   * the game in play too, when it had 30 darts or 3 minutes; otherwise it is dropped.
    * A quick game is stopped instead: a game in play ends and its result is kept, so it needs no
    * second click. Before its game started there is nothing to keep and nothing is recorded.
    */
@@ -579,6 +594,7 @@
       return;
     }
     log.info("routine aborted");
+    if (stoppedGameCounts) recordGame(true);
     db.endSession(sessionInfo(run), "aborted").then(refreshHistory, failed);
     closeRun();
   }
@@ -2349,6 +2365,8 @@
             <span class="plan-meta">
               {#if dpi?.byResult.has(r.id)}
                 <span class="badge dpi-badge">{t("dpi.short")} {num(dpi.byResult.get(r.id)!)}</span>
+              {:else if hasIndex(r.gameId)}
+                <span class="badge dpi-badge skipped" title={t("dpi.tooShort")}>{t("dpi.short")}</span>
               {/if}
             </span>
             <span class="plan-desc">{playedLine(r)} · {g.describe(r.settings)}</span>
@@ -2954,6 +2972,8 @@
   }
   .badge.live { color: var(--dart); border-color: var(--dart); }
   .badge.dpi-badge { color: var(--accent); border-color: var(--accent); }
+  /* Too short to count towards the stats. */
+  .badge.dpi-badge.skipped { color: var(--dim); border-color: var(--line); text-decoration: line-through; cursor: help; }
 
   .dpi { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .dpi h3 { margin: 0 0 0.75rem; }
