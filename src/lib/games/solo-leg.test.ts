@@ -13,6 +13,16 @@ describe("Solo Leg", () => {
     expect(r.values.first9).toBeCloseTo(501 / 3);
     expect(r.moments).toHaveLength(1); // ton out
   });
+  it("a leg of 18 darts or fewer from 501 is a short leg", () => {
+    // 180, 180, 60, 3, then T18 D12 for the 78 left: 14 darts.
+    const r = play("T20 T20 T20 | T20 T20 T20 | S20 S20 S20 | S1 S1 S1 | T18 D12");
+    expect(r.values.bestLeg).toBe(14);
+    expect(r.moments?.map((m) => m.text)).toContain("Short leg!");
+    // The same start, then 1s and S20 S20 D16: checked out with dart 21, too long for a short leg.
+    const long = play("T20 T20 T20 | T20 T20 T20 | S20 S20 S20 | S1 S1 S1 | S1 S1 S1 | S1 S1 S1 | S20 S20 D16");
+    expect(long.values.bestLeg).toBe(21);
+    expect(long.moments ?? []).toHaveLength(0);
+  });
   it("starts the next leg at 501", () => {
     const r = play(NINE + " | T20");
     expect(r.focus?.value).toBe("441");
@@ -55,12 +65,6 @@ describe("Solo Leg", () => {
     expect(r.done).toBe(true);
     expect(play(NINE, { legs: 2 }).done).toBe(false);
     expect(play(NINE, { legs: 0 }).done).toBe(false);
-  });
-  it("checkout rate is checkouts per dart at a double", () => {
-    // 141 left: D12 thrown at 24 -> 1 dart at a double (the checkout)
-    const r = play(NINE);
-    expect(r.values.dartsAtDouble).toBe(1);
-    expect(r.values.checkoutRate).toBe(100);
   });
   it("301 and 701 start where they say", () => {
     expect(play("", { start: 301 }).focus?.value).toBe("301");

@@ -150,9 +150,9 @@ Per game:
   no recovery dart was ever thrown.
 - **Big Fish** ⚪ Darts per leg counts every finished leg, also one given up (with its darts). Sample: 2 legs. The 170 in
   three darts gets a stamp above a 180; a leg in 6 darts or fewer gets "Quick fish!".
-- **Solo Leg** ⚪ Checkout rate = legs checked out ÷ darts thrown while the rest was a double (2–40 even or 50).
-  First-9 includes the leg in progress. 100+ / 140+ / 180 are exclusive classes of a visit. A busted visit counts 3 darts
-  and no points. "Ton out!" for a checkout of 100 or more, "{n}-darter!" for 15 darts (501; scaled for 301/701).
+- **Solo Leg** ⚪ No checkout rate (removed in 0.9.6: a set-up dart can't be told from a dart at the double). The DPI
+  is the 3-dart average only, 30 → 100 for every start. First-9 includes the leg in progress. 100+ / 140+ / 180 are exclusive classes of a visit. A busted visit counts 3 darts
+  and no points. "Ton out!" for a checkout of 100 or more, "Short leg!" for 18 darts or fewer (501; 11 for 301, 25 for 701).
   Estimated length without a time cap: 3 minutes per 501 leg.
 
 ## Predefined routines
@@ -206,7 +206,7 @@ Branches: `feature/game-shot`, `feature/solo-leg-averages`, `feature/ton-machine
 ## 0.9.3
 
 - ⚪ Solo Leg panel: Match average and Leg average side by side as the two headline numbers, then only "Best leg
-  (darts)" and "Highest finish". Legs (x of y), first 9 average, darts per leg and checkout rate are still saved and
+  (darts)" and "Highest finish". Legs (x of y), first 9 average and darts per leg are still saved and
   listed in the result screen. The current leg number stays in the focus box ("Leg 2 of 4").
 
 ## Real-world test list (before tagging 1.0.0)

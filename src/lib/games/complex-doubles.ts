@@ -155,8 +155,12 @@ export const complexDoubles: GameDef = {
     if (ctx.open && turns.length) {
       const v = evalVisit(turns[turns.length - 1], target);
       if (v.next) {
-        focus = { label: t("complexDoubles.remaining", { n: v.next.remaining }), value: v.next.aim.label };
-        targets = [v.next.aim.field];
+        // A set-up dart gets no suggested route: everybody sets up differently. It shows the rest only.
+        const setUp = !v.next.aim.double;
+        focus = setUp
+          ? { label: t("complexDoubles.setUp"), value: String(v.next.remaining) }
+          : { label: t("complexDoubles.remaining", { n: v.next.remaining }), value: v.next.aim.label };
+        targets = setUp ? [] : [v.next.aim.field];
       } else {
         // The visit is over: its result until the takeout, then the target double again.
         focus = { label: t("complexDoubles.thisRound"), value: t(v.outcome === "success" ? "complexDoubles.success" : "complexDoubles.missed") };

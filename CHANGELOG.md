@@ -17,6 +17,22 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-11-05
+
+Fixes and clearer wording from your feedback on 0.9.5.
+
+### Changed
+- **DPI in the menu.** The Statistics button in the menu is now called DPI.
+- **Plan B sets up your way.** After a set-up dart Plan B no longer suggests what to throw next. It shows "Setup" and the rest, and you choose your own way to a double.
+- **Clearer index breakdown.** The result screen now names every value that goes into the DPI (darts per leg, hit rate and so on) instead of just "Value".
+- **German wording.** A dart that misses the board is called "Miss", and a visit is an "Aufnahme".
+- **Solo Leg DPI counts your average only.** Darts per leg no longer go into the index: they depend mostly on your finishing. A 3-dart average of 30 or less is 0 points, 100 or more is 100, for every start. Your history is recalculated, your results themselves stay as they are.
+- **Short leg.** A Solo Leg of 18 darts or fewer from 501 (11 from 301, 25 from 701) now gets a "Short leg!" instead of a "15-darter!".
+
+### Removed
+- **Checkout rate in Solo Leg.** D³ can't know whether a dart was aimed at the double or set one up, so the rate was a guess. It is gone from the result screen and no longer counts toward the index.
+
+
 ## [0.9.5] - 2026-11-04
 
 Practise like in a match: the score is yours to count now. And D³ tells you when a new version is out, with the news
@@ -93,7 +109,8 @@ offers new versions in the app.
 ### Changed
 - Games in a routine no longer need a time cap, and breaks are 15 seconds.
 
-[Unreleased]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.6...HEAD
+[0.9.6]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.2...v0.9.3

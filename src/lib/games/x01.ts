@@ -45,8 +45,6 @@ export interface X01State {
   tons: number;
   ton40s: number;
   oneEighties: number;
-  /** Darts thrown while the rest was a double (2-40 even, or the bull). */
-  dartsAtDouble: number;
   noScore?: GameResult["noScore"];
   /**
    * The turn on the board checked out: the leg is counted, but the next leg (or the end of the game) waits until
@@ -57,7 +55,6 @@ export interface X01State {
 }
 
 const isOut = (d: Dart) => d.kind === "double" || d.kind === "bull";
-export const onDouble = (rest: number) => rest === 50 || (rest >= 2 && rest <= 40 && rest % 2 === 0);
 
 export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01State {
   const legs: Leg[] = [];
@@ -66,7 +63,7 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
   let first9 = 0;
   let legPoints = 0;
   let visitStart: number | null = null;
-  const s: X01State = { legs, rest, restAtVisit: rest, first9: 0, first9Darts: 0, legDarts: 0, legPoints: 0, points: 0, darts: 0, eighties: 0, tons: 0, ton40s: 0, oneEighties: 0, dartsAtDouble: 0, over: false };
+  const s: X01State = { legs, rest, restAtVisit: rest, first9: 0, first9Darts: 0, legDarts: 0, legPoints: 0, points: 0, darts: 0, eighties: 0, tons: 0, ton40s: 0, oneEighties: 0, over: false };
 
   const endLeg = (ok: boolean, darts: number, checkout: number, turn: number) => {
     legs.push({ darts, ok, points: legPoints, first9, first9Darts: Math.min(darts, 9), checkout, turn });
@@ -89,7 +86,6 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
 
     for (let i = 0; i < turn.length; i++) {
       const d = turn[i];
-      if (onDouble(rest)) s.dartsAtDouble++;
       const rem = rest - d.score;
       if (rem === 0 && isOut(d)) {
         ended = "out";

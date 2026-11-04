@@ -90,7 +90,7 @@ export function withSample(n: number, config = DPI_CONFIG): IndexConfig {
 
 /** The index config. Changing a baseline, target or weight means a new version: the whole history is recalculated with it. */
 export const DPI_CONFIG: IndexConfig = {
-  version: 2,
+  version: 3,
   games: [
     {
       gameId: "scoring",
@@ -128,15 +128,9 @@ export const DPI_CONFIG: IndexConfig = {
       gameId: "solo-leg",
       // Its own area, so a session with a Solo Leg doesn't count twice for scoring.
       area: "consistency",
-      metrics: [lower("dartsPerLeg", 45, 18, 0.6), higher("checkoutRate", 10, 40, 0.4)],
-      // 301 and 701 are scaled from 501.
-      bySetting: {
-        key: "start",
-        metrics: {
-          "301": [lower("dartsPerLeg", 27, 11, 0.6), higher("checkoutRate", 10, 40, 0.4)],
-          "701": [lower("dartsPerLeg", 63, 25, 0.6), higher("checkoutRate", 10, 40, 0.4)],
-        },
-      },
+      // The 3-dart average only (version 3): darts per leg depend mostly on the checkouts, and the checkout rate
+      // can't tell a set-up dart on an even rest (S4 on 24 for D10) from a dart at the double. The same for every start.
+      metrics: [higher("average", 30, 100)],
       sample: { keys: ["legs"], min: 1 },
     },
     {
