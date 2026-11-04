@@ -175,7 +175,7 @@ Per game:
    **Intense Doubles** were added, breaks are 15 s. Look in the data folder for `backups/update/unknown-<date>/` and
    `backups/daily/<date>/`, and `last-version`.
 2. Play both built-in routines through on the board; also each new game once (Catch 40, Wild Card, Bob's 27, Bull-X in
-   all three variants, Big Fish, Solo Leg), with the route shown and hidden.
+   all three variants, Big Fish, Solo Leg).
 3. Layout: Windows 1366 × 768 at 125 % maximised and in fullscreen (F11, Esc), a macOS window dragged to the minimum,
    the first start on a small screen (delete `.window-state.json` to repeat it).
 4. Settings → Your data: last backup, Open backup folder, Export my data; About → Open log folder (`d3.log`).
