@@ -1,6 +1,6 @@
 import { num, t } from "../i18n/index.svelte";
 import { routeFocus } from "./route-focus";
-import { great, opt, pct } from "./shared";
+import { gameShotOf, great, opt, pct } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
 
@@ -84,6 +84,11 @@ export const soloLeg: GameDef = {
     }
 
     const legsGoal = Number(s.legs) > 0 ? Number(s.legs) : 0;
+    const shot = gameShotOf(
+      x.gameShot,
+      x.legs[x.legs.length - 1]?.checkout ?? 0,
+      x.gameShot?.last ? t("shot.lastLeg") : t("shot.nextLeg", { n: x.legs.length + 1 }),
+    );
     return {
       values: {
         average: avg,
@@ -111,15 +116,18 @@ export const soloLeg: GameDef = {
         { key: "ton40s", label: t("solo.ton40s"), value: String(x.ton40s) },
         { key: "oneEighties", label: "180", value: String(x.oneEighties) },
       ],
-      focus: x.over
-        ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
-        : {
-            label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }),
-            value: String(x.rest),
-            hint: route.hint,
-          },
-      targets: x.over ? [] : route.targets,
+      focus: shot
+        ? shot.focus
+        : x.over
+          ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
+          : {
+              label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }),
+              value: String(x.rest),
+              hint: route.hint,
+            },
+      targets: x.over || shot ? [] : route.targets,
       noScore: x.noScore,
+      gameShot: shot?.gameShot,
       moments,
       done: x.over,
     };

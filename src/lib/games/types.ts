@@ -62,6 +62,12 @@ export interface GameResult {
    * It names the turn (an index into turns), so a bust in the next turn is a new one, even right after another.
    */
   noScore?: { turn: number; darts: number };
+  /**
+   * Checkout games: the turn on the board checked out ("Game shot"). The checkout counts at once, but the turn is
+   * over: `darts` is how many were thrown up to the checkout, further darts don't count, and the next leg or
+   * checkout only starts after the takeout. `next` says what comes then, shown on the board's overlay.
+   */
+  gameShot?: { turn: number; darts: number; next: string };
   /** Moments to show, e.g. a great turn. 180 and No Score are added by the training screen for every game. */
   moments?: Moment[];
   /** True when the game has been completed before the time cap. */

@@ -42,6 +42,11 @@ export interface X01State {
   /** Darts thrown while the rest was a double (2-40 even, or the bull). */
   dartsAtDouble: number;
   noScore?: GameResult["noScore"];
+  /**
+   * The turn on the board checked out: the leg is counted, but the next leg (or the end of the game) waits until
+   * the turn is closed by the takeout. `darts` is the checkout dart's place in the turn, `last` says the game ends then.
+   */
+  gameShot?: { turn: number; darts: number; last: boolean };
   over: boolean;
 }
 
@@ -71,6 +76,7 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
     let visit9 = 0; // the part of the visit that went into the leg's first nine darts
     let ended: "none" | "bust" | "out" = "none";
     let bustAt = 0;
+    let outAt = 0;
 
     for (let i = 0; i < turn.length; i++) {
       const d = turn[i];
@@ -78,6 +84,7 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
       const rem = rest - d.score;
       if (rem === 0 && isOut(d)) {
         ended = "out";
+        outAt = i + 1;
         visit += d.score;
         legDarts = dartsBefore + i + 1;
         s.darts++;
@@ -115,6 +122,10 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
 
     if (ended === "out") {
       endLeg(true, legDarts, turnStart, ti);
+      if (open && ti === turns.length - 1) {
+        s.gameShot = { turn: ti, darts: outAt, last: s.over };
+        s.over = false;
+      }
     } else if (ended === "none" && open && ti === turns.length - 1) {
       /* the turn still on the board */
     } else {
