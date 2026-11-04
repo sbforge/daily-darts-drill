@@ -2367,13 +2367,11 @@
   :global(body) {
     margin: 0;
     min-height: 100vh;
-    /* The D³ backdrop artwork sits behind every view, dimmed so it never competes with the content.
-       Not "fixed": the body never scrolls (only main does), and WebKit, the webview on macOS, leaves bits of the
-       scrolled content behind in the header when a fixed background sits under a scrolling box. */
+    /* The D³ backdrop artwork sits behind every view, dimmed so it never competes with the content. */
     background:
-      radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%),
-      linear-gradient(rgb(6 13 18 / 0.5), rgb(6 13 18 / 0.5)),
-      url("./assets/brand/art/backdrop.webp") var(--backdrop-pos, center) / var(--backdrop-size, cover) no-repeat,
+      radial-gradient(ellipse at 70% 110%, #0b2b36 0%, transparent 60%) fixed,
+      linear-gradient(rgb(6 13 18 / 0.5), rgb(6 13 18 / 0.5)) fixed,
+      url("./assets/brand/art/backdrop.webp") var(--backdrop-pos, center) / var(--backdrop-size, cover) no-repeat fixed,
       var(--bg);
   }
   /* Header and footer stay put; only the content between them scrolls. */
@@ -2399,12 +2397,8 @@
     gap: 2rem;
     padding: 0.75rem 1.5rem;
     border-bottom: 1px solid var(--line);
-    background: rgb(6 13 18);
+    background: rgb(6 13 18 / 0.85);
   }
-  /* Header and footer stack above main. WebKit (the webview on macOS) can paint bits of main's scrolled content
-     (the DPI badges in History) past its edge; this way they end up under the header, not on top of it.
-     Above the carousel cards and arrows (up to 20), below the setting bubbles (30), effects (50) and select lists (100). */
-  header, footer { position: relative; z-index: 25; }
   h1 { margin: 0; line-height: 0; }
   nav { display: flex; gap: 0.25rem; flex: 1; }
   .tab {
