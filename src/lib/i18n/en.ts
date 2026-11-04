@@ -598,7 +598,7 @@ export const en = {
   "atc.rounds": "Rounds complete",
   "atc.progress": "Progress",
   "atc.complete": "Complete",
-  "atc.great": "3 in a row!",
+  "game.threeInARow": "3 in a row!",
   "atc.nextTarget": "Next target",
   "atc.nextTargetZone": "Next target, {zone}",
 
@@ -614,7 +614,7 @@ export const en = {
   // Plan B (was "Complex doubles"; the keys keep the old name)
   "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
-    "Check out the double over three darts. Single hits are subtracted and the next target follows from what is left. With an odd leave after dart 2, the bull is the target.",
+    "Check out the double over three darts. Hit it and the visit goes on at half of it: D20, then D10, then D5. A miss counts off what is left and the next target follows from it; an odd leave is set up, the third dart goes at the bull. A bust starts over at the double. Every dart has a target, so you never pull darts early.",
   "complexDoubles.classic": "Complex doubles",
   "complexDoubles.goal": "Teaches you to recover when the first dart misses: read the new leave and still check out with the darts left.",
   "complexDoubles.describe": "Target D{n}",

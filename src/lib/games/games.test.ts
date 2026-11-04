@@ -26,10 +26,28 @@ describe("Plan B (complex doubles)", () => {
     expect(r.focus?.value).toBeTruthy();
     expect(r.targets).toEqual([{ bed: "bull" }]);
   });
-  it("going past the rest is a lost round with No Score", () => {
-    const r = play("T20 T20 T20");
+  it("going past the rest loses the round, the next dart starts over at the double", () => {
+    const r = complexDoubles.compute(turns("T20"), { double: 16 }, { open: true });
     expect(r.values).toMatchObject({ successes: 0, rounds: 1 });
-    expect(r.noScore).toBeDefined();
+    expect(r.focus?.value).toBe("D16");
+    // A hit after the restart counts for the hit rate, not for the lost round.
+    expect(play("T20 D16").values).toMatchObject({ successes: 0, rounds: 1, doubleDarts: 2, doubleHits: 1 });
+  });
+  it("after a hit the visit goes on at half the double", () => {
+    expect(complexDoubles.compute(turns("D16"), { double: 16 }, { open: true }).focus?.value).toBe("D8");
+    const r = play("D16 D8 D4");
+    expect(r.values).toMatchObject({ successes: 1, rounds: 1, firstDart: 1, doubleDarts: 3, doubleHits: 3, hitRate: 100 });
+    expect(r.moments?.[0].priority).toBe(1.5); // 3 in a row beats "First dart!"
+    // D20 hit, then S4 on D10 leaves 16: D8
+    expect(complexDoubles.compute(turns("D20 S4"), { double: 20 }, { open: true }).focus?.value).toBe("D8");
+  });
+  it("an odd leave is set up with the route's first dart, dart 3 goes at the bull", () => {
+    // 32 - 1 = 31: route S15 D8; the set-up dart doesn't count for the hit rate
+    const r = complexDoubles.compute(turns("S1"), { double: 16 }, { open: true });
+    expect(r.focus?.value).toBe("S15");
+    expect(r.values).toMatchObject({ doubleDarts: 1 });
+    const d3 = complexDoubles.compute(turns("D16 S5"), { double: 16 }, { open: true });
+    expect(d3.targets).toEqual([{ bed: "bull" }]);
   });
 });
 
