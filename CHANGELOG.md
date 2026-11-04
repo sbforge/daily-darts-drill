@@ -1,0 +1,102 @@
+# Changelog
+
+All notable changes to D³ – Daily Darts Drill. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and the versions follow [Semantic Versioning](https://semver.org/).
+
+**Players read this.** The section of a release is what the update dialog in the app and the GitHub release show. Write it
+for someone who trains with D³, not for a developer:
+
+- Start with one or two sentences on what this version is about.
+- Put it under *Added*, *Changed*, *Fixed* or *Removed*. Begin each entry with a short **bold name**, then say what the
+  player gets and what to do (a setting, a button), not how it is built.
+- No file names, internal terms or commit titles. A game is called by the name you see in the app.
+- Say what stays the same when a change could worry someone ("your data is kept").
+
+Add entries under `[Unreleased]` while you work. To release, rename that heading to the version and date;
+`npm run release-notes -- 1.0.0` prints what will be published.
+
+## [Unreleased]
+
+## [0.9.5] - 2026-11-04
+
+Practise like in a match: the score is yours to count now. And D³ tells you when a new version is out, with the news
+right in the app.
+
+### Added
+- **Count it yourself.** Solo Leg, Big Fish, Checkout Ladder (121), Wild Card and Catch 40 no longer take off every dart at once. The rest changes when your visit is over, as in a match where nobody does the sums for you. Prefer the old way? **Settings → Playing** switches back to counting after every dart, and each game in a routine can follow that setting or have its own. A bust or a checkout still shows immediately.
+- **Update button.** When a new version is out, a highlighted button appears in the top bar. Click it to read what is new without leaving D³, then install when it suits you (never during a routine). D³ now looks for updates every time it starts, and stays quiet when you are offline.
+- **Routine length on the cards.** The routine carousel shows how long a routine takes.
+- **Short games are marked.** In History, a game too short to count toward your index shows a struck-through DPI badge.
+
+### Changed
+- **Stopping a routine keeps your work.** The games you finished count, and so does the game you stop in the middle if you threw at least 30 darts in it. In History such a routine is labelled "Stopped" instead of "Aborted". The same goes for a routine D³ was closed in the middle of.
+- **Next-turn button** is easier to see and no longer sits against the window border.
+
+### Removed
+- The lock icon on the Game shot card.
+
+## [0.9.4] - 2026-11-04
+
+### Changed
+- README for 1.0: new screenshots, install instructions first, development notes in their own file (`DEVELOPMENT.md`).
+
+## [0.9.3] - 2026-11-04
+
+### Changed
+- Solo Leg panel: match and leg average side by side, plus the best leg and the highest finish.
+
+## [0.9.2] - 2026-11-04
+
+Fixes from the 0.9.1 test.
+
+### Added
+- Erase all data, asked twice, as the last group in Settings.
+
+### Fixed
+- Darts thrown after a bust or a Game shot are neither counted nor shown.
+- Export and updates work again after a stopped routine.
+- An update is no longer reported as a crash, and the crash banner closes.
+- One draft release per version when publishing (no more split installers).
+
+## [0.9.1] - 2026-11-04
+
+Changes from the 0.9.0 test. This version was not published as a GitHub release.
+
+### Added
+- Game shot: after a checkout the board is locked until the takeout; the darts thrown meanwhile don't count.
+
+### Changed
+- Solo Leg: match average and leg average; the visit counts (80+, 100+, 140+, 180) appear only in the result.
+- DPI version 2: tougher targets for Clockwork, Double Trouble and Bob's 27, and a metric a result has no value for is skipped.
+- Plan B: every dart has a target, and a hit halves the double (D20, D10, D5).
+- Ton Machine counts your visits in bands (60+, 100+, 140+, 180) instead of trebles, bulls and misses.
+- Wild Card no longer asks for darts per checkout; Bull-X waits for the takeout.
+
+## [0.9.0] - 2026-11-04
+
+The first version that updates itself, and the big step toward 1.0. Install this version by hand once; from then on D³
+offers new versions in the app.
+
+### Added
+- **Six new games:** Catch 40 (check out every number from 61 to 100, two visits each), Solo Leg (a real leg against yourself, double out, leg after leg), Big Fish (170, over and over), Wild Card (a random checkout from the range you pick; none repeats until the whole range has come up), Bob's 27 (round the doubles from 27 points) and Bull-X (dart 1 at the bull, then the bull again or recover on the segment you hit). Every game has its own artwork card and counts toward the performance index (DPI).
+- **Ready-made routines:** Everyday Drill (warm up, around the board, doubles, scoring, checkouts, real legs) and Intense Doubles (doubles from every angle, finishing with Bob's 27). They are normal routines you can change or delete; Settings → Restore built-in routines brings them back.
+- **New game picker:** all games in a list on the left, the picked game and its settings on the right. On/off settings are checkboxes.
+- **Fits your screen:** nothing scrolls during a routine, even on a small laptop (from 900 × 540). The board grows on big screens, and D³ remembers its window size.
+- **Fullscreen** with F11 or the button in the header; Esc leaves it.
+- **Animations** for 180s, great turns, the last seconds and new personal bests (can be switched off), and a loading screen.
+- **Updates in the app:** D³ checks for a new version when it starts and shows a dot on the settings icon. You decide when to install, never during a routine. Updates are signed, and your data is backed up before each one. The check reads only a small file from the GitHub project and can be switched off in Settings.
+- **Your data:** a daily backup (the last 5 days are kept) shown under Settings → Your data, and "Export my data" to save a copy wherever you like.
+- **Crash reports:** if something goes wrong, D³ shows what happened and writes a crash report you can send as a GitHub issue with one click. Nothing leaves your computer by itself.
+- Autodarts is found on your network automatically.
+- Installers for Windows (`.msi`), macOS (Apple Silicon and Intel, `.dmg`) and Linux (`.AppImage` and `.deb`).
+
+### Changed
+- Games in a routine no longer need a time cap, and breaks are 15 seconds.
+
+[Unreleased]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.4...HEAD
+[0.9.5]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.4...v0.9.5
+[0.9.4]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.3...v0.9.4
+[0.9.3]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.2...v0.9.3
+[0.9.2]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.1...v0.9.2
+[0.9.1]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/sbforge/daily-darts-drill/releases/tag/v0.9.0

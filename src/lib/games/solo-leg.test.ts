@@ -18,6 +18,21 @@ describe("Solo Leg", () => {
     expect(r.focus?.value).toBe("441");
     expect(r.focus?.label).toContain("2");
   });
+  it("the rest changes after the visit, or after every dart when counting instantly", () => {
+    expect(play("T20 T20 T20 | T20 T20", {}, true).focus?.value).toBe("321"); // 501 - 180 so far
+    expect(play("T20 T20 T20 | T20 T20", { instantCount: "on" }, true).focus?.value).toBe("201");
+    expect(play("T20 T20 T20 | T20 T20 T20", {}, true).focus?.value).toBe("141"); // the visit is full
+  });
+  it("a bust or a checkout shows at once, even when the rest waits for the visit", () => {
+    // 301: T20 T20 T20 leaves 121, then T20 T20 leaves 1 on the second dart: a bust, the rest is back at 121.
+    const bust = play("T20 T20 T20 | T20 T20", { start: 301 }, true);
+    expect(bust.noScore).toMatchObject({ turn: 1, darts: 2 });
+    expect(bust.focus?.value).toBe("121");
+    // The checkout on the ninth dart: the Game shot comes up with the first dart of the visit still unchanged.
+    const out = play("T20 T20 T20 | T20 T20 T20 | T20 T19 D12", {}, true);
+    expect(out.gameShot).toMatchObject({ turn: 2, darts: 3 });
+    expect(out.focus?.label).toBe("Game shot!");
+  });
   it("a bust is no score, uses three darts and sets the rest back", () => {
     const r = play("T20 T20 T20 | T20 T20 T20 | T20 T20 T20 | T20");
     // 501-360 = 141, T20 T20 T20 busts (past the rest after two), rest stays 141
@@ -75,5 +90,15 @@ describe("Solo Leg", () => {
     expect(panel).toEqual(["average", "legAverage", "bestLeg", "highestCheckout"]);
     expect(r.lines.filter((l) => l.hero).map((l) => l.key)).toEqual(["average", "legAverage"]);
     expect(r.lines.find((l) => l.key === "legAverage")?.liveOnly).toBe(true);
+  });
+});
+
+describe("counting setting", () => {
+  it("a game set to follow the setting gets what the player chose, an explicit choice stays", async () => {
+    const { withCounting } = await import("./shared");
+    expect(withCounting({ instantCount: "default" }, true, true).instantCount).toBe("on");
+    expect(withCounting({ instantCount: "default" }, true, false).instantCount).toBe("off");
+    expect(withCounting({ instantCount: "off" }, true, true).instantCount).toBe("off");
+    expect(withCounting({}, false, true)).toEqual({});
   });
 });

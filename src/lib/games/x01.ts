@@ -29,6 +29,8 @@ export interface X01Config {
 export interface X01State {
   legs: Leg[];
   rest: number;
+  /** The rest as it was when the visit on the board began: what a player counting by hand still sees. */
+  restAtVisit: number;
   /** Points and darts of the leg being played that count for the first-nine average. */
   first9: number;
   first9Darts: number;
@@ -63,7 +65,8 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
   let legDarts = 0;
   let first9 = 0;
   let legPoints = 0;
-  const s: X01State = { legs, rest, first9: 0, first9Darts: 0, legDarts: 0, legPoints: 0, points: 0, darts: 0, eighties: 0, tons: 0, ton40s: 0, oneEighties: 0, dartsAtDouble: 0, over: false };
+  let visitStart: number | null = null;
+  const s: X01State = { legs, rest, restAtVisit: rest, first9: 0, first9Darts: 0, legDarts: 0, legPoints: 0, points: 0, darts: 0, eighties: 0, tons: 0, ton40s: 0, oneEighties: 0, dartsAtDouble: 0, over: false };
 
   const endLeg = (ok: boolean, darts: number, checkout: number, turn: number) => {
     legs.push({ darts, ok, points: legPoints, first9, first9Darts: Math.min(darts, 9), checkout, turn });
@@ -136,6 +139,7 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
       }
     } else if (ended === "none" && open && ti === turns.length - 1) {
       /* the turn still on the board */
+      if (turn.length < 3) visitStart = turnStart; // three darts make the visit: its score is taken off
     } else {
       // A finished visit uses all three darts, even if fewer were thrown.
       if (ended === "none") {
@@ -147,6 +151,7 @@ export function playLegs(turns: Dart[][], open: boolean, cfg: X01Config): X01Sta
   }
 
   s.rest = rest;
+  s.restAtVisit = visitStart ?? rest;
   s.legDarts = s.over ? 0 : legDarts;
   s.first9 = s.over ? 0 : first9;
   s.legPoints = s.over ? 0 : legPoints;

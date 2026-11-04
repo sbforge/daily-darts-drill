@@ -31,6 +31,8 @@ export interface CheckoutState {
   /** The checkout being played now, and what is left of it. */
   target: number;
   remaining: number;
+  /** What was left when the visit on the board began (see `remaining`): the rest for a player who counts by hand. */
+  remainingAtVisit: number;
   /** Darts of the current attempt thrown so far (counting the turn still on the board). */
   used: number;
   /** The latest turn went bust. */
@@ -54,6 +56,7 @@ export function playAttempts(turns: Dart[][], open: boolean, cfg: CheckoutConfig
   let remaining = target;
   let base = 0; // darts already used in this attempt (finished visits, three each)
   let openUsed = 0;
+  let visitStart: number | null = null;
   let noScore: GameResult["noScore"];
   let gameShot: CheckoutState["gameShot"];
   let over = false;
@@ -103,11 +106,12 @@ export function playAttempts(turns: Dart[][], open: boolean, cfg: CheckoutConfig
       }
     } else if (open && ended === "none" && ti === turns.length - 1) {
       openUsed = turn.length;
+      if (turn.length < 3) visitStart = turnStart; // three darts make the visit: its score is taken off
     } else {
       base += 3; // a finished or busted turn uses all three darts, even if fewer were thrown
       if (base >= cfg.darts) finishAttempt({ target, ok: false, dart: cfg.darts, turn: ti });
     }
   }
 
-  return { attempts, target, remaining, used: over || gameShot ? 0 : base + openUsed, noScore, over, gameShot };
+  return { attempts, target, remaining, remainingAtVisit: visitStart ?? remaining, used: over || gameShot ? 0 : base + openUsed, noScore, over, gameShot };
 }

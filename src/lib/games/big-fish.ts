@@ -1,7 +1,7 @@
 import { num, t } from "../i18n/index.svelte";
 import { routeFocus } from "./route-focus";
 import { legsField } from "./solo-leg";
-import { gameShotOf, great, opt } from "./shared";
+import { gameShotOf, great, opt, instantCountField, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
 
@@ -25,7 +25,7 @@ export const bigFish: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
-  defaultSettings: { legs: 0, giveUp: 0 },
+  defaultSettings: { legs: 0, giveUp: 0, instantCount: "default" },
   fields: [
     legsField("legs"),
     {
@@ -39,6 +39,7 @@ export const bigFish: GameDef = {
       kind: "select",
       options: GIVE_UP.map((n) => opt(n, () => (n ? t("fish.giveUpAfter", { n }) : t("fish.giveUpOff")))),
     },
+    instantCountField,
   ],
   canEnd: (s) => Number(s.legs) > 0,
   estimateMinutes: (s) => Math.max(1, Math.ceil((Number(s.legs) || 1) * 1.5)),
@@ -81,7 +82,7 @@ export const bigFish: GameDef = {
         ? shot.focus
         : x.over
           ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
-          : { label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }), value: String(x.rest), hint: route.hint },
+          : { label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }), value: String(shownRest(s, x.rest, x.restAtVisit)), hint: route.hint },
       targets: x.over || shot ? [] : route.targets,
       noScore: x.noScore,
       gameShot: shot?.gameShot,

@@ -1,7 +1,7 @@
 import { num, t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
-import { gameShotOf, great, pct } from "./shared";
+import { gameShotOf, great, instantCountField, pct, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 
 const DARTS_PER_ATTEMPT = 9;
@@ -28,7 +28,7 @@ export const oneTwentyOne: GameDef = {
   hasResult: true,
   defaultMinutes: 10,
   // Fast-forward on and no safehouse is how 121 was played before both became settings.
-  defaultSettings: { start: 121, fastForward: "on", safehouse: "off" },
+  defaultSettings: { start: 121, fastForward: "on", safehouse: "off", instantCount: "default" },
   fields: [
     {
       key: "start",
@@ -62,6 +62,7 @@ export const oneTwentyOne: GameDef = {
       },
       kind: "checkbox",
     },
+    instantCountField,
   ],
   describe: (s) =>
     [
@@ -110,7 +111,7 @@ export const oneTwentyOne: GameDef = {
         { key: "rate", stored: "successRate", label: t("game.successRate"), value: attempts ? `${num(rate)}%` : t("game.noneYet") },
       ],
       // The rest score is what to aim at right now; the checkout it belongs to is in the label.
-      focus: shot ? shot.focus : { label: t("121.restOf", { n: state.target }), value: String(state.remaining), hint: route.hint },
+      focus: shot ? shot.focus : { label: t("121.restOf", { n: state.target }), value: String(shownRest(s, state.remaining, state.remainingAtVisit)), hint: route.hint },
       targets: shot ? [] : route.targets,
       gameShot: shot?.gameShot,
       // Grouped into turns of three darts.

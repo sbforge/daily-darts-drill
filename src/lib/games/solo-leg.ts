@@ -1,6 +1,6 @@
 import { num, t } from "../i18n/index.svelte";
 import { routeFocus } from "./route-focus";
-import { gameShotOf, great, opt, pct } from "./shared";
+import { gameShotOf, great, opt, pct, instantCountField, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
 
@@ -39,7 +39,7 @@ export const soloLeg: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { start: 501, legs: 0 },
+  defaultSettings: { start: 501, legs: 0, instantCount: "default" },
   fields: [
     {
       key: "start",
@@ -53,6 +53,7 @@ export const soloLeg: GameDef = {
       options: STARTS.map((n) => opt(n, () => String(n))),
     },
     legsField("legs"),
+    instantCountField,
   ],
   canEnd: (s) => Number(s.legs) > 0,
   // About three minutes for a 501 leg.
@@ -137,7 +138,7 @@ export const soloLeg: GameDef = {
           ? { label: t("atc.complete"), value: t("game.xOfY", { n: legsGoal, total: legsGoal }) }
           : {
               label: t(legsGoal ? "solo.legOf" : "solo.leg", { n: x.legs.length + 1, total: legsGoal }),
-              value: String(x.rest),
+              value: String(shownRest(s, x.rest, x.restAtVisit)),
               hint: route.hint,
             },
       targets: x.over || shot ? [] : route.targets,

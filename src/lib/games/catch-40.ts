@@ -1,7 +1,7 @@
 import { t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
-import { gameShotOf, great } from "./shared";
+import { gameShotOf, great, instantCountField, shownRest } from "./shared";
 import type { GameDef } from "./types";
 
 const FIRST = 61;
@@ -33,8 +33,8 @@ export const catch40: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: {},
-  fields: [],
+  defaultSettings: { instantCount: "default" },
+  fields: [instantCountField],
   canEnd: () => true,
   estimateMinutes: () => 10,
   describe: () => t("catch40.describe"),
@@ -74,7 +74,7 @@ export const catch40: GameDef = {
         ? shot.focus
         : done
           ? { label: t("atc.complete"), value: t("game.xOfY", { n: NUMBERS, total: NUMBERS }) }
-          : { label: t("catch40.restOf", { n: state.target }), value: String(state.remaining), hint: route.hint },
+          : { label: t("catch40.restOf", { n: state.target }), value: String(shownRest(s, state.remaining, state.remainingAtVisit)), hint: route.hint },
       targets: done || shot ? [] : route.targets,
       gameShot: shot?.gameShot,
       darts: done ? undefined : { label: t("121.dartsLeftN", { n: Math.max(0, DARTS - state.used) }), total: DARTS, used: state.used, group: 3 },

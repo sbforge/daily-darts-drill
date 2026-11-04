@@ -70,6 +70,8 @@ The games so far:
 | **Big Fish** (170) | Leg after leg from 170, double out, bust is no score. | The high finishes and the nerve for them. |
 | **Solo Leg** (solo 501) | A normal leg against yourself (301, 501 or 701), leg after leg or a set number of legs: match and leg average side by side. | Your whole game in one number. |
 
+> **A note on the games:** Some of these games come from classic darts drills, and I know the original rules. Where this app plays them differently, that is on purpose: these are the variations I like to practise myself. Different from what you are used to? [Open an issue](https://github.com/sbforge/daily-darts-drill/issues) and tell me. I'm happy to add more games or more variants.
+
 ### Live board
 
 While you play, D³ shows every dart on the board as it lands, with the score of the current turn and the
@@ -125,7 +127,7 @@ an issue with the details filled in. Nothing leaves your computer by itself.
 
 ### Updates
 
-D³ looks for a newer version when it starts (once a day) and tells you with a small dot on the settings icon.
+D³ looks for a newer version at every start, in the background, and shows an "Update" button in the top bar when there is one. Offline it just stays quiet.
 You decide when to install it, never during a routine. The check reads one small file (`latest.json`) from this
 GitHub project and sends nothing about you; you can switch it off in the settings, the manual button always
 works. Updates are signed, so only versions from this project install. Your data is backed up before the update.
