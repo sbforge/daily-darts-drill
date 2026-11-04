@@ -115,15 +115,16 @@ export const soloLeg: GameDef = {
         dartsAtDouble: x.dartsAtDouble,
       },
       lines: [
+        // The panel while playing: both averages side by side, then the best leg and the highest finish.
         { key: "average", label: t("solo.matchAverage"), value: num(avg, 1), hero: true },
-        { key: "legAverage", label: t("solo.legAverage"), value: legAvg === null ? t("game.noneYet") : num(legAvg, 1), liveOnly: true },
-        { key: "first9", label: t("solo.first9"), value: x.darts ? num(first9, 1) : t("game.noneYet") },
-        { key: "legs", label: t("solo.legs"), value: legsGoal ? t("game.xOfY", { n: won.length, total: legsGoal }) : String(won.length) },
-        { key: "dartsPerLeg", label: t("solo.dartsPerLeg"), value: won.length ? num(dartsPerLeg, 1) : t("game.noneYet") },
+        { key: "legAverage", label: t("solo.legAverage"), value: legAvg === null ? t("game.noneYet") : num(legAvg, 1), hero: true, liveOnly: true },
         { key: "bestLeg", label: t("solo.bestLeg"), value: bestLeg ? String(bestLeg) : t("game.noneYet") },
-        { key: "checkoutRate", label: t("solo.checkoutRate"), value: x.dartsAtDouble ? `${num(checkoutRate, 1)}%` : t("game.noneYet") },
-        { key: "highestCheckout", label: t("121.best"), value: highest ? String(highest) : t("game.noneYet") },
+        { key: "highestCheckout", label: t("solo.highestFinish"), value: highest ? String(highest) : t("game.noneYet") },
         // Saved and in the result screen, but not on the panel while playing.
+        { key: "legs", label: t("solo.legs"), value: legsGoal ? t("game.xOfY", { n: won.length, total: legsGoal }) : String(won.length), live: false },
+        { key: "first9", label: t("solo.first9"), value: x.darts ? num(first9, 1) : t("game.noneYet"), live: false },
+        { key: "dartsPerLeg", label: t("solo.dartsPerLeg"), value: won.length ? num(dartsPerLeg, 1) : t("game.noneYet"), live: false },
+        { key: "checkoutRate", label: t("solo.checkoutRate"), value: x.dartsAtDouble ? `${num(checkoutRate, 1)}%` : t("game.noneYet"), live: false },
         { key: "bestLegAverage", label: t("solo.bestLegAverage"), value: bestLegAverage ? num(bestLegAverage, 1) : t("game.noneYet"), live: false },
         { key: "eighties", label: t("solo.eighties"), value: String(x.eighties), live: false },
         { key: "tons", label: t("solo.tons"), value: String(x.tons), live: false },
