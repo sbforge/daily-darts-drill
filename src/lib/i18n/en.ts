@@ -279,6 +279,8 @@ export const en = {
   "run.timeUp": "Time is up.",
   "run.paused": "Paused. Throws are not counted.",
   "run.keepThrowing": "Keep throwing.",
+  "run.fullscreen": "Fullscreen (F11)",
+  "run.exitFullscreen": "Leave fullscreen (Esc)",
   "run.pause": "Pause",
   "run.resume": "Resume",
   "run.endGame": "End game",

@@ -281,6 +281,8 @@ export const de: Record<Key, string> = {
   "run.timeUp": "Die Zeit ist um.",
   "run.paused": "Pausiert. Würfe zählen nicht.",
   "run.keepThrowing": "Weiterwerfen.",
+  "run.fullscreen": "Vollbild (F11)",
+  "run.exitFullscreen": "Vollbild beenden (Esc)",
   "run.pause": "Pause",
   "run.resume": "Weiter",
   "run.endGame": "Spiel beenden",

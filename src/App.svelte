@@ -53,6 +53,7 @@
   import RoutineItems from "./lib/RoutineItems.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
+  import { fullscreen, fullscreenKeys, toggleFullscreen, watchFullscreen } from "./lib/fullscreen.svelte";
   import { AUTODARTS_URL, COFFEE_ICON, COFFEE_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, openExternal } from "./lib/links";
   import { LOCALES, dateTime, getLocale, isLocale, num, setLocale, t, type Key, type Locale } from "./lib/i18n/index.svelte";
 
@@ -1003,6 +1004,7 @@
     db.setSetting("language", l).catch(failed);
   }
 
+  onMount(() => watchFullscreen());
   onMount(() => {
     client = new AutodartsClient({ onState: onConnState, onBoard: (s) => (board = s), onPhase: (p) => (throwPhase = p), onEvent });
     const started = performance.now();
@@ -1074,8 +1076,16 @@
   {/if}
 {/snippet}
 
-<!-- Escape stops correcting a dart. -->
-<svelte:window onkeydown={(e) => e.key === "Escape" && session?.editing && (session.editing = null)} />
+<!-- Escape stops correcting a dart; otherwise it leaves fullscreen. F11 toggles fullscreen. -->
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === "Escape" && session?.editing) {
+      session.editing = null;
+      e.preventDefault();
+    }
+    fullscreenKeys(e);
+  }}
+/>
 
 <header>
   <h1><Logo height={26} /></h1>
@@ -1142,6 +1152,26 @@
           <span class="confirm-bubble" role="status">{t("run.confirmAbort")}</span>
         {/if}
       </span>
+      <button
+        class="icon"
+        class:active={fullscreen.on}
+        aria-label={t(fullscreen.on ? "run.exitFullscreen" : "run.fullscreen")}
+        title={t(fullscreen.on ? "run.exitFullscreen" : "run.fullscreen")}
+        onclick={toggleFullscreen}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d={fullscreen.on
+              ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"
+              : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}
+          />
+        </svg>
+      </button>
     </div>
   {/if}
   <button
