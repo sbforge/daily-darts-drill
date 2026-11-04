@@ -2399,8 +2399,12 @@
     gap: 2rem;
     padding: 0.75rem 1.5rem;
     border-bottom: 1px solid var(--line);
-    background: rgb(6 13 18 / 0.85);
+    background: rgb(6 13 18);
   }
+  /* Header and footer stack above main. WebKit (the webview on macOS) can paint bits of main's scrolled content
+     (the DPI badges in History) past its edge; this way they end up under the header, not on top of it.
+     Above the carousel cards and arrows (up to 20), below the setting bubbles (30), effects (50) and select lists (100). */
+  header, footer { position: relative; z-index: 25; }
   h1 { margin: 0; line-height: 0; }
   nav { display: flex; gap: 0.25rem; flex: 1; }
   .tab {
