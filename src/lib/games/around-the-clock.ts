@@ -144,7 +144,7 @@ export const aroundTheClock: GameDef = {
         }
       }
       // Three targets in one turn, each dart a hit.
-      if (inTurn === 3) moments.push(great(ti, t("atc.great")));
+      if (inTurn === 3) moments.push(great(ti, t("game.threeInARow")));
     });
 
     const done = step >= total;

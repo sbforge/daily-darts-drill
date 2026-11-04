@@ -586,7 +586,7 @@ export const de: Record<Key, string> = {
   "atc.rounds": "Runden geschafft",
   "atc.progress": "Fortschritt",
   "atc.complete": "Geschafft",
-  "atc.great": "3 in Folge!",
+  "game.threeInARow": "3 in Folge!",
   "atc.nextTarget": "Nächstes Ziel",
   "atc.nextTargetZone": "Nächstes Ziel, {zone}",
 
@@ -602,7 +602,7 @@ export const de: Record<Key, string> = {
   // Plan B (was "Complex doubles"; the keys keep the old name)
   "complexDoubles.name": "Plan B",
   "complexDoubles.blurb":
-    "Checke das Double mit drei Darts aus. Single-Treffer werden abgezogen, das nächste Ziel ergibt sich aus dem Rest. Bleibt nach Dart 2 eine ungerade Zahl, ist das Bull das Ziel.",
+    "Checke das Double mit drei Darts aus. Bei einem Treffer geht die Aufnahme mit der Hälfte weiter: D20, dann D10, dann D5. Ein Fehlwurf wird vom Rest abgezogen, das nächste Ziel ergibt sich daraus; ein ungerader Rest wird gestellt, der dritte Dart geht aufs Bull. Nach einem Überwerfen geht es wieder beim Double los. Jeder Dart hat ein Ziel, du ziehst nie früher.",
   "complexDoubles.classic": "Komplexe Doubles",
   "complexDoubles.goal": "Lehrt dich, nach einem Fehlwurf umzuplanen: den neuen Rest lesen und mit den übrigen Darts trotzdem checken.",
   "complexDoubles.describe": "Ziel D{n}",
