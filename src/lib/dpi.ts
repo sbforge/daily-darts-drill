@@ -172,6 +172,13 @@ export const DPI_CONFIG: IndexConfig = {
       sample: { keys: ["turns"], min: 10 },
     },
     {
+      gameId: "jdc-challenge",
+      area: "accuracy",
+      // Darts on the number in the Shanghai parts (any bed of it), and the doubles of part 2.
+      metrics: [higher("segmentRate", 20, 70, 0.6), higher("doubleRate", 5, 40, 0.4)],
+      sample: { keys: ["darts"], min: 30 },
+    },
+    {
       gameId: "around-the-clock",
       area: "accuracy",
       metrics: [higher("accuracy", 20, 80)],

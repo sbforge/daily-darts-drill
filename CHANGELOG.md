@@ -19,7 +19,10 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [0.9.6] - 2026-11-05
 
-Fixes and clearer wording from your feedback on 0.9.5.
+Fixes and clearer wording from your feedback on 0.9.5, and a new game: the JDC Challenge.
+
+### Added
+- **JDC Challenge.** The training check of the Junior Darts Corporation in three parts: Shanghai 10–15 (every hit on the number scores its value, single, double and treble in one visit is a Shanghai worth 100 extra), one dart at each double from D1 to the bull (50 points a double, 100 for the bull), then Shanghai 15–20. Choose 1 to 5 visits per number when you add it; with 1 the most you can score is 3380. It counts toward the DPI with your hits on the numbers and your doubles.
 
 ### Changed
 - **DPI in the menu.** The Statistics button in the menu is now called DPI.
