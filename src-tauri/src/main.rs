@@ -309,13 +309,9 @@ fn main() {
             save_crash_report,
             clear_export_target,
             update_blocker,
-<<<<<<< HEAD
             set_running_marker,
-            prepare_update_backup
-=======
             prepare_update_backup,
             prepare_erase_backup
->>>>>>> feature/erase-all-data
         ])
         .build(tauri::generate_context!())
         .expect("error while building D³ – Daily Darts Drill")
