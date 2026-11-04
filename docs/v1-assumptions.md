@@ -169,6 +169,28 @@ Per game:
   of legs, Clockwork, Bob's 27, Catch 40. If a setting change makes it unable (legs back to "until the time is up"),
   its time cap comes back. The routine card says "About N minutes" when an estimate is in it.
 
+## 0.9.1: changes from the 0.9.0 test (`docs/v1.0-feedback-plan.md`)
+
+Branches: `feature/game-shot`, `feature/solo-leg-averages`, `feature/ton-machine-bands` (on top of the averages),
+`feature/dpi-v2`, `feature/plan-b-chain`, `feature/small-fixes`, all merged here.
+
+- 🔶 Plan B, odd leave before dart 3: the set-up dart is a single that leaves a good double (37 → S5 for D16,
+  31 → S15 for D8), not the route's treble. It is shown and lit like any target, but doesn't count for the hit rate.
+- 🔶 Plan B, a bust before the checkout loses the round; the darts after the restart at the double only count for the
+  hit rate. A bust no longer shows "No Score" in Plan B (the visit goes on, nothing is closed).
+- 🔶 Plan B, after the third dart the panel shows the round's result (Success / Missed) until the takeout, as before.
+- ⚪ Game shot: the leg / checkout counts at once (averages, legs, points), only the next one waits. If the time runs
+  out during the Game shot the game ends as before, with the leg counted.
+- ⚪ Game shot ends on the takeout or "Next turn". A takeout Autodarts doesn't report (e.g. after a reconnect) needs
+  "Next turn".
+- ⚪ Solo Leg's leg average shows "–" from the takeout until the first dart of the new leg. It is not in the result
+  screen; "Best leg average" is.
+- ⚪ Ton Machine: the visit on the board joins its band only when it is over, so the counts don't jump while you throw.
+  "Total score" moved to the result screen only. Old results keep their trebles / bulls / misses values, nothing is
+  migrated.
+- ⚪ DPI version 2 recalculates the whole history: old Clockwork, Double Trouble and Bob's 27 results drop on the
+  tougher scales. Old Bob's 27 results have no finished score and are rated on the hit rate alone.
+
 ## Real-world test list (before tagging 1.0.0)
 
 1. Install the 0.9.0 build over your real data: the database opens, the old routines are there, **Everyday Drill** and
@@ -186,3 +208,11 @@ Per game:
 8. Updates (needs a signed release): Check for updates, skip, later, update now, the backup folder, the restart
    (Windows MSI, macOS from Applications, Linux AppImage).
 9. Release workflow: push a `v0.9.0-rc`-style tag from a branch to see the draft with all four platforms and `latest.json`.
+10. 0.9.1 over 0.9.0 by OTA: tag `v0.9.1` (no hyphen), publish the draft, start 0.9.0, it offers 0.9.1.
+11. Game shot in Solo Leg, Big Fish, Checkout Ladder, Catch 40, Wild Card: overlay on the checkout, darts thrown after
+    it don't count, the lock moves while pulling, next leg / checkout after the takeout, the last leg ends the game
+    only after the takeout.
+12. Solo Leg panel (match / leg average, no visit counts), result screen (best leg average, 80+, 100+, 140+, 180).
+13. Plan B chain (D16 → D8 → D4, bust restart, S-set-up, bull on dart 3), Ton Machine band grid, Bull-X target staying
+    until the takeout, Wild Card without darts per checkout, the DPI chart after the recalculation.
+
