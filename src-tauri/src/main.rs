@@ -90,6 +90,18 @@ fn clear_export_target(path: String) -> Result<(), String> {
 /// Where D³ runs from decides whether it can replace itself: macOS runs an app opened from a disk image (or the
 /// Downloads folder, "App Translocation") from a read-only place, a `.deb` install on Linux is updated by hand.
 /// Returns `null` when updating in place works, else the reason: `"macos-not-installed"` or `"linux-package"`.
+/// Removes the "running" marker right before an update closes the app, and puts it back if the update failed.
+#[tauri::command]
+fn set_running_marker(app: tauri::AppHandle, running: bool) -> Result<(), String> {
+    let marker = app.path().app_log_dir().map_err(|e| e.to_string())?.join("running");
+    if running {
+        std::fs::write(&marker, "").map_err(|e| e.to_string())
+    } else {
+        let _ = std::fs::remove_file(&marker);
+        Ok(())
+    }
+}
+
 #[tauri::command]
 fn update_blocker() -> Option<&'static str> {
     let exe = std::env::current_exe().ok()?.to_string_lossy().to_string();
@@ -111,6 +123,19 @@ fn prepare_update_backup(app: tauri::AppHandle) -> Result<String, String> {
     let dir = update.join(format!("{}-{}-install", env!("CARGO_PKG_VERSION"), backup::today()));
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     backup::prune(&update, 3);
+    Ok(dir.join(backup::DB_FILE).display().to_string())
+}
+
+/// A place for the copy made right before "Erase all data": `backups/erase/<version>-<date>-<time>/darttrainer.db`.
+/// Keeps the last 3, so an erase by mistake can still be undone by hand.
+#[tauri::command]
+fn prepare_erase_backup(app: tauri::AppHandle) -> Result<String, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let erase = backup::backups_dir(&config).join("erase");
+    let time = chrono::Local::now().format("%H%M%S");
+    let dir = erase.join(format!("{}-{}-{}", env!("CARGO_PKG_VERSION"), backup::today(), time));
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    backup::prune(&erase, 3);
     Ok(dir.join(backup::DB_FILE).display().to_string())
 }
 
@@ -224,7 +249,10 @@ fn main() {
             let mut startup = Startup::default();
             // A marker for "the app is running": a clean exit removes it, so finding it means the last run crashed.
             let marker = app.path().app_log_dir()?.join("running");
-            startup.crashed_last_time = marker.exists();
+            // An update closes the app however its installer likes (the Windows installer just ends it), so the
+            // first start of a new version never counts the last run as a crash.
+            let updated = backup::last_version(&config).is_some_and(|v| v != env!("CARGO_PKG_VERSION"));
+            startup.crashed_last_time = marker.exists() && !updated;
             if startup.crashed_last_time {
                 log::warn!("the last run did not close normally");
             }
@@ -281,7 +309,9 @@ fn main() {
             save_crash_report,
             clear_export_target,
             update_blocker,
-            prepare_update_backup
+            set_running_marker,
+            prepare_update_backup,
+            prepare_erase_backup
         ])
         .build(tauri::generate_context!())
         .expect("error while building D³ – Daily Darts Drill")

@@ -393,3 +393,18 @@ export function exportTo(path: string): Promise<void> {
     await conn().execute("VACUUM INTO $1", [path]);
   });
 }
+
+// ---------------------------------------------------------------- erase
+
+/**
+ * "Erase all data": every session, result, dart and routine goes. Settings (the Autodarts connection, language,
+ * animations, updates) stay, so the app works right away; the caller adds the built-in routines again.
+ */
+export function eraseAllData(): Promise<void> {
+  return queue(async () => {
+    const d = conn();
+    // Children first; the foreign keys would cascade, but only with foreign_keys switched on.
+    for (const table of ["darts", "game_results", "sessions", "routines"]) await d.execute(`DELETE FROM ${table}`);
+  });
+}
+

@@ -54,3 +54,9 @@ export async function chooseExportFile(): Promise<string | null> {
     filters: [{ name: "D³ data", extensions: ["db"] }],
   });
 }
+
+/** Where the copy right before "Erase all data" goes (the folder is made, the file is written by the caller). */
+export async function prepareEraseBackup(): Promise<string> {
+  return invoke<string>("prepare_erase_backup");
+}
+

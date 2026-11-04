@@ -86,6 +86,11 @@ pub fn last_backup(config: &Path) -> Option<String> {
     newest.map(|t| chrono::DateTime::<Local>::from(t).to_rfc3339())
 }
 
+/// The version of the last run, if the app ran before.
+pub fn last_version(config: &Path) -> Option<String> {
+    fs::read_to_string(config.join(LAST_VERSION_FILE)).ok().map(|s| s.trim().to_string())
+}
+
 /// Backup when the app version differs from the last run, before the migrations of the new version run.
 /// Writes the current version afterwards. Returns the backup folder if one was made.
 pub fn update_backup(config: &Path, version: &str) -> Result<Option<PathBuf>, String> {

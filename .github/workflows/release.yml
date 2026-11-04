@@ -22,11 +22,36 @@ jobs:
           node-version: 22
       - run: node scripts/sync-version.js --check --tag "${{ github.ref_name }}"
 
+  # One draft for the tag, made before the builds: when every build job looked for the draft itself, two jobs
+  # could each create one (a draft can't be found by its tag), and the installers ended up split between them.
+  release:
+    name: Create the draft release
+    needs: [version]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-22.04
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    steps:
+      - id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          # A re-run reuses the draft of the first run.
+          id=$(gh api "repos/$REPO/releases?per_page=100" --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -n 1)
+          if [ -z "$id" ]; then
+            # v1.1.0-beta.1 and the like are pre-releases: "latest" ignores them, so no player is offered them.
+            pre=false; case "$TAG" in *-*) pre=true;; esac
+            id=$(gh api "repos/$REPO/releases" -X POST -f tag_name="$TAG" -f name="D³ $TAG" -F draft=true -F prerelease=$pre --jq .id)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build ${{ matrix.name }}
-    needs: [version]
-    # The version check is skipped on manual runs, which must not stop the build.
-    if: ${{ !cancelled() && (needs.version.result == 'success' || needs.version.result == 'skipped') }}
+    needs: [version, release]
+    # The version check and the draft are skipped on manual runs, which must not stop the build.
+    if: ${{ !cancelled() && needs.version.result != 'failure' && needs.release.result != 'failure' }}
     strategy:
       fail-fast: false
       matrix:
@@ -90,11 +115,8 @@ jobs:
         with:
           # tauri-action writes latest.json (all platforms, with signatures) into the draft release.
           includeUpdaterJson: true
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          releaseName: ${{ github.ref_type == 'tag' && format('D³ {0}', github.ref_name) || '' }}
-          releaseDraft: true
-          # v1.1.0-beta.1 and the like are pre-releases: "latest" ignores them, so no player is offered them.
-          prerelease: ${{ github.ref_type == 'tag' && contains(github.ref_name, '-') }}
+          # Upload into the one draft made above; a manual run has none and only builds.
+          releaseId: ${{ needs.release.outputs.id }}
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       # The ad-hoc signature (signingIdentity "-") has to be complete, else Apple Silicon calls the app "damaged".
@@ -117,3 +139,23 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
           if-no-files-found: error
+
+  # Every platform has to be in latest.json, or players on the missing one never see the update.
+  check:
+    name: Check the draft
+    needs: [release, build]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-22.04
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ID: ${{ needs.release.outputs.id }}
+        run: |
+          url=$(gh api "repos/$REPO/releases/$ID" --jq '.assets[] | select(.name == "latest.json") | .url')
+          [ -n "$url" ] || { echo "latest.json is missing in the draft"; exit 1; }
+          gh api -H "Accept: application/octet-stream" "$url" > latest.json
+          for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
+            jq -e --arg p "$p" '.platforms[$p].url' latest.json > /dev/null || { echo "latest.json has no $p"; exit 1; }
+          done
+          echo "latest.json has all platforms:"; jq '.platforms | keys' latest.json

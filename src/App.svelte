@@ -37,13 +37,13 @@
     type TimeRange,
     type Trend,
   } from "./lib/dpi";
-  import { missingBuiltins } from "./lib/routines/builtin";
+  import { BUILTIN_ROUTINES, makeBuiltin, missingBuiltins } from "./lib/routines/builtin";
   import { NON_COMPARABLE } from "./lib/games/shared";
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
   import { checkForUpdate, initUpdates, installUpdate, later, RELEASES_URL, setAutoCheck, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
-  import { chooseExportFile, lastBackup } from "./lib/backend";
+  import { chooseExportFile, lastBackup, prepareEraseBackup } from "./lib/backend";
   import CrashToasts from "./lib/CrashToasts.svelte";
   import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
@@ -57,6 +57,7 @@
   import DpiChart from "./lib/DpiChart.svelte";
   import LoadingScreen from "./lib/LoadingScreen.svelte";
   import SbomDialog from "./lib/SbomDialog.svelte";
+  import LogDialog from "./lib/LogDialog.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
@@ -94,6 +95,7 @@
   let lastBackupAt = $state<string | null>(null);
   // The last run didn't close normally (the Rust side left its "running" marker behind).
   let closedBadly = $state(false);
+  let logDialog = $state<LogDialog>();
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
@@ -204,6 +206,9 @@
     shot ? shot.darts : session && result?.noScore?.turn === session.shownTurn ? result.noScore.darts : 3,
   );
   const closedHint = $derived(shot ? t("shot.lockedHint") : t("run.noScoreHint"));
+  // Autodarts keeps detecting after a bust or a checkout (that can't be stopped), but those darts are neither
+  // counted nor shown: the boxes after it stay closed and the board doesn't draw them.
+  const shownDarts = $derived(session ? session.shown.slice(0, bustAt) : []);
   // The game's own moment of the checkout ("Ton out!") is shown on the Game shot overlay instead of a stamp.
   const shotMoment = $derived(
     shot && session && result ? (pickMoments(result, session.allTurns).play.find((m) => m.turn === shot.turn)?.text ?? "") : "",
@@ -242,6 +247,35 @@
   }
 
   let restoreNote = $state("");
+
+  // "Erase all data": asked twice, then a copy goes to backups/erase, everything the player made is deleted,
+  // the built-in routines are added as new, and the app starts over (a reload reads the empty database).
+  let eraseDialog = $state<HTMLDialogElement>();
+  let eraseStep = $state<1 | 2>(1);
+  let erasing = $state(false);
+  let eraseError = $state("");
+
+  function askErase() {
+    eraseStep = 1;
+    eraseError = "";
+    eraseDialog?.showModal();
+  }
+
+  async function eraseAll() {
+    erasing = true;
+    eraseError = "";
+    try {
+      await db.exportTo(await prepareEraseBackup());
+      await db.eraseAllData();
+      await db.saveRoutines(BUILTIN_ROUTINES.map((b) => makeBuiltin(b)));
+      log.info("all data erased, built-in routines added");
+      location.reload();
+    } catch (e) {
+      log.error(`erase failed: ${e}`);
+      eraseError = t("erase.failed", { msg: e instanceof Error ? e.message : String(e) });
+      erasing = false;
+    }
+  }
 
   /** Adds back the built-in routines that are missing; never overwrites what the player changed. */
   function restoreBuiltins() {
@@ -548,6 +582,8 @@
   }
 
   /** While a routine runs, its controls sit in the header as icons, so the screen stays free for darts. */
+  // A game or break in progress. The summary of a finished or stopped routine doesn't count: export and
+  // updates work there, they only wait while darts are thrown.
   const inRun = $derived(!!run && (phase === "countdown" || phase === "break" || phase === "ready" || phase === "running"));
   const skipLabel = $derived(
     phase === "running"
@@ -1100,7 +1136,7 @@
         config = await db.loadConfig();
         draft = { ...config };
         initUpdates(
-          { get: db.getSetting, set: db.setSetting, busy: () => phase !== "idle", backup: db.exportTo },
+          { get: db.getSetting, set: db.setSetting, busy: () => inRun, backup: db.exportTo },
           __APP_VERSION__,
         ).catch((e) => log.warn(`updates: ${e}`));
         loaded("loading.routines");
@@ -1302,12 +1338,18 @@
   </p>
 {/if}
 {#if closedBadly}
-  <p class="banner" role="alert">
-    {t("crash.closedBadly")}
+  <div class="banner closed-badly" role="alert">
+    <span>{t("crash.closedBadly")}</span>
+    <button class="link" onclick={() => logDialog?.open()}>{t("log.show")}</button>
     <button class="link" onclick={() => openFolder("logs")}>{t("about.openLogs")}</button>
-    <button class="link" onclick={() => (closedBadly = false)}>{t("crash.dismiss")}</button>
-  </p>
+    <button class="icon dismiss" onclick={() => (closedBadly = false)} title={t("crash.dismiss")} aria-label={t("crash.dismiss")}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L12.59 13.4 6.3 19.71 4.89 18.3 11.17 12 4.89 5.71 6.3 4.29l6.29 6.3 6.3-6.3z" />
+      </svg>
+    </button>
+  </div>
 {/if}
+<LogDialog bind:this={logDialog} />
 
 <CrashToasts />
 
@@ -1473,11 +1515,11 @@
                 <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
               {:else}
                 <div class="row">
-                  <button class="primary" disabled={phase !== "idle"} onclick={installUpdate}>{t("updates.now")}</button>
+                  <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
                   <button class="ghost" onclick={later}>{t("updates.later")}</button>
                   <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
                 </div>
-                {#if phase !== "idle"}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
+                {#if inRun}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
               {/if}
             {:else}
               <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
@@ -1492,7 +1534,7 @@
           <p class="hint">{t("backup.hint")}</p>
           <div class="row">
             <button class="ghost" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
-            <button class="ghost" disabled={phase !== "idle"} onclick={exportData}>{t("export.button")}</button>
+            <button class="ghost" disabled={inRun} onclick={exportData}>{t("export.button")}</button>
           </div>
           <p class="hint">{t("export.hint")}</p>
           {#if exportNote}<p class={exportNote.failed ? "error" : "hint"} role="status">{exportNote.text}</p>{/if}
@@ -1514,6 +1556,15 @@
             <input class="short" type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
           </label>
           <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
+        </section>
+
+        <!-- Always the last group: the one button that can't be taken back. -->
+        <section class="group danger-zone" aria-labelledby="erase-title">
+          <h3 id="erase-title">{t("erase.title")}</h3>
+          <p class="hint">{t("erase.hint")}</p>
+          <div class="row">
+            <button class="danger-solid" disabled={inRun} onclick={askErase}>{t("erase.button")}</button>
+          </div>
         </section>
       </div>
     </section>
@@ -1992,11 +2043,10 @@
             </button>
           {/if}
           {#each [0, 1, 2] as i (i)}
-            {@const d = session.shown[i]}
+            {@const d = shownDarts[i]}
             {#if d}
               <button
                 class="dart-box filled"
-                class:void={i >= bustAt}
                 class:editing={session.edit === i}
                 class:fixed={d.method === "manual"}
                 aria-pressed={session.edit === i}
@@ -2014,7 +2064,7 @@
         <div class="board" bind:this={boardEl}>
           <Board
             turns={session.allTurns.filter((_, k) => k !== session?.shownTurn)}
-            current={session.shown}
+            current={shownDarts}
             targets={result.targets}
             picking={session.edit !== null || (!paused && session.canAdd)}
             onpick={(d) => (session?.edit !== null ? session?.correct(d) : !paused && session?.add(d))}
@@ -2182,6 +2232,36 @@
 </svelte:boundary>
 
 <FxLayer />
+
+<!-- "Erase all data", asked twice. Escape or the backdrop cancels, except while it runs. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm erase"
+  bind:this={eraseDialog}
+  aria-labelledby="erase-dialog-title"
+  oncancel={(e) => erasing && e.preventDefault()}
+  onclick={(e) => {
+    if (e.target === eraseDialog && !erasing) eraseDialog.close();
+  }}
+>
+  <h3 id="erase-dialog-title">{t(eraseStep === 1 ? "erase.step1Title" : "erase.step2Title")}</h3>
+  {#if eraseStep === 1}
+    <p class="warning">{t("erase.step1Lost")}</p>
+    <p class="lede">{t("erase.step1Body")}</p>
+  {:else}
+    <p class="warning">{t("erase.step2Body")}</p>
+    <p class="hint">{t("erase.backupNote")}</p>
+  {/if}
+  {#if eraseError}<p class="error" role="alert">{eraseError}</p>{/if}
+  <div class="foot">
+    <button class="ghost" disabled={erasing} onclick={() => eraseDialog?.close()}>{t("erase.cancel")}</button>
+    {#if eraseStep === 1}
+      <button class="danger-solid" onclick={() => (eraseStep = 2)}>{t("erase.step1Yes")}</button>
+    {:else}
+      <button class="danger-solid" disabled={erasing} onclick={eraseAll}>{erasing ? t("erase.erasing") : t("erase.step2Yes")}</button>
+    {/if}
+  </div>
+</dialog>
 
 <!-- Asked when leaving the editor of a new routine that still has no games. Escape or the backdrop stays. -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -2626,7 +2706,7 @@
     .found { margin-top: 0.5rem; }
     .found .picked { border-color: var(--chalk); }
     .row { display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; align-items: center; }
-    button.primary, button.ghost {
+    button.primary, button.ghost, button.danger-solid {
       font: inherit;
       font-weight: 600;
       border-radius: 6px;
@@ -2641,6 +2721,12 @@
     button.ghost { background: none; color: var(--chalk); border-color: var(--line); }
     button.ghost:hover:not(:disabled) { background: var(--panel); }
     button.danger { color: #ff9b8f; }
+    button.danger-solid { border: 1px solid #ff6b5b; background: #b3261e; color: #fff; font-weight: 700; }
+    button.danger-solid:hover:not(:disabled) { background: #d0342a; }
+    button.danger-solid:disabled { opacity: 0.5; cursor: not-allowed; }
+    .confirm.erase { border-color: #ff6b5b; }
+    .confirm.erase h3 { color: #ff9b8f; }
+    .confirm.erase .warning { padding: 0.6rem 0.8rem; border-left: 3px solid #ff6b5b; background: rgb(179 38 30 / 0.18); color: #ffd9d3; font-weight: 600; }
   }
   .url { font-family: ui-monospace, Consolas, monospace; color: var(--dim); font-size: 0.9rem; margin: 0 0 1rem; word-break: break-all; }
   .recent { font-size: 1.2rem; letter-spacing: 0.04em; }
@@ -2784,6 +2870,10 @@
   .notes { white-space: pre-wrap; font: inherit; font-size: 0.85rem; max-height: 10rem; overflow: auto; background: var(--panel); padding: 0.6rem; border-radius: 6px; }
   progress { width: 100%; }
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
+  .closed-badly { display: flex; align-items: center; gap: 0.5rem 1.25rem; flex-wrap: wrap; padding-right: 0.75rem; }
+  .closed-badly span { flex: 1 1 18rem; }
+  .closed-badly .dismiss { display: grid; place-items: center; padding: 0.3rem; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
+  .closed-badly .dismiss:hover { background: rgb(255 255 255 / 0.12); }
   code { font-family: ui-monospace, Consolas, monospace; background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 4px; }
   .narrow { max-width: 34rem; }
   .about-hero { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
@@ -2797,6 +2887,9 @@
   .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
   .group { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .group.wide { grid-column: 1 / -1; }
+  /* Across the whole width, below everything else in Settings. */
+  .group.danger-zone { grid-column: 1 / -1; border-color: rgb(255 107 91 / 0.6); background: rgb(179 38 30 / 0.14); }
+  .group.danger-zone h3 { color: #ff9b8f; }
   .group h3 { margin: 0 0 0.75rem; }
   .group > :last-child, .group label:last-child { margin-bottom: 0; }
   .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
@@ -2967,7 +3060,6 @@
     background: var(--accent);
   }
   /* Thrown after a bust, or never to be thrown: the turn is over. */
-  .dart-box.void:not(.editing) { color: var(--dim); border-color: var(--line); border-style: dashed; text-decoration: line-through; }
   .dart-box.closed { color: #ff6b5b; opacity: 0.55; border-style: dashed; font-size: 1.2rem; }
   .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
   .pick-hint { max-width: 400px; width: 100%; height: 1.4em; line-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }

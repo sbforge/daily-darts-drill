@@ -116,6 +116,8 @@ export async function installUpdate() {
     const path = await invoke<string>("prepare_update_backup");
     await host.backup(path);
     log.info(`update ${found.version}: backup written, downloading`);
+    // Installing closes the app without a normal exit (on Windows the installer ends it): that is no crash.
+    await invoke("set_running_marker", { running: false }).catch(() => {});
     await found.downloadAndInstall((ev) => {
       if (ev.event === "Started") updates.total = ev.data.contentLength ?? 0;
       else if (ev.event === "Progress") updates.done += ev.data.chunkLength;
@@ -126,6 +128,7 @@ export async function installUpdate() {
     await relaunch();
   } catch (e) {
     log.error(`update failed: ${e}`);
+    await invoke("set_running_marker", { running: true }).catch(() => {});
     updates.status = "error";
     updates.error = String(e);
   }
