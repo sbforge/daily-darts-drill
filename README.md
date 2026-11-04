@@ -70,9 +70,6 @@ The games so far:
 | **Big Fish** (170) | Leg after leg from 170, double out, bust is no score. | The high finishes and the nerve for them. |
 | **Solo Leg** (solo 501) | A normal leg against yourself (301, 501 or 701): 3-dart and first-9 average, checkout rate. | Your whole game in one number. |
 
-The checkout games show the usual route under the rest and light the first field on the board (switch it off
-with "Show route").
-
 ### Live board
 
 While you play, D³ shows every dart on the board as it lands, with the score of the current turn and the
