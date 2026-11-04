@@ -553,6 +553,8 @@
   }
 
   /** While a routine runs, its controls sit in the header as icons, so the screen stays free for darts. */
+  // A game or break in progress. The summary of a finished or stopped routine doesn't count: export and
+  // updates work there, they only wait while darts are thrown.
   const inRun = $derived(!!run && (phase === "countdown" || phase === "break" || phase === "ready" || phase === "running"));
   const skipLabel = $derived(
     phase === "running"
@@ -1105,7 +1107,7 @@
         config = await db.loadConfig();
         draft = { ...config };
         initUpdates(
-          { get: db.getSetting, set: db.setSetting, busy: () => phase !== "idle", backup: db.exportTo },
+          { get: db.getSetting, set: db.setSetting, busy: () => inRun, backup: db.exportTo },
           __APP_VERSION__,
         ).catch((e) => log.warn(`updates: ${e}`));
         loaded("loading.routines");
@@ -1484,11 +1486,11 @@
                 <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
               {:else}
                 <div class="row">
-                  <button class="primary" disabled={phase !== "idle"} onclick={installUpdate}>{t("updates.now")}</button>
+                  <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
                   <button class="ghost" onclick={later}>{t("updates.later")}</button>
                   <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
                 </div>
-                {#if phase !== "idle"}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
+                {#if inRun}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
               {/if}
             {:else}
               <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
@@ -1503,7 +1505,7 @@
           <p class="hint">{t("backup.hint")}</p>
           <div class="row">
             <button class="ghost" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
-            <button class="ghost" disabled={phase !== "idle"} onclick={exportData}>{t("export.button")}</button>
+            <button class="ghost" disabled={inRun} onclick={exportData}>{t("export.button")}</button>
           </div>
           <p class="hint">{t("export.hint")}</p>
           {#if exportNote}<p class={exportNote.failed ? "error" : "hint"} role="status">{exportNote.text}</p>{/if}
