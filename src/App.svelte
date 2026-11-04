@@ -1152,26 +1152,6 @@
           <span class="confirm-bubble" role="status">{t("run.confirmAbort")}</span>
         {/if}
       </span>
-      <button
-        class="icon"
-        class:active={fullscreen.on}
-        aria-label={t(fullscreen.on ? "run.exitFullscreen" : "run.fullscreen")}
-        title={t(fullscreen.on ? "run.exitFullscreen" : "run.fullscreen")}
-        onclick={toggleFullscreen}
-      >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d={fullscreen.on
-              ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"
-              : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}
-          />
-        </svg>
-      </button>
     </div>
   {/if}
   <button
@@ -1199,6 +1179,26 @@
       <path
         fill="currentColor"
         d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"
+      />
+    </svg>
+  </button>
+  <button
+    class="icon fullscreen"
+    class:active={fullscreen.on}
+    aria-label={t(fullscreen.on ? "nav.exitFullscreen" : "nav.fullscreen")}
+    title={t(fullscreen.on ? "nav.exitFullscreen" : "nav.fullscreen")}
+    onclick={toggleFullscreen}
+  >
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d={fullscreen.on
+          ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"
+          : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}
       />
     </svg>
   </button>
@@ -2235,7 +2235,7 @@
     cursor: pointer;
   }
   button.icon:hover { color: var(--chalk); background: var(--panel); }
-  button.icon[aria-current="page"] { color: var(--accent); background: var(--panel); }
+  button.icon[aria-current="page"], button.icon.fullscreen.active { color: var(--accent); background: var(--panel); }
   button.icon:disabled { opacity: 0.35; cursor: not-allowed; background: none; color: var(--dim); }
   .run-controls { display: flex; gap: 0.25rem; padding-right: 0.75rem; margin-right: -1.25rem; border-right: 1px solid var(--line); }
   .run-controls button.icon.active { color: var(--accent); background: var(--panel); }
