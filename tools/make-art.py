@@ -294,6 +294,12 @@ def g_solo_leg():
     b = board(650, 270, 440, rot=0, hot={(20, "double")}, dim=.55, numbers=False)
     b += _label("501", 60, 290, 150) + _bar(64, 316)
     return b
+def g_jdc():
+    # Shanghai: single, double and treble of one number lit, three darts in it.
+    i = ORDER.index(15)
+    b = board(650, 270, 440, rot=-i * 18, hot={(15, "single"), (15, "double"), (15, "treble")}, dim=.55, numbers=False)
+    b += _label("JDC", 60, 290, 130) + _bar(64, 316)
+    return b
 
 if __name__ == "__main__":
     backdrop(); app_icon(); hero(); singles(); routine_card()
@@ -301,5 +307,5 @@ if __name__ == "__main__":
     card(g_121, "121"); card(g_atc, "around-the-clock")
     card(g_simple_doubles, "simple-doubles"); card(g_complex_doubles, "complex-doubles"); card(g_scoring, "scoring")
     for fn, name in ((g_catch_40, "catch-40"), (g_wild_card, "wild-card"), (g_bobs_27, "bobs-27"), (g_bull_x, "bull-x"),
-                     (g_big_fish, "big-fish"), (g_solo_leg, "solo-leg")):
+                     (g_big_fish, "big-fish"), (g_solo_leg, "solo-leg"), (g_jdc, "jdc-challenge")):
         card(fn, name)
