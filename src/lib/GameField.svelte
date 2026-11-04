@@ -59,8 +59,12 @@
   onresize={() => (showInfo = false)}
 />
 
-<div class="field">
+<div class="field" class:check={field.kind === "checkbox"}>
   <div class="head">
+    {#if field.kind === "checkbox"}
+      <!-- The box sits in front of its label, on the line of the other fields' controls. -->
+      <input {id} type="checkbox" checked={value === "on"} onchange={(e) => (value = e.currentTarget.checked ? "on" : "off")} />
+    {/if}
     <label for={id}>{field.label}</label>
     <button
       bind:this={button}
@@ -80,7 +84,7 @@
   </div>
   {#if field.kind === "select"}
     <Select {id} bind:value options={field.options ?? []} />
-  {:else}
+  {:else if field.kind === "number"}
     <input {id} type="number" min={field.min} max={field.max} bind:value />
   {/if}
   {#if showInfo}
@@ -93,6 +97,11 @@
   .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.95rem; }
   .head { display: flex; align-items: center; gap: 0.3rem; }
   .head label { display: inline; margin: 0; }
+  /* Its control is the box in the head, so the head moves down to where the other fields have their control. */
+  .field.check { justify-content: flex-end; }
+  .field.check .head { min-height: 2.6rem; gap: 0.5rem; }
+  .field.check label { cursor: pointer; }
+  input[type="checkbox"] { width: 1.1rem; height: 1.1rem; margin: 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
   .info {
     flex: none;
     display: grid;

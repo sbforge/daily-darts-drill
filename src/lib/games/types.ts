@@ -8,7 +8,8 @@ export interface Field {
   label: string;
   /** What the option does, shown behind the info icon next to the field. */
   info: string;
-  kind: "select" | "number";
+  /** A checkbox stores "on" or "off". */
+  kind: "select" | "number" | "checkbox";
   options?: { value: string | number; label: string }[];
   min?: number;
   max?: number;

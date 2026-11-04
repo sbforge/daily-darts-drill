@@ -53,8 +53,11 @@
       .map((f) => {
         const v = it.settings[f.key];
         if (f.kind === "select") return f.options?.find((o) => o.value === v)?.label ?? String(v);
+        // A checkbox shows up only when it is on.
+        if (f.kind === "checkbox") return v === "on" ? f.label : "";
         return `${f.label} ${v}`;
       })
+      .filter(Boolean)
       .join(" · ");
   }
 
