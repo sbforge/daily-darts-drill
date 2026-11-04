@@ -1,6 +1,6 @@
 import { num, t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
-import { routeFocus, showRouteField } from "./route-focus";
+import { routeFocus } from "./route-focus";
 import { great, opt, pct } from "./shared";
 import type { GameDef, Moment } from "./types";
 
@@ -28,7 +28,7 @@ export const oneTwentyOne: GameDef = {
   hasResult: true,
   defaultMinutes: 10,
   // Fast-forward on and no safehouse is how 121 was played before both became settings.
-  defaultSettings: { start: 121, fastForward: "on", safehouse: "off", showRoute: "on" },
+  defaultSettings: { start: 121, fastForward: "on", safehouse: "off" },
   fields: [
     {
       key: "start",
@@ -64,7 +64,6 @@ export const oneTwentyOne: GameDef = {
       kind: "select",
       options: [opt("on", () => t("121.safehouseOn")), opt("off", () => t("121.safehouseOff"))],
     },
-    showRouteField,
   ],
   describe: (s) =>
     [

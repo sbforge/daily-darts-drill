@@ -43,10 +43,9 @@ describe("Catch 40", () => {
     expect(again.values.rounds).toBe(1);
     expect(again.focus?.value).toBe("61");
   });
-  it("shows the route and lights its first field", () => {
+  it("shows no route (switched off in route-focus.ts)", () => {
     const r = play("");
-    expect(r.focus?.hint).toBeTruthy();
-    expect(r.targets).toHaveLength(1);
-    expect(catch40.compute([], { showRoute: "off" }, { open: false }).focus?.hint).toBeUndefined();
+    expect(r.focus?.hint).toBeUndefined();
+    expect(r.targets).toHaveLength(0);
   });
 });
