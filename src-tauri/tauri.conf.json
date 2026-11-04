@@ -39,7 +39,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM2QTRDNUM5OUEyNjhGMkIKUldRcmp5YWF5Y1dreGp6R21xOWZqVHZweEpOZzFDTTdvdlQ2SnozdWZ1UkdMb285Vi8yNG9QazcK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU5MDM2QUZENkQ4OUUxMDUKUldRRjRZbHQvV29ENmM0MUxyTXJVUUxIVUJXUU14bDNsUG9heHdESGR1ZWl3QVhSN2tUVS9JcjIK",
       "endpoints": [
         "https://github.com/sbforge/daily-darts-drill/releases/latest/download/latest.json"
       ],

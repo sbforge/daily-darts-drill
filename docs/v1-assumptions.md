@@ -37,11 +37,11 @@ Legend: 🔶 a real decision you may want to turn around · ⚪ a detail, fine u
 
 ## Needs you (cannot be done from here)
 
-1. 🔶 **Updater signing key.** I generated a key pair **without a password** for the test build:
-   `~/.tauri/d3-prerelease.key` (private, never in the repo) and its public half in `src-tauri/tauri.conf.json`
-   (`plugins.updater.pubkey`). For the real release run `npx tauri signer generate -w ~/.tauri/d3.key`, replace the
-   public key, and add the two repository secrets `TAURI_SIGNING_PRIVATE_KEY` and `…_PASSWORD`. Until then CI release
-   builds fail at signing, and installed prerelease builds can't be updated to a build signed with another key.
+1. ✅ **Updater signing key.** The real key pair (with a password) is `~/.tauri/d3.key`; its public half is in
+   `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). CI signs with the repository secrets
+   `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; without them release builds fail at signing.
+   Keep the key file and the password backed up: installed copies only accept updates signed with this key.
+   The earlier test key (`~/.tauri/d3-prerelease.key`) is no longer used.
 2. 🔶 **Nothing was run in the real Tauri window.** What I could check: `cargo check`/`cargo test`, `svelte-check`,
    100+ vitest cases, and the whole UI in the browser preview (every new game, the layout at 900 × 540, 1093 × 560,
    1920 × 970, the dialogs). What only the real app can show: the SQL plugin's migrations (a changed or newer database →
