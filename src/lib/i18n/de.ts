@@ -155,7 +155,6 @@ export const de: Record<Key, string> = {
   "wild.summary": "{rate}% Erfolg ({checkouts} von {attempts})",
   "wild.checkout": "Checkout {n}",
   "wild.attempts": "Versuche",
-  "wild.dartsPerCheckout": "Darts pro Checkout",
   "wild.great": "Sauber!",
   "bob.name": "Bob's 27",
   "bob.blurb": "Starte mit 27 Punkten und geh um die Doubles, D1 bis D20 und das Bull, je drei Darts. Jedes getroffene Double bringt seinen Wert, zweimal getroffen zählt zweimal. Triffst du mit allen drei Darts nicht, geht der Wert des Doubles ab. Bei null oder darunter ist das Spiel vorbei.",

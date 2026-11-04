@@ -153,7 +153,6 @@ export const en = {
   "wild.summary": "{rate}% success ({checkouts} of {attempts})",
   "wild.checkout": "Checkout {n}",
   "wild.attempts": "Attempts",
-  "wild.dartsPerCheckout": "Darts per checkout",
   "wild.great": "Clean!",
   "bob.name": "Bob's 27",
   "bob.blurb": "Start with 27 points and go round the doubles, D1 to D20 and the bull, three darts at each. Every double you hit adds its value, hit it twice and it counts twice. Miss with all three darts and that double’s value comes off. At zero or below the game is over.",

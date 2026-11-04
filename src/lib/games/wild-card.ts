@@ -109,7 +109,6 @@ export const wildCard: GameDef = {
     const attempts = state.attempts.length;
     const rate = pct(won.length, attempts);
     const highest = Math.max(0, ...won.map((a) => a.target));
-    const dartsPerCheckout = won.length ? won.reduce((n, a) => n + a.dart, 0) / won.length : 0;
     const route = routeFocus(state.remaining, s);
 
     // A clean checkout: the first three darts, in a range that starts above 60.
@@ -117,13 +116,12 @@ export const wildCard: GameDef = {
       RANGES[range][0] > 60 ? won.filter((a) => a.dart <= 3).map((a) => great(a.turn, t("wild.great"))) : [];
 
     return {
-      values: { successRate: rate, checkouts: won.length, attempts, highestCheckout: highest, dartsPerCheckout },
+      values: { successRate: rate, checkouts: won.length, attempts, highestCheckout: highest },
       lines: [
         { key: "rate", stored: "successRate", label: t("game.successRate"), value: attempts ? `${num(rate, 1)}%` : t("game.noneYet"), hero: true },
         { key: "checkouts", label: t("121.checkouts"), value: String(won.length) },
         { key: "attempts", label: t("wild.attempts"), value: String(attempts) },
         { key: "highest", stored: "highestCheckout", label: t("121.best"), value: highest ? String(highest) : t("game.noneYet") },
-        { key: "dpc", stored: "dartsPerCheckout", label: t("wild.dartsPerCheckout"), value: won.length ? num(dartsPerCheckout, 1) : t("game.noneYet") },
       ],
       focus: { label: t("wild.checkout", { n: state.target }), value: String(state.remaining), hint: route.hint },
       targets: route.targets,
