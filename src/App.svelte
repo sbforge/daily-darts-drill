@@ -561,7 +561,8 @@
   }
 
   /**
-   * Stops the routine at any point. It is recorded as aborted and keeps no scores.
+   * Stops the routine at any point. It is recorded as stopped and keeps the games finished so far;
+   * the game in play is dropped.
    * A quick game is stopped instead: a game in play ends and its result is kept, so it needs no
    * second click. Before its game started there is nothing to keep and nothing is recorded.
    */
@@ -3007,7 +3008,7 @@
   .game-label .plan-meta { text-align: left; font-size: 0.85rem; }
   .dpi-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 
-  .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
+  .views { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; padding-inline: 3.6rem; }
   .board, .darts { max-width: 400px; width: 100%; }
   .board { position: relative; }
   .darts { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
@@ -3017,8 +3018,11 @@
     top: 50%;
     left: calc(100% + 0.75rem);
     transform: translateY(-50%);
-    border: 1px solid var(--line);
-    color: var(--chalk);
+    width: 2.6rem;
+    height: 2.6rem;
+    border: 1.5px solid var(--accent);
+    background: var(--panel);
+    color: var(--accent);
   }
   .darts .phase {
     position: absolute;
@@ -3035,7 +3039,7 @@
   .darts .phase[data-phase="takeoutInProgress"] { color: var(--accent); }
   .darts .phase[data-phase="takeoutInProgress"] svg { animation: pull 0.8s ease-in-out infinite alternate; }
   @keyframes pull { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
-  .darts .next-turn:hover { color: var(--accent); border-color: var(--accent); background: var(--panel); }
+  .darts .next-turn:hover { color: var(--bg); background: var(--accent); }
   /* A fixed height, the same for a box with or without a dart, a button or not, and in any font:
      a box that grew by a pixel would push the board (and its backdrop) down. */
   .dart-box {
@@ -3103,6 +3107,7 @@
 
   /* The board takes what's left of its column: the dart boxes above it keep their fixed height. */
   main.fit .views {
+    /* The padding (3.6rem a side) leaves room beside the dart boxes for the phase icon and the next-turn button. */
     --bs: min(100cqw, calc(100cqh - 5.6rem), 800px);
     container-type: size;
     min-height: 0;

@@ -17,7 +17,7 @@ and not our own Rust command.
 - `SCHEMA`: `CREATE TABLE IF NOT EXISTS` for `settings`, `routines`, `sessions`, `game_results`, `darts`, two indexes.
 - Then three hand-made upgrades: add `sessions.status`, `routines.description`, `routines.pause_seconds` if
   `pragma_table_info` doesn't list them.
-- Then a clean-up that is not a migration: sessions still `running` become `aborted`, their results are deleted.
+- Then a clean-up that is not a migration: sessions still `running` become `aborted`, the games they finished are kept.
 - No schema version anywhere.
 - **No release has been published yet** (no tags on GitHub), so the only existing database is the developer's own,
   and it already has every column.

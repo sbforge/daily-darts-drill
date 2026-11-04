@@ -27,19 +27,10 @@ export async function openDb(): Promise<void> {
   // Opening the database runs the migrations (src-tauri/migrations), each in its own transaction.
   db = await Database.load("sqlite:darttrainer.db");
 
-  // A routine that was still running when the app closed counts as aborted: no scores kept.
-  const stale = await db.select<{ id: string }[]>("SELECT id FROM sessions WHERE status = 'running'");
-  for (const { id } of stale) {
-    await db.execute(
-      `DELETE FROM darts WHERE game_result_id IN (SELECT id FROM game_results WHERE session_id = $1)`,
-      [id],
-    );
-    await db.execute("DELETE FROM game_results WHERE session_id = $1", [id]);
-    await db.execute("UPDATE sessions SET status = 'aborted', finished_at = $1 WHERE id = $2", [
-      new Date().toISOString(),
-      id,
-    ]);
-  }
+  // A routine that was still running when the app closed counts as stopped; the games it finished are kept.
+  await db.execute("UPDATE sessions SET status = 'aborted', finished_at = $1 WHERE status = 'running'", [
+    new Date().toISOString(),
+  ]);
 }
 
 // ------------------------------------------------------------- settings
@@ -244,19 +235,12 @@ export interface SessionInfo {
 }
 
 /**
- * Closes a routine run. An aborted run keeps no scores: the results and darts
- * saved so far for that run are removed and only the "Aborted" entry remains.
+ * Closes a routine run. A stopped ("aborted") run keeps the games it finished: they were saved one by one
+ * and count like any other result. Only the game in play when it was stopped is gone.
  */
 export function endSession(info: SessionInfo, status: "completed" | "aborted"): Promise<void> {
   return queue(async () => {
     const d = conn();
-    if (status === "aborted") {
-      await d.execute(
-        `DELETE FROM darts WHERE game_result_id IN (SELECT id FROM game_results WHERE session_id = $1)`,
-        [info.sessionId],
-      );
-      await d.execute("DELETE FROM game_results WHERE session_id = $1", [info.sessionId]);
-    }
     await d.execute(
       `INSERT INTO sessions (id, routine_id, routine_name, started_at, finished_at, status)
        VALUES ($1, $2, $3, $4, $5, $6)

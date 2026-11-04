@@ -1,5 +1,5 @@
 <script lang="ts">
-  // "Game shot": lies over the board from the checkout dart until the takeout. The board is locked, darts thrown
+  // "Game shot": lies over the board from the checkout dart until the takeout. Darts thrown
   // now don't count; the overlay says what comes next. It is driven by the game's result, not by the fx queue,
   // so it can't be skipped or dropped: it goes away when the turn is closed (takeout or "next turn").
   import { fade } from "svelte/transition";
@@ -26,16 +26,8 @@
   <div class="card">
     <span class="title">{t("shot.title")}</span>
     {#if moment}<span class="moment">{moment}</span>{/if}
-    <span class="lock" class:pulling aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="30" height="30">
-        <path
-          fill="currentColor"
-          d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3Zm0 9a2 2 0 0 0-1 3.73V18h2v-1.27A2 2 0 0 0 12 13Z"
-        />
-      </svg>
-    </span>
     <span class="next">{next}</span>
-    <span class="pull">{pulling ? t("shot.pulling") : t("shot.pull")}</span>
+    <span class="pull" class:pulling>{pulling ? t("shot.pulling") : t("shot.pull")}</span>
   </div>
 </div>
 
@@ -72,18 +64,13 @@
     text-transform: uppercase;
   }
   .moment { color: var(--accent); font-weight: 700; font-size: 1.05rem; }
-  .lock { color: var(--dart); margin-top: 0.25rem; }
-  .lock.pulling { animation: pull 0.8s ease-in-out infinite alternate; }
   .next { font-weight: 700; font-size: 1.1rem; }
   .pull { color: var(--dim); font-size: 0.95rem; }
+  .pull.pulling { color: var(--accent); }
 
   @keyframes arrive {
     from { opacity: 0; transform: scale(0.6); }
     60% { opacity: 1; transform: scale(1.06); }
     to { transform: scale(1); }
-  }
-  @keyframes pull {
-    from { transform: translateY(0); }
-    to { transform: translateY(-5px); }
   }
 </style>
