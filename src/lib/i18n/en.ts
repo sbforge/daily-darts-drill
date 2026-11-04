@@ -638,10 +638,6 @@ export const en = {
   "scoring.summary": "{average} three-dart average",
   "scoring.total": "Total score",
   "scoring.bestTurn": "Best turn",
-  "scoring.tonPlus": "Turns of 100+",
-  "scoring.triples": "Triples",
-  "scoring.bulls": "Bulls",
-  "scoring.misses": "Misses",
 
   // 121
   "121.blurb":

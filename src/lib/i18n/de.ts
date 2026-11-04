@@ -638,10 +638,6 @@ export const de: Record<Key, string> = {
   "scoring.summary": "{average} 3-Dart-Schnitt",
   "scoring.total": "Gesamtpunkte",
   "scoring.bestTurn": "Beste Aufnahme",
-  "scoring.tonPlus": "Aufnahmen ab 100",
-  "scoring.triples": "Triples",
-  "scoring.bulls": "Bulls",
-  "scoring.misses": "Fehlwürfe",
 
   // 121
   "121.blurb":

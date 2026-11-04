@@ -26,6 +26,11 @@ export interface StatLine {
   live?: false;
   /** true: only on the panel while playing, not in the result screen (e.g. the average of the leg being played). */
   liveOnly?: true;
+  /**
+   * Small counts shown as a grid of two columns under the other lines while playing (Ton Machine's visit bands);
+   * "wide" spans both columns. The result screen lists them as normal lines.
+   */
+  grid?: "cell" | "wide";
 }
 
 /** A field of the board. Segment fields have a number; the bulls have none. */

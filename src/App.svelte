@@ -195,7 +195,8 @@
   const elapsed = $derived(Math.max(0, (paused ? pausedAt : now) - startsAt));
   const result = $derived(session ? session.result : null);
   const hero = $derived(result?.lines.find((l) => l.hero));
-  const others = $derived(result?.lines.filter((l) => !l.hero && l.live !== false) ?? []);
+  const others = $derived(result?.lines.filter((l) => !l.hero && l.live !== false && !l.grid) ?? []);
+  const gridLines = $derived(result?.lines.filter((l) => l.grid && l.live !== false) ?? []);
   // After a bust or a checkout (Game shot) the turn is over: darts of the shown turn from here on don't count,
   // its empty boxes are closed.
   const shot = $derived(session && result?.gameShot?.turn === session.shownTurn ? result.gameShot : null);
@@ -1954,6 +1955,13 @@
             {/each}
           </dl>
         {/if}
+        {#if gridLines.length}
+          <dl class="stats stats-grid">
+            {#each gridLines as l (l.key)}
+              <div class:wide={l.grid === "wide"}><dt>{l.label}</dt><dd>{l.value}</dd></div>
+            {/each}
+          </dl>
+        {/if}
       </div>
 
       <div class="views">
@@ -2725,6 +2733,9 @@
   .stats { margin: 0; border-top: 1px solid var(--line); }
   .stage .stats { width: min(100%, 24rem); text-align: left; }
   .stats div { display: flex; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
+  /* Small counts side by side (Ton Machine's visit bands), the wide one across both columns. */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 1.5rem; border-top: 0; }
+  .stats-grid div.wide { grid-column: 1 / -1; }
   dt { color: var(--dim); }
   dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 

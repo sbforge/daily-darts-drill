@@ -45,9 +45,17 @@ describe("Double Trouble (simple doubles)", () => {
 });
 
 describe("Ton Machine (scoring)", () => {
-  it("three-dart average, best turn, ton-plus", () => {
+  it("three-dart average, best turn", () => {
     const r = scoring.compute(turns("T20 T20 T20 | S1 S1 S1"), {}, open);
-    expect(r.values).toMatchObject({ average: 91.5, bestTurn: 180, tonPlus: 1, triples: 3 });
+    expect(r.values).toMatchObject({ average: 91.5, bestTurn: 180 });
+    expect(r.values.triples).toBeUndefined();
+  });
+  it("counts each visit in exactly one band; the visit on the board only once it is over", () => {
+    const t = "T20 T20 T20 | T19 T19 T19 | T20 T20 S20 | T20 S20 S20 | S20 S20 S20 | S20 S20 S1 | S5 S5 S5 | T20 T20 T20";
+    const r = scoring.compute(turns(t), {}, open);
+    expect(r.values).toMatchObject({ v180: 2, v171: 1, v140: 1, v100: 1, v80: 0, v60: 1, v0: 2 });
+    expect(scoring.compute(turns(t), {}, { open: true }).values.v180).toBe(1);
+    expect(r.lines.filter((l) => l.grid).map((l) => l.grid)).toEqual(["cell", "cell", "cell", "cell", "cell", "cell", "wide"]);
   });
 });
 
