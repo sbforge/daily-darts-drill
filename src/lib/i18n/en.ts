@@ -92,7 +92,7 @@ export const en = {
   "updates.title": "Updates",
   "updates.current": "You are using version {v}.",
   "updates.auto": "Check for updates on start",
-  "updates.autoOn": "On (once a day)",
+  "updates.autoOn": "On (at every start)",
   "updates.autoOff": "Off",
   "updates.privacy": "D³ only reads one small file (latest.json) from GitHub to find out if there is a newer version. Nothing about you is sent. You can switch the automatic check off; the button below always works.",
   "updates.check": "Check for updates",

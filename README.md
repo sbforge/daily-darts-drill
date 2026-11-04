@@ -125,7 +125,7 @@ an issue with the details filled in. Nothing leaves your computer by itself.
 
 ### Updates
 
-D³ looks for a newer version when it starts (once a day) and tells you with a small dot on the settings icon.
+D³ looks for a newer version at every start, in the background, and shows an "Update" button in the top bar when there is one. Offline it just stays quiet.
 You decide when to install it, never during a routine. The check reads one small file (`latest.json`) from this
 GitHub project and sends nothing about you; you can switch it off in the settings, the manual button always
 works. Updates are signed, so only versions from this project install. Your data is backed up before the update.

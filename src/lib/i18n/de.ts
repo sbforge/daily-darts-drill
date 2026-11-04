@@ -94,7 +94,7 @@ export const de: Record<Key, string> = {
   "updates.title": "Updates",
   "updates.current": "Du nutzt Version {v}.",
   "updates.auto": "Beim Start nach Updates suchen",
-  "updates.autoOn": "An (einmal am Tag)",
+  "updates.autoOn": "An (bei jedem Start)",
   "updates.autoOff": "Aus",
   "updates.privacy": "D³ liest nur eine kleine Datei (latest.json) von GitHub, um zu sehen, ob es eine neuere Version gibt. Es werden keine Daten über dich gesendet. Die automatische Suche kannst du ausschalten; der Button unten funktioniert immer.",
   "updates.check": "Nach Updates suchen",

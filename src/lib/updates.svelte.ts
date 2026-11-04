@@ -6,7 +6,8 @@ import { log } from "./log";
 export type UpdateStatus = "idle" | "checking" | "upToDate" | "available" | "downloading" | "installing" | "error";
 
 export const RELEASES_URL = "https://github.com/sbforge/daily-darts-drill/releases/latest";
-const CHECK_EVERY_MS = 24 * 60 * 60 * 1000;
+/** An offline start must not wait long for an answer that won't come. */
+const CHECK_TIMEOUT_MS = 10_000;
 const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 /** What the app lends the updater: the settings store, whether a routine runs, and the pre-install backup. */
@@ -56,21 +57,17 @@ export async function setAutoCheck(on: boolean) {
 
 /**
  * Asks GitHub for a newer version. Automatic checks stay silent on errors, skip a version the player skipped,
- * and run at most once a day; a manual check always answers.
+ * and run on every start, in the background; a manual check always answers.
  */
 export async function checkForUpdate({ manual }: { manual: boolean }) {
   if (!host || !inTauri) return;
   if (updates.status === "checking" || updates.status === "downloading" || updates.status === "installing") return;
-  if (!manual) {
-    if (!updates.autoCheck) return;
-    const last = Date.parse((await host.get("updates.lastCheck")) ?? "");
-    if (Number.isFinite(last) && Date.now() - last < CHECK_EVERY_MS) return;
-  }
+  if (!manual && !updates.autoCheck) return;
   updates.status = "checking";
   updates.error = "";
   try {
     const { check } = await import("@tauri-apps/plugin-updater");
-    const update = await check();
+    const update = await check({ timeout: CHECK_TIMEOUT_MS });
     await host.set("updates.lastCheck", new Date().toISOString());
     if (!update) {
       found = null;
