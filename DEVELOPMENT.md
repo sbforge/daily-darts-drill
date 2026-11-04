@@ -34,7 +34,7 @@ The app must run inside Tauri (`npm run tauri dev`): the database only exists th
 
 ## Releasing
 
-Write the notes first: `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format, entries under
+Write the notes first, for the players who read them in the app (the guidelines are at the top of `CHANGELOG.md`): `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format, entries under
 `[Unreleased]` while you work). To release, rename that heading to `## [1.0.0] - 2026-01-31` and add a new empty
 `[Unreleased]` above it; `npm run release-notes -- 1.0.0` prints what will be published. The release workflow refuses a
 tag without notes, puts that section into the draft release, and the app shows it in the update dialog.

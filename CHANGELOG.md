@@ -3,24 +3,34 @@
 All notable changes to D³ – Daily Darts Drill. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the versions follow [Semantic Versioning](https://semver.org/).
 
-The section of a release is what the update dialog in the app and the GitHub release show, so write each entry for a
-player, not for a developer. Add entries under `[Unreleased]` while you work; when you release, rename that heading to the
-version and date (`npm run release-notes -- 1.0.0` prints what will be published).
+**Players read this.** The section of a release is what the update dialog in the app and the GitHub release show. Write it
+for someone who trains with D³, not for a developer:
+
+- Start with one or two sentences on what this version is about.
+- Put it under *Added*, *Changed*, *Fixed* or *Removed*. Begin each entry with a short **bold name**, then say what the
+  player gets and what to do (a setting, a button), not how it is built.
+- No file names, internal terms or commit titles. A game is called by the name you see in the app.
+- Say what stays the same when a change could worry someone ("your data is kept").
+
+Add entries under `[Unreleased]` while you work. To release, rename that heading to the version and date;
+`npm run release-notes -- 1.0.0` prints what will be published.
 
 ## [Unreleased]
 
 ## [0.9.5] - 2026-11-04
 
+Practise like in a match: the score is yours to count now. And D³ tells you when a new version is out, with the news
+right in the app.
+
 ### Added
-- **Update button** in the top bar when a new version is found, with the release notes read right in the app. The app now looks for updates at every start (silent when you are offline).
-- **Counting the score**: Settings → Playing decides whether the rest of Solo Leg, Big Fish, 121, Wild Card and Catch 40 changes after the visit (new default, as in a match where you do the sums yourself) or after every dart. Each game in a routine can follow the setting or override it. A bust or a checkout always shows at once.
-- Carousel cards show how long a routine takes.
-- History marks a game that was too short to count for the DPI with a struck-through DPI badge.
+- **Count it yourself.** Solo Leg, Big Fish, Checkout Ladder (121), Wild Card and Catch 40 no longer take off every dart at once. The rest changes when your visit is over, as in a match where nobody does the sums for you. Prefer the old way? **Settings → Playing** switches back to counting after every dart, and each game in a routine can follow that setting or have its own. A bust or a checkout still shows immediately.
+- **Update button.** When a new version is out, a highlighted button appears in the top bar. Click it to read what is new without leaving D³, then install when it suits you (never during a routine). D³ now looks for updates every time it starts, and stays quiet when you are offline.
+- **Routine length on the cards.** The routine carousel shows how long a routine takes.
+- **Short games are marked.** In History, a game too short to count toward your index shows a struck-through DPI badge.
 
 ### Changed
-- Stopping a routine keeps the games you finished, and the game in play if you threw at least 30 darts in it (a shorter one is dropped). Such a routine is marked "Stopped" instead of "Aborted". A routine that was still running when the app closed keeps its finished games, too.
-- The next-turn button is easier to see and no longer touches the window border.
-- README: a note that the rules of some games differ from the originals on purpose.
+- **Stopping a routine keeps your work.** The games you finished count, and so does the game you stop in the middle if you threw at least 30 darts in it. In History such a routine is labelled "Stopped" instead of "Aborted". The same goes for a routine D³ was closed in the middle of.
+- **Next-turn button** is easier to see and no longer sits against the window border.
 
 ### Removed
 - The lock icon on the Game shot card.
