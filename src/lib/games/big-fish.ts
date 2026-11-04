@@ -1,5 +1,5 @@
 import { num, t } from "../i18n/index.svelte";
-import { routeFocus, showRouteField } from "./route-focus";
+import { routeFocus } from "./route-focus";
 import { legsField } from "./solo-leg";
 import { great, opt } from "./shared";
 import type { GameDef, Moment } from "./types";
@@ -25,7 +25,7 @@ export const bigFish: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
-  defaultSettings: { legs: 0, giveUp: 0, showRoute: "on" },
+  defaultSettings: { legs: 0, giveUp: 0 },
   fields: [
     legsField("legs"),
     {
@@ -39,7 +39,6 @@ export const bigFish: GameDef = {
       kind: "select",
       options: GIVE_UP.map((n) => opt(n, () => (n ? t("fish.giveUpAfter", { n }) : t("fish.giveUpOff")))),
     },
-    showRouteField,
   ],
   describe: (s) => (Number(s.legs) > 0 ? t("fish.describeLegs", { legs: s.legs }) : t("fish.describe")),
   summary: (v) => t("fish.summary", { legs: v.checkouts, darts: num(v.dartsPerLeg, 1), best: v.bestLeg || t("game.none") }),
