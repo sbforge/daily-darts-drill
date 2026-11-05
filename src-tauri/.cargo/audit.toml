@@ -1,0 +1,7 @@
+# Settings for `cargo audit` (the rust-audit job in .github/workflows/ci.yml runs it from src-tauri).
+[advisories]
+ignore = [
+  # rsa (Marvin Attack): only listed in Cargo.lock, through sqlx's MySQL driver, which D³ doesn't enable.
+  # `cargo tree -i rsa --target all` prints nothing: it is never built into the app. Recheck when sqlx changes.
+  "RUSTSEC-2023-0071",
+]
