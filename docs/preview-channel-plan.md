@@ -81,18 +81,22 @@ for the testers. It's easy to add later, by an extra trigger on the same jobs.
 
 ### Developer mode
 
-❓ Proposal: **tap the version number in Settings 7 times.** A "Developer" section appears in Settings, right above "Erase all data":
+✅ A visible **"Developer" section** in Settings, right above "Erase all data", with a **"Developer mode"
+checkbox**. Ticking it asks first, in a dialog in the style of "Erase all data": *only turn this on if you know what
+you are doing; stored data is in danger when updating to versions that aren't released*, plus a note that backups
+are restored by hand. The box only gets its tick after confirming. Unticking needs no question and also sets the
+channel back to Stable.
 
-- **Updates: Stable / Preview** (saved as `updates.channel`, next to `updates.autoCheck`). Default Stable.
-- **Turn developer mode off**, which also sets the channel back to Stable.
-- Developer mode itself is saved as `developer.enabled`, so the section stays visible after a restart.
+With developer mode on, the section shows **Updates: Stable / Preview** (saved as `updates.channel`, next to
+`updates.autoCheck`; default Stable). Developer mode itself is saved as `developer.enabled`.
 
 While the channel is Preview, a small **"Preview"** label sits in the header, next to the version in Settings, and on
-the About page. A screenshot or a bug report can then never be taken for a stable version. A beta shows its full version
-(`0.9.7-beta.1`) anyway.
+the About page. A screenshot or a bug report can then never be taken for a stable version. A beta shows its full
+version (`0.9.7-beta.1`) anyway.
 
-Alternatives, not chosen: a command-line flag or a marker file (awkward to set with an app bundle on macOS and
-Windows), a separate developer build (defeats testing the real installed app).
+Not chosen: a hidden switch (tap the version 7 times): too easy to miss what it does, and the warning belongs in
+front of the switch. A command-line flag or a marker file (awkward with an app bundle on macOS and Windows), a
+separate developer build (defeats testing the real installed app).
 
 ### The update check
 
@@ -148,8 +152,7 @@ can't go back from `1.3.0-beta.N` to `1.2.1`. One version in the preview channel
 
 - ✅ A beta is built from a tag (section 1), not on every push.
 - ✅ Only `beta.N` for now; the pipeline treats any dash the same, so `rc` works later without changes.
-- ✅ The 7-tap switch is fine: betas are signed like every release, so the worst case is someone getting an
-  unfinished version they asked for.
+- ✅ Developer mode is a visible checkbox with a warning dialog, not a hidden switch.
 
 ## Testing
 
@@ -158,7 +161,7 @@ can't go back from `1.3.0-beta.N` to `1.2.1`. One version in the preview channel
 - **Stable unchanged:** an app on Stable sees no beta (manual check says "up to date").
 - **Preview:** an installed stable build, switched to Preview, updates to `beta.1`; after a second tag to `beta.2`;
   after the stable tag to `X.Y.Z`.
-- The switch, the Developer section and the label can be tried with `tauri dev`.
+- The checkbox, the dialog, the Developer section and the label can be tried with `tauri dev`.
 
 ## Order and size
 

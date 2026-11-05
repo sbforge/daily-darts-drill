@@ -256,30 +256,20 @@
 
   let restoreNote = $state("");
 
-  // Developer mode: 7 taps on the version in Settings, each within 2 seconds of the one before.
-  const TAPS_FOR_DEVELOPER = 7;
-  let taps = 0;
-  let tapTimer: ReturnType<typeof setTimeout> | undefined;
-  let tapNote = $state("");
-  function tapVersion() {
-    clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => {
-      taps = 0;
-      tapNote = "";
-    }, 2000);
+  // Developer mode: a checkbox in Settings. Turning it on asks first, because betas can put the data at risk.
+  let developerDialog = $state<HTMLDialogElement>();
+  function toggleDeveloper(e: MouseEvent) {
     if (updates.developer) {
-      tapNote = t("developer.already");
+      setDeveloper(false);
       return;
     }
-    taps++;
-    const left = TAPS_FOR_DEVELOPER - taps;
-    if (left <= 0) {
-      taps = 0;
-      tapNote = t("developer.on");
-      setDeveloper(true);
-    } else if (left <= 3) {
-      tapNote = t("developer.tapsLeft", { n: left });
-    }
+    // The box only gets its tick once the dialog is confirmed.
+    e.preventDefault();
+    developerDialog?.showModal();
+  }
+  async function confirmDeveloper() {
+    developerDialog?.close();
+    await setDeveloper(true);
   }
 
   // "Erase all data": asked twice, then a copy goes to backups/erase, everything the player made is deleted,
@@ -1595,12 +1585,10 @@
 
         <section class="group wide" aria-labelledby="updates-title">
           <h3 id="updates-title">{t("updates.title")}</h3>
-          <!-- Tapping the version 7 times turns developer mode on: a plain text look, on purpose. -->
           <p>
-            <button class="version-tap" onclick={tapVersion}>{t("updates.current", { v: __APP_VERSION__ })}</button>
+            {t("updates.current", { v: __APP_VERSION__ })}
             {#if updates.channel === "preview"}<span class="preview-pill">{t("developer.previewLabel")}</span>{/if}
           </p>
-          {#if tapNote}<p class="hint" role="status">{tapNote}</p>{/if}
           <label>
             {t("updates.auto")}
             <Select
@@ -1660,10 +1648,19 @@
         </section>
 
         <!-- Always the last group: the one button that can't be taken back. -->
-        {#if updates.developer}
-          <section class="group wide" aria-labelledby="developer-title">
-            <h3 id="developer-title">{t("developer.title")}</h3>
-            <p class="hint">{t("developer.hint")}</p>
+        <section class="group wide" aria-labelledby="developer-title">
+          <h3 id="developer-title">{t("developer.title")}</h3>
+          <p class="hint">{t("developer.hint")}</p>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              checked={updates.developer}
+              disabled={updates.status === "downloading" || updates.status === "installing"}
+              onclick={toggleDeveloper}
+            />
+            {t("developer.mode")}
+          </label>
+          {#if updates.developer}
             <label>
               {t("developer.channel")}
               <Select
@@ -1679,15 +1676,8 @@
               />
             </label>
             <p class="hint">{t(updates.channel === "preview" ? "developer.previewHint" : "developer.stableHint")}</p>
-            <div class="row">
-              <button
-                class="ghost"
-                disabled={updates.status === "downloading" || updates.status === "installing"}
-                onclick={() => setDeveloper(false)}>{t("developer.off")}</button
-              >
-            </div>
-          </section>
-        {/if}
+          {/if}
+        </section>
 
         <section class="group danger-zone" aria-labelledby="erase-title">
           <h3 id="erase-title">{t("erase.title")}</h3>
@@ -2402,6 +2392,26 @@
   </div>
 </dialog>
 
+<!-- Asked before developer mode goes on: betas can change the data so that a stable version can't read it. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm erase"
+  bind:this={developerDialog}
+  aria-labelledby="developer-dialog-title"
+  onclick={(e) => {
+    if (e.target === developerDialog) developerDialog.close();
+  }}
+>
+  <h3 id="developer-dialog-title">{t("developer.confirmTitle")}</h3>
+  <p class="warning">{t("developer.confirmWarning")}</p>
+  <p class="lede">{t("developer.confirmBody")}</p>
+  <p class="hint">{t("developer.confirmBackup")}</p>
+  <div class="foot">
+    <button class="ghost" onclick={() => developerDialog?.close()}>{t("developer.confirmCancel")}</button>
+    <button class="danger-solid" onclick={confirmDeveloper}>{t("developer.confirmYes")}</button>
+  </div>
+</dialog>
+
 <!-- Asked when leaving the editor of a new routine that still has no games. Escape or the backdrop stays. -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
@@ -3048,8 +3058,9 @@
     animation: update-glow 2.4s ease-in-out infinite;
   }
   .update-btn:hover { background: var(--accent); color: var(--bg); }
-  /* Developer mode: the version looks like plain text; the label makes a preview install unmistakable. */
-  .version-tap { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
+  /* Developer mode: a plain checkbox; the label makes a preview install unmistakable. */
+  .check-row { display: flex; flex-direction: row; align-items: center; gap: 0.6rem; cursor: pointer; }
+  .check-row input { width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--accent); cursor: pointer; }
   .preview-pill {
     display: inline-block;
     margin-left: 0.5rem;

@@ -87,7 +87,7 @@ git push origin v0.9.7-beta.1
   have entries.
 - **What happens:** the same workflow as a stable release (section 4), but the release is a **pre-release**, never
   "latest". Players on the normal update never see it. Apps with **developer mode** on the **Preview** channel get it
-  through the moving `preview` release (Settings → tap the version 7 times → Developer → Update channel).
+  through the moving `preview` release (Settings → Developer → tick "Developer mode", confirm → Update channel).
 - Next beta after more fixes: `v0.9.7-beta.2`, and so on. The final `v0.9.7` on `main` is newer than every beta, so
   preview apps move on to it with the normal update.
 
