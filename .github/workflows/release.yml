@@ -1,7 +1,9 @@
 name: Release
 
-# A pushed tag v* (made by `npm version`) builds every platform into a DRAFT release; nothing reaches players
-# until the draft is published. A manual run builds the branch picked in "Run workflow" and only keeps artifacts.
+# A pushed tag v* builds every platform into a DRAFT release, checks it, and only then publishes it as the latest
+# release. While the assets upload the release is a draft, so the updater never sees a half-filled release; if any
+# build or the check fails, it stays a draft and players keep the previous version.
+# A manual run builds the branch picked in "Run workflow" and only keeps artifacts.
 on:
   push:
     tags: ["v*"]
@@ -180,7 +182,35 @@ jobs:
           url=$(gh api "repos/$REPO/releases/$ID" --jq '.assets[] | select(.name == "latest.json") | .url')
           [ -n "$url" ] || { echo "latest.json is missing in the draft"; exit 1; }
           gh api -H "Accept: application/octet-stream" "$url" > latest.json
+          gh api "repos/$REPO/releases/$ID" --jq '.assets[].name' > assets.txt
           for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
-            jq -e --arg p "$p" '.platforms[$p].url' latest.json > /dev/null || { echo "latest.json has no $p"; exit 1; }
+            url=$(jq -r --arg p "$p" '.platforms[$p].url // empty' latest.json)
+            [ -n "$url" ] || { echo "latest.json has no $p"; exit 1; }
+            sig=$(jq -r --arg p "$p" '.platforms[$p].signature // empty' latest.json)
+            [ -n "$sig" ] || { echo "latest.json has no signature for $p"; exit 1; }
+            # The update package latest.json points to must be in this release, or the update fails on that platform.
+            name=$(basename "$url")
+            grep -qxF "$name" assets.txt || { echo "$p: $name is not an asset of the draft"; exit 1; }
           done
           echo "latest.json has all platforms:"; jq '.platforms | keys' latest.json
+
+  # The last step: the checked draft goes public. Publishing is what the apps' update check sees
+  # (releases/latest/download/latest.json), so it happens only once everything above is green.
+  publish:
+    name: Publish the release
+    needs: [release, check]
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ID: ${{ needs.release.outputs.id }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # v1.1.0-beta.1 and the like go out as pre-releases, never as latest: no player is offered them.
+          latest=true; case "$TAG" in *-*) latest=false;; esac
+          url=$(gh api "repos/$REPO/releases/$ID" -X PATCH -F draft=false -f make_latest="$latest" --jq .html_url)
+          echo "Published $TAG (latest: $latest): $url"
