@@ -1,6 +1,6 @@
 <script lang="ts">
   // Release notes of an update, rendered from Markdown without leaving the app. Links open in the browser.
-  import { openExternal } from "./links";
+  import ExternalLink from "./ExternalLink.svelte";
   import { parseMarkdown, type Inline } from "./markdown";
 
   let { text }: { text: string } = $props();
@@ -10,7 +10,7 @@
 {#snippet inline(parts: Inline[])}
   {#each parts as p}
     {#if p.href}
-      <a href={p.href} onclick={(e) => openExternal(e, p.href!)}>{p.text}</a>
+      <ExternalLink href={p.href} text={p.text} />
     {:else if p.bold}<strong>{p.text}</strong>
     {:else if p.code}<code>{p.text}</code>
     {:else}{p.text}{/if}
@@ -39,5 +39,4 @@
   ul { margin: 0.3rem 0; padding-left: 1.2rem; }
   li { margin: 0.2rem 0; }
   code { padding: 0 0.3em; border-radius: 4px; background: var(--panel); font-size: 0.9em; }
-  a { color: var(--accent); }
 </style>

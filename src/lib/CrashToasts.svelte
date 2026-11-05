@@ -3,7 +3,7 @@
   import { openFolder } from "./backend";
   import { crash, dismissCrash } from "./crash.svelte";
   import { t } from "./i18n/index.svelte";
-  import { openExternal } from "./links";
+  import { EXTERNAL_ICON, openExternal } from "./links";
 
   let copied = $state<number | null>(null);
 
@@ -29,7 +29,11 @@
         <p class="msg">{c.message}</p>
         <div class="actions">
           <button onclick={() => copy(c.id, c.report)}>{copied === c.id ? t("crash.copied") : t("crash.copy")}</button>
-          <a href={c.githubUrl} onclick={(e) => openExternal(e, c.githubUrl)}>{t("crash.report")}</a>
+          <a href={c.githubUrl} onclick={(e) => openExternal(e, c.githubUrl)}>
+            {t("crash.report")}<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+              <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d={EXTERNAL_ICON} />
+            </svg>
+          </a>
           <button onclick={() => openFolder("logs")}>{t("about.openLogs")}</button>
         </div>
       </div>
@@ -54,5 +58,6 @@
     background: #ffffff1a; color: inherit; border: 1px solid #ffffff40; border-radius: 6px;
     padding: 0.25rem 0.6rem; font-size: 0.8rem; cursor: pointer; text-decoration: none;
   }
+  .actions a { display: inline-flex; align-items: center; gap: 0.3rem; }
   .actions button:hover, .actions a:hover { background: #ffffff33; }
 </style>
