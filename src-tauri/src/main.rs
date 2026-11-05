@@ -78,13 +78,33 @@ fn save_crash_report(app: tauri::AppHandle, json: String) -> Result<String, Stri
 }
 
 /// The "Save as" dialog already asked about replacing the file; `VACUUM INTO` refuses to write over one.
+/// Only ever removes a `.db` file that is a SQLite database (or empty), so no other file can be deleted this way.
 #[tauri::command]
 fn clear_export_target(path: String) -> Result<(), String> {
     let p = std::path::Path::new(&path);
-    if p.is_file() {
-        std::fs::remove_file(p).map_err(|e| e.to_string())?;
+    if !p.is_file() {
+        return Ok(());
     }
-    Ok(())
+    if !is_replaceable_export(p) {
+        return Err(format!("not a D³ data file, left in place: {path}"));
+    }
+    std::fs::remove_file(p).map_err(|e| e.to_string())
+}
+
+/// A file an export may replace: ends in `.db` and is empty or starts with the SQLite header.
+fn is_replaceable_export(p: &std::path::Path) -> bool {
+    use std::io::Read;
+    let is_db = p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("db"));
+    if !is_db {
+        return false;
+    }
+    let Ok(mut f) = std::fs::File::open(p) else { return false };
+    let mut head = [0u8; 16];
+    match f.read(&mut head) {
+        Ok(0) => true,
+        Ok(16) => &head == b"SQLite format 3\0",
+        _ => false,
+    }
 }
 
 /// Where D³ runs from decides whether it can replace itself: macOS runs an app opened from a disk image (or the
@@ -189,8 +209,11 @@ fn browse(timeout: Duration) -> Result<Vec<Board>, String> {
         // The client puts the address it wants to be reached at into the TXT record;
         // the resolved addresses and the .local name (not resolvable everywhere) are fallbacks.
         let hostname = info.get_hostname().trim_end_matches('.').to_string();
+        // Only a local-network address is taken from the TXT record, so a stray announcement can't point the
+        // app at a host on the internet.
         let host = info
             .get_property_val_str("ip")
+            .filter(|ip| is_local_address(ip))
             .map(str::to_string)
             .or_else(|| info.get_addresses_v4().iter().min().map(|ip| ip.to_string()))
             .unwrap_or_else(|| hostname.clone());
@@ -209,6 +232,21 @@ fn browse(timeout: Duration) -> Result<Vec<Board>, String> {
 
     let _ = mdns.shutdown();
     Ok(boards)
+}
+
+/// Private, loopback, link-local or carrier-grade NAT (Tailscale and the like) addresses.
+fn is_local_address(ip: &str) -> bool {
+    match ip.trim().parse::<std::net::IpAddr>() {
+        Ok(std::net::IpAddr::V4(v4)) => {
+            let [a, b, ..] = v4.octets();
+            v4.is_private() || v4.is_loopback() || v4.is_link_local() || (a == 100 && (64..128).contains(&b))
+        }
+        Ok(std::net::IpAddr::V6(v6)) => {
+            let first = v6.segments()[0];
+            v6.is_loopback() || (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80
+        }
+        Err(_) => false,
+    }
 }
 
 /// The log: `d3.log` in the app's log folder, about 1 MB each, the last 3 kept. Also on stdout in development.
@@ -322,4 +360,40 @@ fn main() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_addresses_only() {
+        for ip in ["192.168.1.20", "10.0.0.5", "172.16.3.4", "127.0.0.1", "169.254.1.1", "100.101.1.2", "fd00::1", "fe80::1", "::1"] {
+            assert!(is_local_address(ip), "{ip}");
+        }
+        for ip in ["8.8.8.8", "100.128.0.1", "2001:db8::1", "board.local", "", "$(rm -rf /)"] {
+            assert!(!is_local_address(ip), "{ip}");
+        }
+    }
+
+    #[test]
+    fn export_replaces_only_databases() {
+        let dir = std::env::temp_dir().join(format!("d3-export-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("old.db");
+        std::fs::write(&db, b"SQLite format 3\0rest of the file").unwrap();
+        let empty = dir.join("empty.db");
+        std::fs::write(&empty, b"").unwrap();
+        let other_db = dir.join("Thumbs.db");
+        std::fs::write(&other_db, b"not sqlite at all, longer than 16").unwrap();
+        let txt = dir.join("notes.txt");
+        std::fs::write(&txt, b"SQLite format 3\0").unwrap();
+
+        assert!(clear_export_target(db.display().to_string()).is_ok() && !db.exists());
+        assert!(clear_export_target(empty.display().to_string()).is_ok() && !empty.exists());
+        assert!(clear_export_target(other_db.display().to_string()).is_err() && other_db.exists());
+        assert!(clear_export_target(txt.display().to_string()).is_err() && txt.exists());
+        assert!(clear_export_target(dir.join("new.db").display().to_string()).is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

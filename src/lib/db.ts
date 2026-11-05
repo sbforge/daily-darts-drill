@@ -313,6 +313,32 @@ export async function loadSessions(from: string, to: string): Promise<HistorySes
     sessions.map((r) => r.id),
   );
 
+  // One pass over the results (already in position order), grouped by session.
+  const bySession = new Map<string, HistoryRow[]>();
+  for (const g of results) {
+    let settings, values;
+    try {
+      settings = JSON.parse(g.settings_json);
+      values = JSON.parse(g.values_json);
+    } catch {
+      continue; // a broken row is left out instead of blocking the history
+    }
+    const rows = bySession.get(g.session_id) ?? [];
+    rows.push({
+      id: g.id,
+      position: g.position,
+      gameId: g.game_id,
+      gameName: g.game_name,
+      minutes: g.minutes,
+      endedEarly: !!g.ended_early,
+      startedAt: g.started_at,
+      finishedAt: g.finished_at,
+      settings,
+      values,
+    });
+    bySession.set(g.session_id, rows);
+  }
+
   return sessions.map((r) => ({
     id: r.id,
     quick: r.routine_id === null,
@@ -320,20 +346,7 @@ export async function loadSessions(from: string, to: string): Promise<HistorySes
     startedAt: r.started_at,
     finishedAt: r.finished_at,
     status: r.status,
-    rows: results
-      .filter((g) => g.session_id === r.id)
-      .map((g) => ({
-        id: g.id,
-        position: g.position,
-        gameId: g.game_id,
-        gameName: g.game_name,
-        minutes: g.minutes,
-        endedEarly: !!g.ended_early,
-        startedAt: g.started_at,
-        finishedAt: g.finished_at,
-        settings: JSON.parse(g.settings_json),
-        values: JSON.parse(g.values_json),
-      })),
+    rows: bySession.get(r.id) ?? [],
   }));
 }
 

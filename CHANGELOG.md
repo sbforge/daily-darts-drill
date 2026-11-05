@@ -17,6 +17,36 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-11-05
+
+Fixes and clearer wording from your feedback on 0.9.5, and a new game: the JDC Challenge.
+
+### Added
+- **JDC Challenge.** The training check of the Junior Darts Corporation in three parts: Shanghai 10–15 (every hit on the number scores its value, single, double and treble in one visit is a Shanghai worth 100 extra), one dart at each double from D1 to the bull (50 points a double, 100 for the bull), then Shanghai 15–20. Choose 1 to 5 visits per number when you add it; with 1 the most you can score is 3380. It counts toward the DPI with your hits on the numbers and your doubles.
+
+### Changed
+- **Windows: no more admin prompt.** D³ now comes as a setup program that installs just for your Windows user, so neither installing nor updating asks for administrator rights. If you had an earlier version installed, switch once by hand: uninstall D³ in Windows Settings → Apps, then run the new setup. Your routines and results are kept.
+- **Performance instead of Statistics.** The page with your DPI is now called Performance, in the menu, on the page itself and in the settings.
+- **Plan B sets up your way.** After a set-up dart Plan B no longer suggests what to throw next. It shows "Setup" and the rest, and you choose your own way to a double.
+- **Clearer index breakdown.** The result screen now names every value that goes into the DPI (darts per leg, hit rate and so on) instead of just "Value".
+- **German wording.** A dart that misses the board is called "Miss", and a visit is an "Aufnahme".
+- **Solo Leg DPI counts your average only.** Darts per leg no longer go into the index: they depend mostly on your finishing. A 3-dart average of 30 or less is 0 points, 100 or more is 100, for every start. Your history is recalculated, your results themselves stay as they are.
+- **Short leg.** A Solo Leg of 18 darts or fewer from 501 (11 from 301, 25 from 701) now gets a "Short leg!" instead of a "15-darter!".
+
+### Removed
+- **Checkout rate in Solo Leg.** D³ can't know whether a dart was aimed at the double or set one up, so the rate was a guess. It is gone from the result screen and no longer counts toward the index.
+
+### Fixed
+- **Impossible darts from the board.** If Autodarts reports a field that doesn't exist on a dartboard, D³ counts the dart as a miss instead of saving a broken score.
+- **Board buttons don't hang.** When the Autodarts PC is off or has left the network, starting, stopping and resetting the board gives up after a few seconds instead of waiting forever.
+- **History with a damaged entry.** One damaged result no longer keeps History from opening. That game is left out, everything else shows as before.
+- **Export only replaces D³ data.** When you export over an existing file, D³ only replaces an earlier D³ export and leaves any other file alone.
+
+### Security
+- **Board search stays in your network.** When D³ searches for your board, it only accepts addresses from your own network.
+- **Safer updates.** The way D³ and its updates are built and signed is locked down further. Nothing changes for you.
+
+
 ## [0.9.5] - 2026-11-04
 
 Practise like in a match: the score is yours to count now. And D³ tells you when a new version is out, with the news
@@ -93,7 +123,8 @@ offers new versions in the app.
 ### Changed
 - Games in a routine no longer need a time cap, and breaks are 15 seconds.
 
-[Unreleased]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.6...HEAD
+[0.9.6]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.2...v0.9.3

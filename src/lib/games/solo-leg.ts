@@ -1,6 +1,6 @@
 import { num, t } from "../i18n/index.svelte";
 import { routeFocus } from "./route-focus";
-import { gameShotOf, great, opt, pct, instantCountField, shownRest } from "./shared";
+import { gameShotOf, great, opt, instantCountField, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
 
@@ -19,8 +19,8 @@ export const legsField = (key: string) => ({
   options: [opt(0, () => t("x01.legsTime")), ...Array.from({ length: 9 }, (_, i) => opt(i + 1, () => String(i + 1)))],
 });
 
-/** A 501 leg in 15 darts or fewer is a "15-darter"; the other starts scale with it. */
-export const niceLegDarts = (start: number) => Math.round((start / 501) * 15);
+/** A 501 leg in 18 darts or fewer is a short leg; the other starts scale with it (301: 11, 701: 25). */
+export const shortLegDarts = (start: number) => Math.round((start / 501) * 18);
 
 export const soloLeg: GameDef = {
   id: "solo-leg",
@@ -81,15 +81,13 @@ export const soloLeg: GameDef = {
       : x.gameShot && lastLeg
         ? average(lastLeg.points, lastLeg.darts)
         : null;
-    // Checkout rate: legs checked out per dart thrown at a double.
-    const checkoutRate = pct(won.length, x.dartsAtDouble);
     const route = routeFocus(x.rest, s);
-    const nice = niceLegDarts(start);
+    const short = shortLegDarts(start);
 
     const moments: Moment[] = [];
     for (const l of won) {
       if (l.checkout >= 100) moments.push(great(l.turn, t("solo.tonOut")));
-      else if (l.darts <= nice) moments.push(great(l.turn, t("solo.niceLeg", { n: nice })));
+      else if (l.darts <= short) moments.push(great(l.turn, t("solo.shortLeg")));
     }
 
     const legsGoal = Number(s.legs) > 0 ? Number(s.legs) : 0;
@@ -105,7 +103,6 @@ export const soloLeg: GameDef = {
         legs: won.length,
         dartsPerLeg,
         bestLeg,
-        checkoutRate,
         highestCheckout: highest,
         bestLegAverage,
         eighties: x.eighties,
@@ -113,7 +110,6 @@ export const soloLeg: GameDef = {
         ton40s: x.ton40s,
         oneEighties: x.oneEighties,
         darts: x.darts,
-        dartsAtDouble: x.dartsAtDouble,
       },
       lines: [
         // The panel while playing: both averages side by side, then the best leg and the highest finish.
@@ -125,7 +121,6 @@ export const soloLeg: GameDef = {
         { key: "legs", label: t("solo.legs"), value: legsGoal ? t("game.xOfY", { n: won.length, total: legsGoal }) : String(won.length), live: false },
         { key: "first9", label: t("solo.first9"), value: x.darts ? num(first9, 1) : t("game.noneYet"), live: false },
         { key: "dartsPerLeg", label: t("solo.dartsPerLeg"), value: won.length ? num(dartsPerLeg, 1) : t("game.noneYet"), live: false },
-        { key: "checkoutRate", label: t("solo.checkoutRate"), value: x.dartsAtDouble ? `${num(checkoutRate, 1)}%` : t("game.noneYet"), live: false },
         { key: "bestLegAverage", label: t("solo.bestLegAverage"), value: bestLegAverage ? num(bestLegAverage, 1) : t("game.noneYet"), live: false },
         { key: "eighties", label: t("solo.eighties"), value: String(x.eighties), live: false },
         { key: "tons", label: t("solo.tons"), value: String(x.tons), live: false },

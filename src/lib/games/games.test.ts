@@ -41,10 +41,11 @@ describe("Plan B (complex doubles)", () => {
     // D20 hit, then S4 on D10 leaves 16: D8
     expect(complexDoubles.compute(turns("D20 S4"), { double: 20 }, { open: true }).focus?.value).toBe("D8");
   });
-  it("an odd leave is set up with the route's first dart, dart 3 goes at the bull", () => {
-    // 32 - 1 = 31: route S15 D8; the set-up dart doesn't count for the hit rate
+  it("an odd leave is a set-up dart showing only the rest, dart 3 goes at the bull", () => {
+    // 32 - 1 = 31: no suggested route, just "Setup" and the rest; the set-up dart doesn't count for the hit rate
     const r = complexDoubles.compute(turns("S1"), { double: 16 }, { open: true });
-    expect(r.focus?.value).toBe("S15");
+    expect(r.focus).toEqual({ label: "Set up", value: "31" });
+    expect(r.targets).toEqual([]);
     expect(r.values).toMatchObject({ doubleDarts: 1 });
     const d3 = complexDoubles.compute(turns("D16 S5"), { double: 16 }, { open: true });
     expect(d3.targets).toEqual([{ bed: "bull" }]);

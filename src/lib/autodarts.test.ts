@@ -15,6 +15,13 @@ describe("toDart", () => {
     expect(toDart(raw("25", 1, 25))).toMatchObject({ kind: "outerBull", score: 25 });
     expect(toDart({ multiplier: 0, bed: "Outside", coordsX: 1, coordsY: 1 })).toMatchObject({ kind: "miss", score: 0 });
   });
+  it("turns a field the board can't have into a failed miss", () => {
+    for (const bad of [raw("S99", 1, 99), raw("Q5", 4, 5), raw("S?", 1, NaN), { multiplier: "x" }, null]) {
+      const d = toDart(bad);
+      expect(d).toMatchObject({ kind: "miss", score: 0, number: null, failed: true });
+      expect(Number.isFinite(d.radius)).toBe(true);
+    }
+  });
   it("keeps a bouncer flag", () => {
     expect(toDart(raw("S1", 1, 1, { bouncer: true })).bouncer).toBe(true);
   });

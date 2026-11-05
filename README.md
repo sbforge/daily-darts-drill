@@ -35,7 +35,7 @@ you're actually progressing.
 A routine is your daily drill: a list of games, each with its own settings and a time cap, and a short break
 between them. Pick a routine from the carousel and start it. Routines are easy to build and change: add games,
 reorder them by drag & drop, set the break between games. A game that ends by itself (Solo Leg with a number of
-legs, Clockwork, Bob's 27, Catch 40) can run without a time cap.
+legs, Clockwork, Bob's 27, Catch 40, JDC Challenge) can run without a time cap.
 
 Two routines come with D³, so you can start training right away. They are normal routines: change them or delete
 them, and "Restore built-in routines" in the settings brings them back.
@@ -67,6 +67,7 @@ The games so far:
 | **Wild Card** (random checkout) | A random checkout from the range you pick, with 3, 6 or 9 darts. No checkout twice before the whole range has come up. | Reading any finish quickly. |
 | **Bob's 27** | Start with 27 points and go round D1 to D20 and the bull, three darts each. Hits add the double's value, a miss with all three subtracts it. | Doubles with something at stake. |
 | **Bull-X** (bullseye drill) | Dart 1 goes at the bull; hit it and darts 2 and 3 stay there. Miss and they go at the double, treble or (Shanghai) the other two parts of the segment dart 1 hit. | Pressure on the bull, and a way back when it isn't there. |
+| **JDC Challenge** | Three parts: Shanghai 10–15 (every hit on the number scores, a Shanghai is 100 extra), one dart at each double from D1 to the bull (50 each, 100 for the bull), then Shanghai 15–20. 1 to 5 visits per number. | Scoring numbers, doubles and the bull in one comparable score. |
 | **Big Fish** (170) | Leg after leg from 170, double out, bust is no score. | The high finishes and the nerve for them. |
 | **Solo Leg** (solo 501) | A normal leg against yourself (301, 501 or 701), leg after leg or a set number of legs: match and leg average side by side. | Your whole game in one number. |
 
@@ -153,7 +154,7 @@ D³ runs on **Windows, macOS and Linux**. Download the file for your system from
 
 | System | File |
 |---|---|
-| Windows 10 and 11 (64-bit) | `Daily Darts Drill_<version>_x64_en-US.msi` |
+| Windows 10 and 11 (64-bit) | `Daily Darts Drill_<version>_x64-setup.exe` |
 | macOS, Apple Silicon (M1 and later) | `Daily Darts Drill_<version>_aarch64.dmg` |
 | macOS, Intel | `Daily Darts Drill_<version>_x64.dmg` |
 | Linux (x86-64) | `Daily Darts Drill_<version>_amd64.AppImage` (updates itself) or `…_amd64.deb` (updated by hand) |
@@ -163,7 +164,8 @@ You also need an [Autodarts](https://autodarts.io) board whose client runs in th
 
 The installers are not signed with a paid certificate, so your system warns you the first time:
 
-- **Windows:** run the `.msi`. SmartScreen says "Windows protected your PC": click "More info", then "Run anyway".
+- **Windows:** run the `-setup.exe`. SmartScreen says "Windows protected your PC": click "More info", then "Run anyway".
+  D³ installs for your Windows user only, so it doesn't ask for administrator rights, neither now nor on updates.
 - **macOS:** open the `.dmg` and drag D³ into the Applications folder, then open it there. macOS says it can't verify
   the app: open **System Settings → Privacy & Security**, scroll down to the message about D³ and click **Open
   Anyway** (on macOS Sequoia a right-click → Open no longer works). If macOS says the app is "damaged", run

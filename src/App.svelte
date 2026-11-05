@@ -982,6 +982,14 @@
     accuracy: { label: "game.accuracy", percent: true, digits: 1 },
     successRate: { label: "game.successRate", percent: true, digits: 1 },
     highestCheckout: { label: "121.best", digits: 0 },
+    pointsPerNumber: { label: "dpi.metric.pointsPerNumber", digits: 2 },
+    dartsPerLeg: { label: "solo.dartsPerLeg", digits: 1 },
+    hitRate: { label: "bob.hitRate", percent: true, digits: 1 },
+    finishedScore: { label: "dpi.metric.finishedScore", digits: 0 },
+    firstDartBullRate: { label: "bullx.firstRate", percent: true, digits: 1 },
+    recoveryRate: { label: "bullx.recoveryRate", percent: true, digits: 1 },
+    segmentRate: { label: "jdc.segmentRate", percent: true, digits: 1 },
+    doubleRate: { label: "jdc.doubleRate", percent: true, digits: 1 },
   };
   const metricOf = (key: string) => METRICS[key] ?? { label: "dpi.metric" as Key, digits: 1 };
   const metricFormat = (key: string) => (n: number) => `${num(n, metricOf(key).digits)}${metricOf(key).percent ? "%" : ""}`;
@@ -1266,7 +1274,7 @@
       {t("nav.history")}
     </button>
     <button class="tab" aria-current={view === "stats" ? "page" : undefined} onclick={() => go("stats")}>
-      {t("nav.stats")}
+      {t("nav.dpi")}
     </button>
   </nav>
   {#if updateAvailable()}
