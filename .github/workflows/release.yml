@@ -1,7 +1,13 @@
 name: Release
 
-# A pushed tag v* (made by `npm version`) builds every platform into a DRAFT release; nothing reaches players
-# until the draft is published. A manual run builds the branch picked in "Run workflow" and only keeps artifacts.
+# A pushed tag v* builds every platform into a DRAFT release, checks it, and only then publishes it. While the
+# assets upload the release is a draft, so the updater never sees a half-filled release; if any build or the check
+# fails, it stays a draft and players keep the previous version.
+#   v1.2.3 on main                    a stable release, published as latest: every player is offered it.
+#   v1.2.3-beta.N on release/v1.2.3   a pre-release, never latest; only apps on the preview channel get it.
+# Every release also moves the `preview` release (the preview channel's latest.json) when it's newer, and a stable
+# one deletes the betas it makes obsolete. See docs/release-process.md and docs/preview-channel-plan.md.
+# A manual run builds the branch picked in "Run workflow" and only keeps artifacts.
 on:
   push:
     tags: ["v*"]
@@ -18,6 +24,9 @@ jobs:
     if: github.ref_type == 'tag'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The whole history and every branch, to see where the tag sits.
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -25,8 +34,20 @@ jobs:
       - env:
           TAG: ${{ github.ref_name }}
         run: |
-          node scripts/sync-version.js --check --tag "$TAG"
-          # No release without its notes: CHANGELOG.md needs a section for this version.
+          case "$TAG" in
+            *-*)
+              # A beta: on its release branch (v1.2.3-beta.1 on release/v1.2.3). The build sets the full version.
+              branch="origin/release/${TAG%%-*}"
+              git rev-parse --verify --quiet "$branch" > /dev/null || { echo "$TAG: there is no branch ${branch#origin/}"; exit 1; }
+              git merge-base --is-ancestor "$GITHUB_SHA" "$branch" || { echo "$TAG is not on ${branch#origin/}"; exit 1; }
+              ;;
+            *)
+              # A stable release: on main, with the version in package.json and Cargo.toml.
+              git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "$TAG is not on main"; exit 1; }
+              node scripts/sync-version.js --check --tag "$TAG"
+              ;;
+          esac
+          # No release without its notes: a section for this version (a beta may use its version's or [Unreleased]).
           node scripts/release-notes.js "$TAG" > /dev/null
 
   # One draft for the tag, made before the builds: when every build job looked for the draft itself, two jobs
@@ -124,6 +145,14 @@ jobs:
 
       # No install scripts: nothing the app needs uses them, and they would run next to the signing key.
       - run: npm ci --ignore-scripts
+
+      # A beta's version comes from its tag (v1.2.3-beta.1), only for this build; nothing is committed.
+      - name: Set the beta version
+        if: github.ref_type == 'tag' && contains(github.ref_name, '-')
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node scripts/sync-version.js --set "$TAG"
+
       - run: npm test
 
       # Draft first, publish last: a tag push creates (or fills) a draft release, a manual run only builds.
@@ -180,7 +209,107 @@ jobs:
           url=$(gh api "repos/$REPO/releases/$ID" --jq '.assets[] | select(.name == "latest.json") | .url')
           [ -n "$url" ] || { echo "latest.json is missing in the draft"; exit 1; }
           gh api -H "Accept: application/octet-stream" "$url" > latest.json
+          gh api "repos/$REPO/releases/$ID" --jq '.assets[].name' > assets.txt
           for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
-            jq -e --arg p "$p" '.platforms[$p].url' latest.json > /dev/null || { echo "latest.json has no $p"; exit 1; }
+            url=$(jq -r --arg p "$p" '.platforms[$p].url // empty' latest.json)
+            [ -n "$url" ] || { echo "latest.json has no $p"; exit 1; }
+            sig=$(jq -r --arg p "$p" '.platforms[$p].signature // empty' latest.json)
+            [ -n "$sig" ] || { echo "latest.json has no signature for $p"; exit 1; }
+            # The update package latest.json points to must be in this release, or the update fails on that platform.
+            name=$(basename "$url")
+            grep -qxF "$name" assets.txt || { echo "$p: $name is not an asset of the draft"; exit 1; }
           done
           echo "latest.json has all platforms:"; jq '.platforms | keys' latest.json
+
+  # The last step: the checked draft goes public. Publishing is what the apps' update check sees
+  # (releases/latest/download/latest.json), so it happens only once everything above is green.
+  publish:
+    name: Publish the release
+    needs: [release, check]
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ID: ${{ needs.release.outputs.id }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # v1.1.0-beta.1 and the like go out as pre-releases, never as latest: no player is offered them.
+          latest=true; case "$TAG" in *-*) latest=false;; esac
+          url=$(gh api "repos/$REPO/releases/$ID" -X PATCH -F draft=false -f make_latest="$latest" --jq .html_url)
+          echo "Published $TAG (latest: $latest): $url"
+
+  # The preview channel's address (releases/download/preview/latest.json) gets this version's latest.json, with the
+  # URLs naming this release's tag, when this version is newer than what's there. Apps on the stable channel never
+  # read it. Its own job, so a failure here can be re-run without touching the published release.
+  preview:
+    name: Move the preview channel
+    needs: [publish]
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release download "$TAG" --repo "$REPO" --pattern latest.json --output latest.json
+          # The moving release: a pre-release, so never "latest"; made the first time.
+          if ! gh release view preview --repo "$REPO" > /dev/null 2>&1; then
+            gh api "repos/$REPO/releases" -X POST -f tag_name=preview -f name="D³ preview channel" \
+              -F prerelease=true -f make_latest=false \
+              -f body="The newest version for apps on the preview channel (developer mode), betas included. Not for download: get D³ from the latest release." > /dev/null
+          fi
+          current=""
+          if gh release download preview --repo "$REPO" --pattern latest.json --output current.json 2> /dev/null; then current=current.json; fi
+          set +e
+          node scripts/preview.js feed latest.json "$TAG" $current > feed.json
+          code=$?
+          set -e
+          if [ "$code" = 3 ]; then exit 0; fi
+          [ "$code" = 0 ] || exit "$code"
+          # The same file name, so the app's address stays releases/download/preview/latest.json.
+          mkdir -p out && mv feed.json out/latest.json
+          gh release upload preview out/latest.json --repo "$REPO" --clobber
+          echo "The preview channel now offers $TAG:"; jq '{version, platforms: (.platforms | map_values(.url))}' out/latest.json
+
+  # A stable release makes its betas (and older leftover ones) obsolete: their releases and tags go.
+  # Never stable releases, never `preview`, never betas of a newer version.
+  cleanup:
+    name: Delete obsolete betas
+    needs: [preview]
+    if: github.ref_type == 'tag' && !contains(github.ref_name, '-')
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Releases (drafts of failed betas included) and tags without a release.
+          gh api --paginate "repos/$REPO/releases" --jq '.[].tag_name' > release-tags.txt
+          gh api --paginate "repos/$REPO/tags" --jq '.[].name' > tags.txt
+          sort -u release-tags.txt tags.txt | node scripts/preview.js stale "$TAG" > stale.txt
+          if [ ! -s stale.txt ]; then echo "Nothing to clean up."; exit 0; fi
+          while read -r t; do
+            for id in $(gh api --paginate "repos/$REPO/releases" --jq ".[] | select(.tag_name == \"$t\") | .id"); do
+              gh api -X DELETE "repos/$REPO/releases/$id"
+            done
+            gh api -X DELETE "repos/$REPO/git/refs/tags/$t" 2> /dev/null || true
+            echo "deleted $t"
+          done < stale.txt

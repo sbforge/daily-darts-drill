@@ -111,6 +111,8 @@ export interface GameDef {
   defaultMinutes: number;
   defaultSettings: Settings;
   fields: Field[];
+  /** Counts a rest down: follows the counting setting (Settings → Playing), there is no choice per game. */
+  countsRest?: boolean;
   /** True when, with these settings, the game ends by itself, so it can run without a time cap inside a routine. */
   canEnd?(settings: Settings): boolean;
   /** About how long the game takes without a time cap, in minutes: the routine's length counts with it. */

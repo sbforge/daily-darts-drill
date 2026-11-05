@@ -134,6 +134,82 @@ fn update_blocker() -> Option<&'static str> {
     None
 }
 
+/// Where the preview channel looks: the moving `preview` release, which the release workflow fills with the
+/// `latest.json` of the newest version, betas included. The stable channel keeps the address in `tauri.conf.json`
+/// and the JS updater; only apps with developer mode and the preview channel on come here.
+const PREVIEW_ENDPOINT: &str = "https://github.com/sbforge/daily-darts-drill/releases/download/preview/latest.json";
+
+/// The update the last preview check found, kept for `preview_install`.
+#[derive(Default)]
+struct PreviewUpdate(std::sync::Mutex<Option<tauri_plugin_updater::Update>>);
+
+#[derive(Serialize)]
+struct PreviewInfo {
+    version: String,
+    body: Option<String>,
+    date: Option<String>,
+}
+
+/// Download progress for the app's progress bar, the same steps the JS updater reports.
+#[derive(Serialize, Clone)]
+#[serde(tag = "event", content = "data", rename_all_fields = "camelCase")]
+enum PreviewProgress {
+    Started { content_length: Option<u64> },
+    Progress { chunk_length: usize },
+    Finished,
+}
+
+/// Looks for a newer version in the preview channel. Same public key, same signature check as stable updates;
+/// only the address differs, which the JS updater can't change.
+#[tauri::command]
+async fn preview_check(app: tauri::AppHandle, found: State<'_, PreviewUpdate>) -> Result<Option<PreviewInfo>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let url = tauri::Url::parse(PREVIEW_ENDPOINT).map_err(|e| e.to_string())?;
+    let update = app
+        .updater_builder()
+        .endpoints(vec![url])
+        .map_err(|e| e.to_string())?
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?;
+    let info = update.as_ref().map(|u| PreviewInfo {
+        version: u.version.clone(),
+        body: u.body.clone(),
+        date: u.raw_json.get("pub_date").and_then(|d| d.as_str()).map(String::from),
+    });
+    *found.0.lock().unwrap() = update;
+    Ok(info)
+}
+
+/// Downloads and installs what `preview_check` found. The app makes its backup before calling this.
+#[tauri::command]
+async fn preview_install(
+    found: State<'_, PreviewUpdate>,
+    on_progress: tauri::ipc::Channel<PreviewProgress>,
+) -> Result<(), String> {
+    let update = found.0.lock().unwrap().take().ok_or("no preview update to install")?;
+    let mut started = false;
+    let progress = on_progress.clone();
+    update
+        .download_and_install(
+            move |chunk, total| {
+                if !started {
+                    started = true;
+                    let _ = progress.send(PreviewProgress::Started { content_length: total });
+                }
+                let _ = progress.send(PreviewProgress::Progress { chunk_length: chunk });
+            },
+            move || {
+                let _ = on_progress.send(PreviewProgress::Finished);
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// A place for the backup right before an in-app update, written by the app itself (`VACUUM INTO`, the database
 /// is open): `backups/update/<version>-<date>-install/darttrainer.db`. Keeps the last 3 update backups.
 #[tauri::command]
@@ -279,6 +355,7 @@ fn main() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(PreviewUpdate::default())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // Before any window can open the database: the files are not in use, a plain copy is complete.
@@ -349,7 +426,9 @@ fn main() {
             update_blocker,
             set_running_marker,
             prepare_update_backup,
-            prepare_erase_backup
+            prepare_erase_backup,
+            preview_check,
+            preview_install
         ])
         .build(tauri::generate_context!())
         .expect("error while building D³ – Daily Darts Drill")

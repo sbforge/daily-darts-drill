@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import pkg from "../../package.json";
 // @ts-expect-error a plain JS script, shared with the release workflow
-import { releaseNotes } from "../../scripts/release-notes.js";
+import { notesFor, releaseNotes } from "../../scripts/release-notes.js";
 
 const log = readFileSync(new URL("../../CHANGELOG.md", import.meta.url), "utf8");
 
@@ -22,7 +22,14 @@ describe("release notes from the changelog", () => {
     const n = releaseNotes("## [1.0.0] - x\n- a\n\n[1.0.0]: https://example.com\n", "1.0.0");
     expect(n).toBe("- a\n");
   });
+  it("a beta takes its own section, else its version's, else Unreleased", () => {
+    const c = "## [Unreleased]\n- next\n\n## [1.1.0-beta.1] - x\n- own\n\n## [1.0.0] - x\n- stable\n";
+    expect(notesFor(c, "v1.1.0-beta.1")).toBe("- own\n");
+    expect(notesFor(c, "v1.0.0-beta.3")).toBe("- stable\n");
+    expect(notesFor(c, "v1.2.0-beta.1")).toBe("- next\n");
+    expect(notesFor(c, "v1.2.0"), "a stable version needs its own section").toBeNull();
+  });
   it("the changelog has notes for the version in package.json", () => {
-    expect(releaseNotes(log, pkg.version), `CHANGELOG.md needs a section for ${pkg.version}`).toBeTruthy();
+    expect(notesFor(log, pkg.version), `CHANGELOG.md needs a section for ${pkg.version}`).toBeTruthy();
   });
 });

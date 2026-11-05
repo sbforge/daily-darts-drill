@@ -1,6 +1,8 @@
 // package.json is the one source of the version. This copies it into src-tauri/Cargo.toml and Cargo.lock.
 //   node scripts/sync-version.js           write it (npm runs this from `npm version`)
 //   node scripts/sync-version.js --check   fail when they disagree; with --tag v1.2.3 also when the tag differs
+//   node scripts/sync-version.js --set 1.2.3-beta.1   write that version into package.json too (a beta build in CI;
+//                                                     never committed, the release branch keeps its version)
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +10,17 @@ import { fileURLToPath } from "node:url";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 const write = (f, s) => fs.writeFileSync(path.join(root, f), s);
+
+const setArg = process.argv.indexOf("--set");
+if (setArg > 0) {
+  const v = (process.argv[setArg + 1] ?? "").replace(/^v/, "");
+  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(v)) {
+    console.error(`Not a version: ${v}`);
+    process.exit(1);
+  }
+  const pkg = read("package.json");
+  write("package.json", pkg.replace(/("version":\s*)"[^"]*"/, `$1"${v}"`));
+}
 
 const version = JSON.parse(read("package.json")).version;
 const NAME = "dart-trainer";
