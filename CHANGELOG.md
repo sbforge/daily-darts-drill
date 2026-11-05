@@ -17,6 +17,10 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **A clearer update dialog.** When a new version is ready, the dialog now looks like the rest of D³: the version on offer at the top, the release notes in their own box, and *Update now*, *Later* and *Skip this version* at the bottom.
+- **Links that open your browser are marked.** Links in the app now have a small arrow icon, so you know your web browser opens when you click them.
+
 ## [0.9.7] - 2026-11-05
 
 One setting for how the score is counted, and a way to try new versions before they are released.
