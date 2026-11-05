@@ -76,7 +76,8 @@ jobs:
           - name: Windows
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            bundles: msi
+            # NSIS setup .exe only, installed for the current user: no admin prompt, also not on updates.
+            bundles: nsis
             artifact: windows
           - name: macOS (Apple Silicon)
             os: macos-latest
@@ -155,7 +156,7 @@ jobs:
           name: ${{ matrix.artifact }}
           retention-days: 7
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb

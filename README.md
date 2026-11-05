@@ -154,7 +154,7 @@ D³ runs on **Windows, macOS and Linux**. Download the file for your system from
 
 | System | File |
 |---|---|
-| Windows 10 and 11 (64-bit) | `Daily Darts Drill_<version>_x64_en-US.msi` |
+| Windows 10 and 11 (64-bit) | `Daily Darts Drill_<version>_x64-setup.exe` |
 | macOS, Apple Silicon (M1 and later) | `Daily Darts Drill_<version>_aarch64.dmg` |
 | macOS, Intel | `Daily Darts Drill_<version>_x64.dmg` |
 | Linux (x86-64) | `Daily Darts Drill_<version>_amd64.AppImage` (updates itself) or `…_amd64.deb` (updated by hand) |
@@ -164,7 +164,8 @@ You also need an [Autodarts](https://autodarts.io) board whose client runs in th
 
 The installers are not signed with a paid certificate, so your system warns you the first time:
 
-- **Windows:** run the `.msi`. SmartScreen says "Windows protected your PC": click "More info", then "Run anyway".
+- **Windows:** run the `-setup.exe`. SmartScreen says "Windows protected your PC": click "More info", then "Run anyway".
+  D³ installs for your Windows user only, so it doesn't ask for administrator rights, neither now nor on updates.
 - **macOS:** open the `.dmg` and drag D³ into the Applications folder, then open it there. macOS says it can't verify
   the app: open **System Settings → Privacy & Security**, scroll down to the message about D³ and click **Open
   Anyway** (on macOS Sequoia a right-click → Open no longer works). If macOS says the app is "damaged", run

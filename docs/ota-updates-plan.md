@@ -123,8 +123,10 @@ This is separate from OS code signing (Apple Developer ID / Windows Authenticode
   - `bundle.createUpdaterArtifacts: true` (builds `.app.tar.gz` on macOS and signed `.msi`/NSIS `.exe` on Windows,
     each with a `.sig`). **Only in CI**, passed with `tauri build --config` there, not in `tauri.conf.json`: with it
     on, `tauri build` stops when `TAURI_SIGNING_PRIVATE_KEY` isn't set, which is every local build.
-  - Windows: **MSI only**, for the download and for updates (`bundle.targets` without NSIS on Windows). Mixing an
-    `.msi` install with `.exe` updates can leave two installed copies.
+  - Windows: **NSIS setup `.exe` only** since 0.9.6, for the download and for updates, installed per user
+    (`bundle.windows.nsis.installMode: "currentUser"`), so neither installing nor updating needs admin rights.
+    MSI was dropped before 1.0, while only two testers had it installed; they switch by hand (uninstall, then
+    run the setup). Nothing in D³ checks for an old MSI install.
   - `plugins.updater.pubkey: "<public key>"`
   - `plugins.updater.endpoints: ["https://github.com/sbforge/daily-darts-drill/releases/latest/download/latest.json"]`
     (`/releases/latest` skips pre-releases and drafts, which covers US-15 for free).

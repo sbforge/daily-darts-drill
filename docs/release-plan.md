@@ -38,7 +38,7 @@ Status legend: ✅ decided · ❓ needs a decision (my proposal next to it).
 
   | Job | Runner | Target | Bundles |
   |---|---|---|---|
-  | Windows | `windows-latest` | `x86_64-pc-windows-msvc` | `msi` (✅ MSI only, also for updates) |
+  | Windows | `windows-latest` | `x86_64-pc-windows-msvc` | `nsis` (✅ setup `.exe` only, also for updates; MSI dropped in 0.9.6) |
   | macOS Apple Silicon | `macos-latest` | `aarch64-apple-darwin` | `app`, `dmg` |
   | macOS Intel | `macos-latest` | `x86_64-apple-darwin` | `app`, `dmg` |
   | Linux | `ubuntu-22.04` | `x86_64-unknown-linux-gnu` | `appimage`, `deb` |

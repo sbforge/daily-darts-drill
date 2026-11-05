@@ -25,6 +25,7 @@ Fixes and clearer wording from your feedback on 0.9.5, and a new game: the JDC C
 - **JDC Challenge.** The training check of the Junior Darts Corporation in three parts: Shanghai 10–15 (every hit on the number scores its value, single, double and treble in one visit is a Shanghai worth 100 extra), one dart at each double from D1 to the bull (50 points a double, 100 for the bull), then Shanghai 15–20. Choose 1 to 5 visits per number when you add it; with 1 the most you can score is 3380. It counts toward the DPI with your hits on the numbers and your doubles.
 
 ### Changed
+- **Windows: no more admin prompt.** D³ now comes as a setup program that installs just for your Windows user, so neither installing nor updating asks for administrator rights. If you had an earlier version installed, switch once by hand: uninstall D³ in Windows Settings → Apps, then run the new setup. Your routines and results are kept.
 - **DPI in the menu.** The Statistics button in the menu is now called DPI.
 - **Plan B sets up your way.** After a set-up dart Plan B no longer suggests what to throw next. It shows "Setup" and the rest, and you choose your own way to a double.
 - **Clearer index breakdown.** The result screen now names every value that goes into the DPI (darts per leg, hit rate and so on) instead of just "Value".
