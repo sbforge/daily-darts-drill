@@ -26,7 +26,7 @@ Fixes and clearer wording from your feedback on 0.9.5, and a new game: the JDC C
 
 ### Changed
 - **Windows: no more admin prompt.** D³ now comes as a setup program that installs just for your Windows user, so neither installing nor updating asks for administrator rights. If you had an earlier version installed, switch once by hand: uninstall D³ in Windows Settings → Apps, then run the new setup. Your routines and results are kept.
-- **DPI in the menu.** The Statistics button in the menu is now called DPI.
+- **Performance instead of Statistics.** The page with your DPI is now called Performance, in the menu, on the page itself and in the settings.
 - **Plan B sets up your way.** After a set-up dart Plan B no longer suggests what to throw next. It shows "Setup" and the rest, and you choose your own way to a double.
 - **Clearer index breakdown.** The result screen now names every value that goes into the DPI (darts per leg, hit rate and so on) instead of just "Value".
 - **German wording.** A dart that misses the board is called "Miss", and a visit is an "Aufnahme".
@@ -35,6 +35,16 @@ Fixes and clearer wording from your feedback on 0.9.5, and a new game: the JDC C
 
 ### Removed
 - **Checkout rate in Solo Leg.** D³ can't know whether a dart was aimed at the double or set one up, so the rate was a guess. It is gone from the result screen and no longer counts toward the index.
+
+### Fixed
+- **Impossible darts from the board.** If Autodarts reports a field that doesn't exist on a dartboard, D³ counts the dart as a miss instead of saving a broken score.
+- **Board buttons don't hang.** When the Autodarts PC is off or has left the network, starting, stopping and resetting the board gives up after a few seconds instead of waiting forever.
+- **History with a damaged entry.** One damaged result no longer keeps History from opening. That game is left out, everything else shows as before.
+- **Export only replaces D³ data.** When you export over an existing file, D³ only replaces an earlier D³ export and leaves any other file alone.
+
+### Security
+- **Board search stays in your network.** When D³ searches for your board, it only accepts addresses from your own network.
+- **Safer updates.** The way D³ and its updates are built and signed is locked down further. Nothing changes for you.
 
 
 ## [0.9.5] - 2026-11-04
