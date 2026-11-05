@@ -1,7 +1,7 @@
 import { num, t } from "../i18n/index.svelte";
 import { routeFocus } from "./route-focus";
 import { legsField } from "./solo-leg";
-import { gameShotOf, great, opt, instantCountField, shownRest } from "./shared";
+import { gameShotOf, great, opt, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 import { average, playLegs } from "./x01";
 
@@ -25,7 +25,8 @@ export const bigFish: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 5,
-  defaultSettings: { legs: 0, giveUp: 0, instantCount: "default" },
+  defaultSettings: { legs: 0, giveUp: 0 },
+  countsRest: true,
   fields: [
     legsField("legs"),
     {
@@ -39,7 +40,6 @@ export const bigFish: GameDef = {
       kind: "select",
       options: GIVE_UP.map((n) => opt(n, () => (n ? t("fish.giveUpAfter", { n }) : t("fish.giveUpOff")))),
     },
-    instantCountField,
   ],
   canEnd: (s) => Number(s.legs) > 0,
   estimateMinutes: (s) => Math.max(1, Math.ceil((Number(s.legs) || 1) * 1.5)),

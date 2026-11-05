@@ -404,7 +404,7 @@
   function startGame() {
     if (!item || !def) return;
     // With a time cap a game completed early starts over and plays on until the clock runs out.
-    const played = withCounting(item.settings, def.fields.some((f) => f.key === "instantCount"), prefs.instantCount);
+    const played = withCounting(item.settings, def.countsRest === true, prefs.instantCount);
     session = new Session(def, def.prepare ? def.prepare({ ...played }) : { ...played }, totalMs > 0);
     paused = false;
     now = Date.now();

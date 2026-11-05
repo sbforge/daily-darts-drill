@@ -98,11 +98,13 @@ describe("Solo Leg", () => {
 });
 
 describe("counting setting", () => {
-  it("a game set to follow the setting gets what the player chose, an explicit choice stays", async () => {
+  it("a game that counts a rest always gets what the player set, no choice per game", async () => {
     const { withCounting } = await import("./shared");
-    expect(withCounting({ instantCount: "default" }, true, true).instantCount).toBe("on");
-    expect(withCounting({ instantCount: "default" }, true, false).instantCount).toBe("off");
-    expect(withCounting({ instantCount: "off" }, true, true).instantCount).toBe("off");
+    expect(withCounting({}, true, true).instantCount).toBe("on");
+    expect(withCounting({}, true, false).instantCount).toBe("off");
+    // An older routine's own choice no longer counts: the setting decides.
+    expect(withCounting({ instantCount: "off" }, true, true).instantCount).toBe("on");
+    expect(withCounting({ instantCount: "on" }, true, false).instantCount).toBe("off");
     expect(withCounting({}, false, true)).toEqual({});
   });
 });
