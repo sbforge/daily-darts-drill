@@ -11,6 +11,7 @@ fix/c ──────┘     test all together
 ```
 
 Pushing the tag is the last manual step: the workflow publishes on its own once every check passed.
+Betas for testers come from the release branch on the way (section 2a); hotfixes take a shorter path (section 7).
 
 ## 1. One branch per feature
 
@@ -69,6 +70,27 @@ Once the content is final:
    git push -u origin release/v0.9.7
    ```
 
+## 2a. Betas for testers (optional)
+
+To test a build of the release branch as an installed app, tag a beta on the release branch. No version bump is
+needed for it: the tag carries the version, and the build sets it.
+
+```bash
+git switch release/v0.9.7
+git tag -a v0.9.7-beta.1 -m "Version 0.9.7 beta 1"
+git push origin v0.9.7-beta.1
+```
+
+- **Name:** `vX.Y.Z-beta.N` on `release/vX.Y.Z`, `N` counting from 1. The workflow refuses a beta tag that isn't on
+  its release branch.
+- **Notes:** a `## [0.9.7]` changelog section if there already is one, else `## [Unreleased]`. One of them must
+  have entries.
+- **What happens:** the same workflow as a stable release (section 4), but the release is a **pre-release**, never
+  "latest". Players on the normal update never see it. Apps with **developer mode** on the **Preview** channel get it
+  through the moving `preview` release (Settings → tap the version 7 times → Developer → Update channel).
+- Next beta after more fixes: `v0.9.7-beta.2`, and so on. The final `v0.9.7` on `main` is newer than every beta, so
+  preview apps move on to it with the normal update.
+
 ## 3. Merge into `main`
 
 - Open a pull request `release/v0.9.7` → `main` (there is no `gh` CLI, so via the compare link):
@@ -104,6 +126,10 @@ The pushed `v*` tag starts `.github/workflows/release.yml`:
    this draft.
 5. **Publish:** the checked draft is published and marked as the **latest release**. A pre-release tag (with a dash) is
    published as a pre-release and never marked latest.
+6. **Move the preview channel:** the `preview` release gets this version's `latest.json` (with links into this
+   release), if this version is newer than what it has. Only apps in developer mode read it.
+7. **Clean up (stable only):** deletes the releases and tags of the betas this version makes obsolete
+   (`v0.9.7-beta.*`, and older leftovers). Stable releases, `preview` and betas of a newer version stay.
 
 Takes roughly 15–20 minutes.
 
@@ -131,16 +157,32 @@ haven't updated yet).
 ## 6. Afterwards
 
 - Pull `main` locally; start the next version's branches from there.
-- Delete the merged feature branches and the release branch when no longer needed.
+- Delete the merged branches: `scripts/cleanup-branches.sh` lists every `feature/*`, `fix/*` and `docs/*` branch
+  that's fully merged into `main` (here and on GitHub) and deletes them after a yes (`--dry-run` only lists). It
+  also removes local copies of the beta tags the workflow deleted. The release branch goes by itself when GitHub's
+  "Automatically delete head branches" is on (repo Settings → General).
 - Ask the testers to update and collect their feedback for the next version's branches.
+
+## 7. Hotfixes
+
+A fix for the released version (`1.2.1` while `1.3.0` is in development) skips the betas. It is tested **locally**,
+with `npm run tauri dev` or with installers from a manual run of `release.yml` (Actions → Release → Run workflow on
+the branch: it builds every platform but makes no release). Then it goes the normal way, `fix/<name>` →
+`release/v1.2.1` → `main` → tag `v1.2.1`. Afterwards, merge the fix into the newer release branch too, so the next
+beta and `1.3.0` include it.
+
+Why no beta: the preview channel only ever offers the newest version, so an app already on `1.3.0-beta.N` would
+never be offered `1.2.1-beta.N`, and it can't go back anyway (a beta may have changed the database).
 
 ## Checklist
 
 - [ ] Every feature in its own branch, each with its changelog entry
 - [ ] `release/vX.Y.Z` from `main`, all branches merged, tested on the board
+- [ ] Optional: betas `vX.Y.Z-beta.N` tagged on the release branch, tested on the preview channel
 - [ ] Changelog section `## [X.Y.Z] - date`, new empty `[Unreleased]`
 - [ ] `npm version X.Y.Z --no-git-tag-version`, committed, pushed
 - [ ] PR → `main`, CI green, merged with a merge commit
 - [ ] `git tag -a vX.Y.Z` on the merge commit, tag pushed
 - [ ] `release.yml` green up to "Publish the release"
 - [ ] Release is public and marked latest; the update installs on one machine
+- [ ] `scripts/cleanup-branches.sh`

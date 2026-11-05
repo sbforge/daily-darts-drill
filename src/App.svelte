@@ -43,7 +43,7 @@
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
-  import { checkForUpdate, initUpdates, installUpdate, later, RELEASES_URL, setAutoCheck, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
+  import { checkForUpdate, initUpdates, installUpdate, later, releasesUrl, setAutoCheck, setChannel, setDeveloper, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
   import { chooseExportFile, lastBackup, prepareEraseBackup } from "./lib/backend";
   import CrashToasts from "./lib/CrashToasts.svelte";
   import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
@@ -255,6 +255,32 @@
   }
 
   let restoreNote = $state("");
+
+  // Developer mode: 7 taps on the version in Settings, each within 2 seconds of the one before.
+  const TAPS_FOR_DEVELOPER = 7;
+  let taps = 0;
+  let tapTimer: ReturnType<typeof setTimeout> | undefined;
+  let tapNote = $state("");
+  function tapVersion() {
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => {
+      taps = 0;
+      tapNote = "";
+    }, 2000);
+    if (updates.developer) {
+      tapNote = t("developer.already");
+      return;
+    }
+    taps++;
+    const left = TAPS_FOR_DEVELOPER - taps;
+    if (left <= 0) {
+      taps = 0;
+      tapNote = t("developer.on");
+      setDeveloper(true);
+    } else if (left <= 3) {
+      tapNote = t("developer.tapsLeft", { n: left });
+    }
+  }
 
   // "Erase all data": asked twice, then a copy goes to backups/erase, everything the player made is deleted,
   // the built-in routines are added as new, and the app starts over (a reload reads the empty database).
@@ -1244,12 +1270,12 @@
   {#if updates.notes}
     <div class="notes"><ReleaseNotes text={updates.notes} /></div>
   {:else}
-    <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.notesOnline")}</a>
+    <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.notesOnline")}</a>
   {/if}
   {#if updates.status === "available"}
     {#if updates.blocker}
       <p class="hint">{t(updates.blocker === "macos-not-installed" ? "updates.blockedMac" : "updates.blockedLinux")}</p>
-      <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+      <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.manual")}</a>
     {:else}
       <div class="row">
         <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
@@ -1277,6 +1303,9 @@
       {t("nav.dpi")}
     </button>
   </nav>
+  {#if updates.channel === "preview"}
+    <span class="preview-pill" title={t("developer.previewTitle")}>{t("developer.previewLabel")}</span>
+  {/if}
   {#if updateAvailable()}
     <button class="update-btn" onclick={() => updateDialog?.showModal()} title={t("updates.badge")}>
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -1566,7 +1595,12 @@
 
         <section class="group wide" aria-labelledby="updates-title">
           <h3 id="updates-title">{t("updates.title")}</h3>
-          <p>{t("updates.current", { v: __APP_VERSION__ })}</p>
+          <!-- Tapping the version 7 times turns developer mode on: a plain text look, on purpose. -->
+          <p>
+            <button class="version-tap" onclick={tapVersion}>{t("updates.current", { v: __APP_VERSION__ })}</button>
+            {#if updates.channel === "preview"}<span class="preview-pill">{t("developer.previewLabel")}</span>{/if}
+          </p>
+          {#if tapNote}<p class="hint" role="status">{tapNote}</p>{/if}
           <label>
             {t("updates.auto")}
             <Select
@@ -1589,7 +1623,7 @@
           {:else if updates.status === "error"}
             <p class="error" role="alert">{t("updates.error")}</p>
             <p class="hint">{updates.error}</p>
-            <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+            <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.manual")}</a>
           {:else if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
             {@render updatePanel()}
           {/if}
@@ -1626,6 +1660,35 @@
         </section>
 
         <!-- Always the last group: the one button that can't be taken back. -->
+        {#if updates.developer}
+          <section class="group wide" aria-labelledby="developer-title">
+            <h3 id="developer-title">{t("developer.title")}</h3>
+            <p class="hint">{t("developer.hint")}</p>
+            <label>
+              {t("developer.channel")}
+              <Select
+                value={updates.channel}
+                options={[
+                  { value: "stable", label: t("developer.channelStable") },
+                  { value: "preview", label: t("developer.channelPreview") },
+                ]}
+                onchange={async (v) => {
+                  await setChannel(v === "preview" ? "preview" : "stable");
+                  checkForUpdate({ manual: true });
+                }}
+              />
+            </label>
+            <p class="hint">{t(updates.channel === "preview" ? "developer.previewHint" : "developer.stableHint")}</p>
+            <div class="row">
+              <button
+                class="ghost"
+                disabled={updates.status === "downloading" || updates.status === "installing"}
+                onclick={() => setDeveloper(false)}>{t("developer.off")}</button
+              >
+            </div>
+          </section>
+        {/if}
+
         <section class="group danger-zone" aria-labelledby="erase-title">
           <h3 id="erase-title">{t("erase.title")}</h3>
           <p class="hint">{t("erase.hint")}</p>
@@ -1643,7 +1706,10 @@
         <section class="group wide about-hero" aria-labelledby="about-app">
           <Logo height={44} />
           <div>
-            <h3 id="about-app">{t("about.version", { v: __APP_VERSION__ })}</h3>
+            <h3 id="about-app">
+              {t("about.version", { v: __APP_VERSION__ })}
+              {#if updates.channel === "preview"}<span class="preview-pill">{t("developer.previewLabel")}</span>{/if}
+            </h3>
             <p>{t("about.what")}</p>
             <p class="hint">{t("about.independent")}</p>
           </div>
@@ -2977,10 +3043,26 @@
     font: inherit;
     font-size: 0.85rem;
     font-weight: 700;
+    white-space: nowrap;
     cursor: pointer;
     animation: update-glow 2.4s ease-in-out infinite;
   }
   .update-btn:hover { background: var(--accent); color: var(--bg); }
+  /* Developer mode: the version looks like plain text; the label makes a preview install unmistakable. */
+  .version-tap { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
+  .preview-pill {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.55rem;
+    border: 1px solid #f5b942;
+    border-radius: 999px;
+    color: #f5b942;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
   @keyframes update-glow { 50% { box-shadow: 0 0 0.9rem rgb(34 211 238 / 0.55); } }
   progress { width: 100%; }
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
