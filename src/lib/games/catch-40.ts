@@ -1,7 +1,7 @@
 import { t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
-import { gameShotOf, great, instantCountField, shownRest } from "./shared";
+import { gameShotOf, great, shownRest } from "./shared";
 import type { GameDef } from "./types";
 
 const FIRST = 61;
@@ -33,8 +33,9 @@ export const catch40: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { instantCount: "default" },
-  fields: [instantCountField],
+  defaultSettings: {},
+  countsRest: true,
+  fields: [],
   canEnd: () => true,
   estimateMinutes: () => 10,
   describe: () => t("catch40.describe"),

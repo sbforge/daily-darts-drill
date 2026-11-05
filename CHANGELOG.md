@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **Counting the score: one setting for all games.** Solo Leg, Big Fish, 121, Wild Card and Catch 40 no longer have their own counting choice when you add them to a routine. They always follow Settings → Playing → Counting the score. A routine that had its own choice for a game now uses that setting too; everything else in your routines stays as it was.
+
 ## [0.9.6] - 2026-11-05
 
 Fixes and clearer wording from your feedback on 0.9.5, and a new game: the JDC Challenge.

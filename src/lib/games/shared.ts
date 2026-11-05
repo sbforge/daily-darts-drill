@@ -29,28 +29,12 @@ export const opt = (value: string | number, label: () => string) => ({
 });
 
 /**
- * How a rest is counted down. "default" follows the player's setting (Settings → Playing), "on" takes off every dart
- * at once, "off" only when the visit is over, as in a match where you do the sums yourself. A game gets the settings
- * resolved (see `withCounting`), so `compute` only ever sees "on" or "off".
+ * The settings of a game about to start that counts a rest down, with the player's counting setting
+ * (Settings → Playing): "on" takes off every dart at once, "off" only when the visit is over, as in a match where you
+ * do the sums yourself. There is no choice per game; an older routine's own choice is overridden.
  */
-export const instantCountField: Field = {
-  key: "instantCount",
-  get label() {
-    return t("game.counting");
-  },
-  get info() {
-    return t("game.countingInfo");
-  },
-  kind: "select",
-  options: [
-    opt("default", () => t("game.countingDefault")),
-    opt("off", () => t("game.countingVisit")),
-    opt("on", () => t("game.countingInstant")),
-  ],
-};
-/** The settings of a game about to start, with "follow the setting" replaced by what the player set. */
-export function withCounting(s: Settings, hasField: boolean, instant: boolean): Settings {
-  if (!hasField || s.instantCount === "on" || s.instantCount === "off") return s;
+export function withCounting(s: Settings, countsRest: boolean, instant: boolean): Settings {
+  if (!countsRest) return s;
   return { ...s, instantCount: instant ? "on" : "off" };
 }
 export const doubleOptions = [

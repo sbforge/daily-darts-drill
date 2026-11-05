@@ -1,7 +1,7 @@
 import { num, t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
-import { gameShotOf, great, instantCountField, pct, shownRest } from "./shared";
+import { gameShotOf, great, pct, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 
 const DARTS_PER_ATTEMPT = 9;
@@ -28,7 +28,8 @@ export const oneTwentyOne: GameDef = {
   hasResult: true,
   defaultMinutes: 10,
   // Fast-forward on and no safehouse is how 121 was played before both became settings.
-  defaultSettings: { start: 121, fastForward: "on", safehouse: "off", instantCount: "default" },
+  defaultSettings: { start: 121, fastForward: "on", safehouse: "off" },
+  countsRest: true,
   fields: [
     {
       key: "start",
@@ -62,7 +63,6 @@ export const oneTwentyOne: GameDef = {
       },
       kind: "checkbox",
     },
-    instantCountField,
   ],
   describe: (s) =>
     [

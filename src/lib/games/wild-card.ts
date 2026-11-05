@@ -2,7 +2,7 @@ import { num, t } from "../i18n/index.svelte";
 import { playAttempts } from "./checkout";
 import { routeFocus } from "./route-focus";
 import { checkoutsIn } from "./routes";
-import { gameShotOf, great, opt, pct, instantCountField, shownRest } from "./shared";
+import { gameShotOf, great, opt, pct, shownRest } from "./shared";
 import type { GameDef, Moment } from "./types";
 
 export const RANGES = {
@@ -66,7 +66,8 @@ export const wildCard: GameDef = {
   needsDarts: true,
   hasResult: true,
   defaultMinutes: 10,
-  defaultSettings: { range: "61-100", darts: 6, instantCount: "default" },
+  defaultSettings: { range: "61-100", darts: 6 },
+  countsRest: true,
   fields: [
     {
       key: "range",
@@ -90,7 +91,6 @@ export const wildCard: GameDef = {
       kind: "select",
       options: DARTS.map((n) => opt(n, () => String(n))),
     },
-    instantCountField,
   ],
   // The order of checkouts is drawn from a seed the app sets when the game starts, so replays agree.
   prepare: (s) => ({ ...s, seed: Math.floor(Math.random() * 2 ** 31) }),
