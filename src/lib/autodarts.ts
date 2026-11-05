@@ -23,7 +23,8 @@ export type DartEvent =
   | { kind: "correction"; darts: Dart[] }
   | { kind: "turnEnded"; darts: Dart[] };
 
-export function toDart(t: any): Dart {
+export function toDart(raw: any): Dart {
+  const t = raw ?? {};
   let kind: DartKind;
   let number: number | null = t.segmentNumber;
   let score: number;
@@ -40,22 +41,28 @@ export function toDart(t: any): Dart {
     kind = "outerBull";
     number = null;
     score = 25;
-  } else {
+  } else if (Number.isInteger(t.segmentNumber) && t.segmentNumber >= 1 && t.segmentNumber <= 20 && [1, 2, 3].includes(t.multiplier)) {
     kind = t.multiplier === 3 ? "triple" : t.multiplier === 2 ? "double" : "single";
     score = t.segmentNumber * t.multiplier;
+  } else {
+    // A field the board can't have: counted as a miss (and kept in the turn, so the darts after it stay in place)
+    // instead of a NaN score in the database.
+    return { ...toDart({ ...t, multiplier: 0 }), failed: true };
   }
 
+  const x = Number.isFinite(t.coordsX) ? t.coordsX : 0;
+  const y = Number.isFinite(t.coordsY) ? t.coordsY : 0;
   return {
     kind,
     number,
     zone: t.bed === "SingleInner" ? "inner" : t.bed === "SingleOuter" ? "outer" : null,
     score,
-    x: t.coordsX,
-    y: t.coordsY,
-    radius: Math.hypot(t.coordsX, t.coordsY),
+    x,
+    y,
+    radius: Math.hypot(x, y),
     bouncer: !!t.bouncer,
     failed: !!t.failed,
-    method: t.method,
+    method: typeof t.method === "string" ? t.method : "",
   };
 }
 
@@ -96,7 +103,7 @@ export class AutodartsNormalizer {
 
   handle(msg: any): DartEvent[] {
     if (msg?.type !== "state") return [];
-    const darts: Dart[] = (msg.data?.throws ?? []).map(toDart);
+    const darts: Dart[] = (Array.isArray(msg.data?.throws) ? msg.data.throws : []).map(toDart);
 
     // First state after connecting: remember what is on the board, emit nothing.
     if (!this.primed) {
@@ -185,6 +192,8 @@ export function throwPhase(state: any): ThrowPhase {
 
 const WATCHDOG_INTERVAL_MS = 3000;
 const WATCHDOG_TIMEOUT_MS = 2500;
+/** Start, stop and reset answer within a second on a healthy board. */
+const COMMAND_TIMEOUT_MS = 5000;
 
 export class AutodartsClient {
   private handlers: ClientHandlers;
@@ -312,11 +321,14 @@ export class AutodartsClient {
   }
 
   calibrate() {
-    return this.command("POST", "/api/config/calibration/auto");
+    // No timeout: the board may only answer once the calibration is done.
+    return this.command("POST", "/api/config/calibration/auto", null);
   }
 
-  private async command(method: string, path: string) {
-    const res = await fetch(this.httpUrl(path), { method });
+  /** A board that has gone away mustn't leave the start/stop buttons waiting forever. */
+  private async command(method: string, path: string, timeoutMs: number | null = COMMAND_TIMEOUT_MS) {
+    const signal = timeoutMs === null ? undefined : AbortSignal.timeout(timeoutMs);
+    const res = await fetch(this.httpUrl(path), { method, signal });
     if (!res.ok) throw new Error(`${method} ${path}: ${res.status}`);
   }
 
@@ -331,7 +343,7 @@ export class AutodartsClient {
   private async fetchStatus(ws: WebSocket) {
     try {
       const [state, system] = await Promise.all(
-        ["/api/state", "/api/system"].map((p) => fetch(this.httpUrl(p)).then((r) => r.json())),
+        ["/api/state", "/api/system"].map((p) => fetch(this.httpUrl(p), { signal: AbortSignal.timeout(COMMAND_TIMEOUT_MS) }).then((r) => r.json())),
       );
       // A message on the socket in the meantime is newer than these answers.
       if (this.ws !== ws || this.lastState) return;

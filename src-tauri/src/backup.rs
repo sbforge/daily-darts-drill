@@ -171,9 +171,12 @@ mod tests {
     #[test]
     fn prune_keeps_the_newest() {
         let cfg = temp("prune");
-        for i in 0..5 {
-            fs::create_dir_all(cfg.join(format!("b{i}"))).unwrap();
-            std::thread::sleep(Duration::from_millis(20));
+        // Explicit times, a minute apart: some filesystems only keep whole seconds.
+        let start = std::time::SystemTime::now() - Duration::from_secs(3600);
+        for i in 0..5u64 {
+            let dir = cfg.join(format!("b{i}"));
+            fs::create_dir_all(&dir).unwrap();
+            fs::File::open(&dir).unwrap().set_modified(start + Duration::from_secs(60 * i)).unwrap();
         }
         prune(&cfg, 2);
         let left: Vec<_> = fs::read_dir(&cfg).unwrap().flatten().collect();
