@@ -1,5 +1,6 @@
 // The notes of one release, taken from CHANGELOG.md (Keep a Changelog format): everything under its
 // "## [x.y.z] - date" heading up to the next "## " heading, without the heading itself.
+// A beta (1.0.0-beta.2) without its own section takes the section of its version (1.0.0), else [Unreleased].
 //
 //   node scripts/release-notes.js 1.0.0      prints the notes; fails when the section is missing or empty
 //
@@ -25,15 +26,25 @@ export function releaseNotes(changelog, version) {
   return text ? text + "\n" : null;
 }
 
+/** The notes to publish for `version`: its own section, and for a beta the fallbacks above. */
+export function notesFor(changelog, version) {
+  const v = version.replace(/^v/, "");
+  const own = releaseNotes(changelog, v);
+  if (own || !v.includes("-")) return own;
+  return releaseNotes(changelog, v.split("-")[0]) ?? releaseNotes(changelog, "Unreleased");
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const version = process.argv[2];
   if (!version) {
     console.error("Usage: node scripts/release-notes.js <version>");
     process.exit(2);
   }
-  const notes = releaseNotes(readFileSync(new URL("../CHANGELOG.md", import.meta.url), "utf8"), version);
+  const notes = notesFor(readFileSync(new URL("../CHANGELOG.md", import.meta.url), "utf8"), version);
   if (!notes) {
-    console.error(`CHANGELOG.md has no notes for ${version}: add a "## [${version.replace(/^v/, "")}] - date" section.`);
+    const v = version.replace(/^v/, "");
+    const where = v.includes("-") ? `"## [${v.split("-")[0]}]" or "## [Unreleased]"` : `a "## [${v}] - date" section`;
+    console.error(`CHANGELOG.md has no notes for ${version}: add them under ${where}.`);
     process.exit(1);
   }
   process.stdout.write(notes);

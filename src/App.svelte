@@ -43,7 +43,7 @@
   import { GAMES, gameById, type GameDef, type Settings, type StatLine } from "./lib/games";
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
-  import { checkForUpdate, initUpdates, installUpdate, later, RELEASES_URL, setAutoCheck, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
+  import { checkForUpdate, initUpdates, installUpdate, later, releasesUrl, setAutoCheck, setChannel, setDeveloper, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
   import { chooseExportFile, lastBackup, prepareEraseBackup } from "./lib/backend";
   import CrashToasts from "./lib/CrashToasts.svelte";
   import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
@@ -255,6 +255,22 @@
   }
 
   let restoreNote = $state("");
+
+  // Developer mode: a checkbox in Settings. Turning it on asks first, because betas can put the data at risk.
+  let developerDialog = $state<HTMLDialogElement>();
+  function toggleDeveloper(e: MouseEvent) {
+    if (updates.developer) {
+      setDeveloper(false);
+      return;
+    }
+    // The box only gets its tick once the dialog is confirmed.
+    e.preventDefault();
+    developerDialog?.showModal();
+  }
+  async function confirmDeveloper() {
+    developerDialog?.close();
+    await setDeveloper(true);
+  }
 
   // "Erase all data": asked twice, then a copy goes to backups/erase, everything the player made is deleted,
   // the built-in routines are added as new, and the app starts over (a reload reads the empty database).
@@ -1244,12 +1260,12 @@
   {#if updates.notes}
     <div class="notes"><ReleaseNotes text={updates.notes} /></div>
   {:else}
-    <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.notesOnline")}</a>
+    <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.notesOnline")}</a>
   {/if}
   {#if updates.status === "available"}
     {#if updates.blocker}
       <p class="hint">{t(updates.blocker === "macos-not-installed" ? "updates.blockedMac" : "updates.blockedLinux")}</p>
-      <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+      <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.manual")}</a>
     {:else}
       <div class="row">
         <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
@@ -1277,6 +1293,9 @@
       {t("nav.dpi")}
     </button>
   </nav>
+  {#if updates.channel === "preview"}
+    <span class="preview-pill" title={t("developer.previewTitle")}>{t("developer.previewLabel")}</span>
+  {/if}
   {#if updateAvailable()}
     <button class="update-btn" onclick={() => updateDialog?.showModal()} title={t("updates.badge")}>
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -1566,7 +1585,10 @@
 
         <section class="group wide" aria-labelledby="updates-title">
           <h3 id="updates-title">{t("updates.title")}</h3>
-          <p>{t("updates.current", { v: __APP_VERSION__ })}</p>
+          <p>
+            {t("updates.current", { v: __APP_VERSION__ })}
+            {#if updates.channel === "preview"}<span class="preview-pill">{t("developer.previewLabel")}</span>{/if}
+          </p>
           <label>
             {t("updates.auto")}
             <Select
@@ -1589,7 +1611,7 @@
           {:else if updates.status === "error"}
             <p class="error" role="alert">{t("updates.error")}</p>
             <p class="hint">{updates.error}</p>
-            <a href={RELEASES_URL} onclick={(e) => openExternal(e, RELEASES_URL)}>{t("updates.manual")}</a>
+            <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.manual")}</a>
           {:else if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
             {@render updatePanel()}
           {/if}
@@ -1626,6 +1648,37 @@
         </section>
 
         <!-- Always the last group: the one button that can't be taken back. -->
+        <section class="group wide" aria-labelledby="developer-title">
+          <h3 id="developer-title">{t("developer.title")}</h3>
+          <p class="hint">{t("developer.hint")}</p>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              checked={updates.developer}
+              disabled={updates.status === "downloading" || updates.status === "installing"}
+              onclick={toggleDeveloper}
+            />
+            {t("developer.mode")}
+          </label>
+          {#if updates.developer}
+            <label>
+              {t("developer.channel")}
+              <Select
+                value={updates.channel}
+                options={[
+                  { value: "stable", label: t("developer.channelStable") },
+                  { value: "preview", label: t("developer.channelPreview") },
+                ]}
+                onchange={async (v) => {
+                  await setChannel(v === "preview" ? "preview" : "stable");
+                  checkForUpdate({ manual: true });
+                }}
+              />
+            </label>
+            <p class="hint">{t(updates.channel === "preview" ? "developer.previewHint" : "developer.stableHint")}</p>
+          {/if}
+        </section>
+
         <section class="group danger-zone" aria-labelledby="erase-title">
           <h3 id="erase-title">{t("erase.title")}</h3>
           <p class="hint">{t("erase.hint")}</p>
@@ -1643,7 +1696,10 @@
         <section class="group wide about-hero" aria-labelledby="about-app">
           <Logo height={44} />
           <div>
-            <h3 id="about-app">{t("about.version", { v: __APP_VERSION__ })}</h3>
+            <h3 id="about-app">
+              {t("about.version", { v: __APP_VERSION__ })}
+              {#if updates.channel === "preview"}<span class="preview-pill">{t("developer.previewLabel")}</span>{/if}
+            </h3>
             <p>{t("about.what")}</p>
             <p class="hint">{t("about.independent")}</p>
           </div>
@@ -2336,6 +2392,26 @@
   </div>
 </dialog>
 
+<!-- Asked before developer mode goes on: betas can change the data so that a stable version can't read it. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<dialog
+  class="confirm erase"
+  bind:this={developerDialog}
+  aria-labelledby="developer-dialog-title"
+  onclick={(e) => {
+    if (e.target === developerDialog) developerDialog.close();
+  }}
+>
+  <h3 id="developer-dialog-title">{t("developer.confirmTitle")}</h3>
+  <p class="warning">{t("developer.confirmWarning")}</p>
+  <p class="lede">{t("developer.confirmBody")}</p>
+  <p class="hint">{t("developer.confirmBackup")}</p>
+  <div class="foot">
+    <button class="ghost" onclick={() => developerDialog?.close()}>{t("developer.confirmCancel")}</button>
+    <button class="danger-solid" onclick={confirmDeveloper}>{t("developer.confirmYes")}</button>
+  </div>
+</dialog>
+
 <!-- Asked when leaving the editor of a new routine that still has no games. Escape or the backdrop stays. -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
@@ -2977,10 +3053,27 @@
     font: inherit;
     font-size: 0.85rem;
     font-weight: 700;
+    white-space: nowrap;
     cursor: pointer;
     animation: update-glow 2.4s ease-in-out infinite;
   }
   .update-btn:hover { background: var(--accent); color: var(--bg); }
+  /* Developer mode: a plain checkbox; the label makes a preview install unmistakable. */
+  .check-row { display: flex; flex-direction: row; align-items: center; gap: 0.6rem; cursor: pointer; }
+  .check-row input { width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .preview-pill {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.55rem;
+    border: 1px solid #f5b942;
+    border-radius: 999px;
+    color: #f5b942;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
   @keyframes update-glow { 50% { box-shadow: 0 0 0.9rem rgb(34 211 238 / 0.55); } }
   progress { width: 100%; }
   .banner { flex: none; margin: 0; padding: 0.6rem 1.5rem; background: #5a2420; color: #ffd9d3; }
