@@ -165,6 +165,8 @@ export const jdcChallenge: GameDef = {
     const segmentRate = pct(segmentHits, segmentDarts);
     const doubleRate = pct(doubleHits, doubleDarts);
     const v = over ? null : visits[idx];
+    // With several rounds the finished game shows the averages, like its score.
+    const multi = rounds > 1;
     const roundHint = rounds > 1 && v ? t("jdc.roundOf", { n: games + 1, total: rounds }) : undefined;
 
     let focus: NonNullable<GameResult["focus"]>;
@@ -182,7 +184,6 @@ export const jdcChallenge: GameDef = {
       dartsLabel = v.targets.map(doubleLabel).join(" · ");
     }
 
-    const multi = rounds > 1;
     let roundEnd: RoundEnd | undefined;
     if (roundEndTurn >= 0) {
       const n = games + 1;
@@ -233,9 +234,9 @@ export const jdcChallenge: GameDef = {
         multi && over
           ? { key: "score", label: t("jdc.average"), value: String(score), hero: true }
           : { key: "round", label: t("jdc.score"), value: String(sum(current)), hero: true },
-        { key: "part1", label: t("jdc.part1"), value: String(current[0]), live: false },
-        { key: "part2", label: t("jdc.part2"), value: String(current[1]), live: false },
-        { key: "part3", label: t("jdc.part3"), value: String(current[2]), live: false },
+        { key: "part1", label: t("jdc.part1"), value: String(multi && over ? avg(0) : current[0]), live: false },
+        { key: "part2", label: t("jdc.part2"), value: String(multi && over ? avg(1) : current[1]), live: false },
+        { key: "part3", label: t("jdc.part3"), value: String(multi && over ? avg(2) : current[2]), live: false },
         { key: "shanghais", label: t("jdc.shanghais"), value: String(shanghais) },
         { key: "segmentRate", label: t("jdc.segmentRate"), value: segmentDarts ? `${num(segmentRate, 1)}%` : t("game.noneYet") },
         { key: "doubleRate", label: t("jdc.doubleRate"), value: doubleDarts ? `${num(doubleRate, 1)}%` : t("game.noneYet") },
