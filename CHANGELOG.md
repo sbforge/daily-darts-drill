@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Fixed
+- **No start without Autodarts.** A routine or a quick game that counts darts can no longer be started while D³ isn't connected to Autodarts; the start button says why. Loose Arm on its own still starts without a connection.
+
 ## [0.9.7] - 2026-11-05
 
 One setting for how the score is counted, and a way to try new versions before they are released.

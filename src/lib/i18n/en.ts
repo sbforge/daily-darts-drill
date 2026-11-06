@@ -470,6 +470,7 @@ export const en = {
   "train.total": "{n} minutes in total at most.",
   "train.noGames": "This routine has no games yet. Add some with the edit button on its card.",
   "train.start": "Start routine",
+  "train.offline": "Not connected to Autodarts. Connect the client in the settings.",
   "carousel.games": "{n} games",
   "carousel.game": "1 game",
   "carousel.duration": "{n} min",

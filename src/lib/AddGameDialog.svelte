@@ -12,10 +12,13 @@
   let {
     onadd,
     quick = false,
+    offline = false,
   }: {
     onadd: (item: RoutineItem) => void;
     /** Starts a single game instead of adding one to a routine. */
     quick?: boolean;
+    /** No connection to Autodarts: a quick game with darts to count can't start. */
+    offline?: boolean;
   } = $props();
 
   let dialog = $state<HTMLDialogElement>();
@@ -94,8 +97,11 @@
     load(made[id], id);
   }
 
+  const blocked = $derived(quick && offline && g.needsDarts);
+
   function add(e: SubmitEvent) {
     e.preventDefault();
+    if (blocked) return;
     onadd(current());
     dialog?.close();
   }
@@ -150,7 +156,8 @@
 
     <div class="foot">
       <button type="button" class="ghost" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
-      <button type="submit" class="primary">{t(quick ? "run.startGame" : "routines.addGame")}</button>
+      {#if blocked}<p class="offline">{t("train.offline")}</p>{/if}
+      <button type="submit" class="primary" disabled={blocked}>{t(quick ? "run.startGame" : "routines.addGame")}</button>
     </div>
   </form>
 </dialog>
@@ -217,6 +224,7 @@
   .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; }
   .fields { --field-bg: var(--bg); }
   .fields :global(input) { background: var(--bg); }
+  .offline { margin: 0 auto 0 0; align-self: center; color: var(--dim); font-size: 0.88rem; }
   .foot { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem 1.5rem 1.25rem; border-top: 1px solid var(--line); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 

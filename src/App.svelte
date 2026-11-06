@@ -341,9 +341,13 @@
 
   // ---- running a routine
 
+  // Without a connection to Autodarts, nothing that counts darts can start: the session would only wait.
+  const offline = $derived(conn !== "connected");
+
   function startRoutine() {
     const r = routines.find((x) => x.id === selectedId);
     if (!r || r.items.length === 0) return;
+    if (offline && r.items.some((i) => gameById(i.gameId).needsDarts)) return;
     begin(structuredClone($state.snapshot(r)), false);
   }
 
@@ -359,6 +363,7 @@
   }
 
   function startQuick(item: RoutineItem) {
+    if (offline && gameById(item.gameId).needsDarts) return;
     quickLast = item.gameId;
     quickItems = [...quickItems.filter((i) => i.gameId !== item.gameId), item];
     db.saveQuickGame(quickLast, $state.snapshot(quickItems)).catch(failed);
@@ -2023,8 +2028,8 @@
           {t("routines.new")}
         </button>
       </div>
-      <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} onedit={() => go("routines")} />
-      <AddGameDialog bind:this={quickDialog} quick onadd={startQuick} />
+      <RoutineCarousel {routines} bind:selectedId {lastPlayed} {offline} onstart={startRoutine} onedit={() => go("routines")} />
+      <AddGameDialog bind:this={quickDialog} quick {offline} onadd={startQuick} />
     </section>
   {:else if phase === "countdown" && run && item && def}
     <section class="countdown">
