@@ -151,6 +151,8 @@ jobs:
         if: github.ref_type == 'tag' && contains(github.ref_name, '-')
         env:
           TAG: ${{ github.ref_name }}
+        # bash on every OS: Windows runs PowerShell by default, where "$TAG" is an empty variable, not the env.
+        shell: bash
         run: node scripts/sync-version.js --set "$TAG"
 
       - run: npm test
