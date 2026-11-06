@@ -10,9 +10,20 @@ export interface StartupReport {
   crashedLastTime: boolean;
   /** Why a backup failed, if it did. */
   backupError: string | null;
+  /** A backup was restored on this start: the folder with the data it replaced. */
+  restored: string | null;
+  /** Why a restore chosen in the last run couldn't be put in place. */
+  restoreError: string | null;
 }
 
-const EMPTY: StartupReport = { updateBackup: null, dailyBackup: null, backupError: null, crashedLastTime: false };
+const EMPTY: StartupReport = {
+  updateBackup: null,
+  dailyBackup: null,
+  backupError: null,
+  crashedLastTime: false,
+  restored: null,
+  restoreError: null,
+};
 
 export async function startupReport(): Promise<StartupReport> {
   try {
@@ -60,3 +71,53 @@ export async function prepareEraseBackup(): Promise<string> {
   return invoke<string>("prepare_erase_backup");
 }
 
+
+/** A backup that can be restored. */
+export interface BackupEntry {
+  kind: "daily" | "update" | "erase" | "restore";
+  /** The folder name: a date, or a version and a date. */
+  name: string;
+  /** The database file. */
+  path: string;
+  /** When it was made (ISO). */
+  made: string;
+}
+
+export async function listBackups(): Promise<BackupEntry[]> {
+  try {
+    return (await invoke<BackupEntry[] | null>("list_backups")) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Why a file can't be restored. */
+export type RestoreProblem = { kind: "notADatabase" | "notD3" | "newer" | "io"; detail: string };
+
+export function restoreProblem(error: unknown): RestoreProblem {
+  const msg = error instanceof Error ? error.message : String(error);
+  const [kind, ...rest] = msg.split(":");
+  const known = ["notADatabase", "notD3", "newer", "io"] as const;
+  const k = known.find((x) => x === kind);
+  return k ? { kind: k, detail: rest.join(":") } : { kind: "io", detail: msg };
+}
+
+/** Copies a backup or an export into place for the next start and checks it; throws a RestoreProblem message. */
+export async function stageRestore(source: string): Promise<void> {
+  await invoke("stage_restore", { source });
+}
+
+export async function discardRestore(): Promise<void> {
+  try {
+    await invoke("discard_restore");
+  } catch {
+    /* nothing staged in the browser preview */
+  }
+}
+
+/** Asks for a database file to restore (an export), returns null when cancelled. */
+export async function chooseRestoreFile(): Promise<string | null> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const picked = await open({ multiple: false, directory: false, filters: [{ name: "D³ data", extensions: ["db"] }] });
+  return typeof picked === "string" ? picked : null;
+}

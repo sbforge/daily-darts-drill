@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Added
+- **Restore a backup in the app.** Settings → Your data → *Restore a backup…* lists your backups (the daily ones, the ones before an update or before *Erase all data*), or you choose a file you exported. D³ checks the file, saves your current data first and restarts with the backup. If you change your mind, restore the copy marked *Before a restore* the same way. A backup from a newer version of D³ is refused, so nothing breaks.
+
 ## [0.9.7] - 2026-11-05
 
 One setting for how the score is counted, and a way to try new versions before they are released.

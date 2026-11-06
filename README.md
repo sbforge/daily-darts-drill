@@ -120,7 +120,9 @@ detection, reset the board and calibrate the cameras without leaving D³. The ap
 
 Once a day, when D³ starts, it copies your data (the last 5 copies are kept), and it takes a copy before the
 first start of a new version. "Your data" in the settings shows the last backup, opens the backup folder and
-exports everything into one file you can keep on a USB stick or take to a new computer. "Erase all data", the
+exports everything into one file you can keep on a USB stick or take to a new computer. "Restore a backup…"
+goes back to one of the backups or to an exported file: D³ checks it, saves your current data first and restarts
+with it. "Erase all data", the
 last button in the settings, starts over with the built-in routines; it asks twice and keeps one copy in the
 backup folder. If a start goes wrong,
 D³ writes a short log (`d3.log`) and, for every error it didn't expect, a crash report; "Report on GitHub" opens
@@ -193,8 +195,9 @@ Backups are in the `backups` folder next to it, and the log and crash reports in
 | macOS | `~/Library/Application Support/dev.darttrainer.app/` |
 | Linux | `~/.config/dev.darttrainer.app/` |
 
-**Restoring a backup:** close D³, then copy the files from a folder in `backups` (`darttrainer.db` and, if there,
-`darttrainer.db-wal`) over the ones in the data folder.
+**Restoring a backup:** Settings → Your data → "Restore a backup…". If D³ doesn't start at all, close it and copy
+the files from a folder in `backups` (`darttrainer.db` and, if there, `darttrainer.db-wal`) over the ones in the
+data folder, and delete `darttrainer.db-shm` there.
 
 ## Development
 

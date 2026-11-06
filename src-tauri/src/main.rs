@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod backup;
+mod restore;
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -30,6 +31,10 @@ struct Startup {
     daily_backup: Option<String>,
     /// Why a backup failed, if it did.
     backup_error: Option<String>,
+    /// A backup was restored on this start; the folder holds the data it replaced.
+    restored: Option<String>,
+    /// Why a staged restore couldn't be put in place.
+    restore_error: Option<String>,
     /// The `running` marker of the last start was still there: the app didn't close normally.
     crashed_last_time: bool,
 }
@@ -37,6 +42,35 @@ struct Startup {
 #[tauri::command]
 fn startup_report(startup: State<'_, Startup>) -> &Startup {
     startup.inner()
+}
+
+/// Every backup that can be restored, newest first.
+#[tauri::command]
+fn list_backups(app: tauri::AppHandle) -> Result<Vec<restore::BackupEntry>, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(restore::list(&config))
+}
+
+/// Copies a backup or an export into place for the next start and checks it. The app restarts afterwards.
+/// Errors: "notADatabase", "notD3", "newer:<version>", "io:<message>".
+#[tauri::command]
+fn stage_restore(app: tauri::AppHandle, source: String) -> Result<(), String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let known = migrations().iter().map(|m| m.version).max().unwrap_or(0);
+    restore::stage(&config, std::path::Path::new(&source), known).map_err(|e| {
+        log::warn!("restore refused: {e}");
+        e.to_string()
+    })?;
+    log::info!("restore staged from {source}");
+    Ok(())
+}
+
+/// Drops a staged restore.
+#[tauri::command]
+fn discard_restore(app: tauri::AppHandle) -> Result<(), String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    restore::discard(&config);
+    Ok(())
 }
 
 /// When the newest backup was made.
@@ -373,6 +407,18 @@ fn main() {
             }
             let _ = std::fs::create_dir_all(marker.parent().unwrap());
             let _ = std::fs::write(&marker, "");
+            // A restore chosen in the last run goes in first, so the backups below already see the restored data.
+            match restore::apply_pending(&config) {
+                Ok(Some(dir)) => {
+                    log::info!("backup restored, the data it replaced: {}", dir.display());
+                    startup.restored = Some(dir.display().to_string());
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    log::error!("restore failed: {e}");
+                    startup.restore_error = Some(e);
+                }
+            }
             match backup::update_backup(&config, env!("CARGO_PKG_VERSION")) {
                 Ok(Some(dir)) => {
                     log::info!("backup before the update: {}", dir.display());
@@ -427,6 +473,9 @@ fn main() {
             set_running_marker,
             prepare_update_backup,
             prepare_erase_backup,
+            list_backups,
+            stage_restore,
+            discard_restore,
             preview_check,
             preview_install
         ])
