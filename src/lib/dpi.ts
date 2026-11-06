@@ -90,7 +90,7 @@ export function withSample(n: number, config = DPI_CONFIG): IndexConfig {
 
 /** The index config. Changing a baseline, target or weight means a new version: the whole history is recalculated with it. */
 export const DPI_CONFIG: IndexConfig = {
-  version: 4,
+  version: 5,
   games: [
     {
       gameId: "scoring",
@@ -175,8 +175,8 @@ export const DPI_CONFIG: IndexConfig = {
       gameId: "jdc-challenge",
       area: "accuracy",
       // The points, the average per finished round (version 4). Only finished rounds count: a round cut short
-      // says nothing comparable.
-      metrics: [higher("score", 300, 2200)],
+      // says nothing comparable. Version 5: 300 to 1800, so the best juniors (about 1600) are near 87.
+      metrics: [higher("score", 300, 1800)],
       sample: { keys: ["games"], min: 1 },
     },
     {
