@@ -23,11 +23,11 @@ jobs:
     runs-on: ubuntu-22.04
     if: github.ref_type == 'tag'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The whole history and every branch, to see where the tag sits.
           fetch-depth: 0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       # The tag goes in through the environment, never pasted into the script.
@@ -62,8 +62,8 @@ jobs:
     outputs:
       id: ${{ steps.draft.outputs.id }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - id: draft
@@ -120,7 +120,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install the Linux packages Tauri needs
         if: matrix.os == 'ubuntu-22.04'
@@ -138,7 +138,7 @@ jobs:
           workspaces: src-tauri -> target
           key: ${{ matrix.target }}
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -157,7 +157,7 @@ jobs:
 
       # Draft first, publish last: a tag push creates (or fills) a draft release, a manual run only builds.
       - name: Build
-        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Updates are signed in CI only; local builds work without the key.
@@ -165,7 +165,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           # tauri-action writes latest.json (all platforms, with signatures) into the draft release.
-          includeUpdaterJson: true
+          uploadUpdaterJson: true
           # Upload into the one draft made above; a manual run has none and only builds.
           releaseId: ${{ needs.release.outputs.id }}
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"bundle":{"createUpdaterArtifacts":true}}'
@@ -180,7 +180,7 @@ jobs:
 
       - name: Keep the installers of a manual run
         if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact }}
           retention-days: 7
@@ -209,13 +209,20 @@ jobs:
           url=$(gh api "repos/$REPO/releases/$ID" --jq '.assets[] | select(.name == "latest.json") | .url')
           [ -n "$url" ] || { echo "latest.json is missing in the draft"; exit 1; }
           gh api -H "Accept: application/octet-stream" "$url" > latest.json
-          gh api "repos/$REPO/releases/$ID" --jq '.assets[].name' > assets.txt
+          # tauri-action 1.x links each update package by its asset id (api.github.com/…/releases/assets/<id>);
+          # older links named the file (…/releases/download/<tag>/<file>). Both are checked against the draft.
+          gh api "repos/$REPO/releases/$ID" --jq '.assets[] | .name, (.id | tostring)' > assets.txt
           for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
             url=$(jq -r --arg p "$p" '.platforms[$p].url // empty' latest.json)
             [ -n "$url" ] || { echo "latest.json has no $p"; exit 1; }
             sig=$(jq -r --arg p "$p" '.platforms[$p].signature // empty' latest.json)
             [ -n "$sig" ] || { echo "latest.json has no signature for $p"; exit 1; }
             # The update package latest.json points to must be in this release, or the update fails on that platform.
+            case "$url" in
+              https://api.github.com/repos/"$REPO"/releases/assets/*) ;;
+              https://github.com/"$REPO"/releases/*) ;;
+              *) echo "$p: $url is not in this repository's releases"; exit 1;;
+            esac
             name=$(basename "$url")
             grep -qxF "$name" assets.txt || { echo "$p: $name is not an asset of the draft"; exit 1; }
           done
@@ -253,8 +260,8 @@ jobs:
       contents: write
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - env:
@@ -292,8 +299,8 @@ jobs:
       contents: write
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - env:
