@@ -67,7 +67,7 @@ The games so far:
 | **Wild Card** (random checkout) | A random checkout from the range you pick, with 3, 6 or 9 darts. No checkout twice before the whole range has come up. | Reading any finish quickly. |
 | **Bob's 27** | Start with 27 points and go round D1 to D20 and the bull, three darts each. Hits add the double's value, a miss with all three subtracts it. | Doubles with something at stake. |
 | **Bull-X** (bullseye drill) | Dart 1 goes at the bull; hit it and darts 2 and 3 stay there. Miss and they go at the double, treble or (Shanghai) the other two parts of the segment dart 1 hit. | Pressure on the bull, and a way back when it isn't there. |
-| **JDC Challenge** | Three parts: Shanghai 10–15 (every hit on the number scores, a Shanghai is 100 extra), one dart at each double from D1 to the bull (50 each, 100 for the bull), then Shanghai 15–20. 1 to 5 visits per number. | Scoring numbers, doubles and the bull in one comparable score. |
+| **JDC Challenge** | Three parts: Shanghai 10–15 (every hit on the number scores, a Shanghai is 100 extra), one dart at each double from D1 to the bull (50 each, 100 for the bull), then Shanghai 15–20. One round is 57 darts, at most 3380 points. | Scoring numbers, doubles and the bull in one comparable score. |
 | **Big Fish** (170) | Leg after leg from 170, double out, bust is no score. | The high finishes and the nerve for them. |
 | **Solo Leg** (solo 501) | A normal leg against yourself (301, 501 or 701), leg after leg or a set number of legs: match and leg average side by side. | Your whole game in one number. |
 

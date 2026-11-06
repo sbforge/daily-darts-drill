@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **JDC Challenge: one round, 57 darts.** The challenge now follows its usual rules: one visit at each number in the Shanghai parts and one dart at each double, 57 darts and at most 3380 points a round. The choice of visits per number is gone; a JDC Challenge already in your routines plays the new round. With a time cap you start the next round when one is finished. Your earlier results are kept.
+
 ## [0.9.7] - 2026-11-05
 
 One setting for how the score is counted, and a way to try new versions before they are released.
