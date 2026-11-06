@@ -55,11 +55,27 @@ describe("JDC Challenge", () => {
     expect(done.done).toBe(true);
     expect(done.values).toMatchObject({ part3: 220, score: 220 });
   });
-  it("starts over with a time cap", () => {
-    const r = play(misses(19), {}, { repeat: true });
+  it("plays the rounds set, then ends", () => {
+    const r = play(misses(19), { rounds: 2 });
     expect(r.done).toBe(false);
     expect(r.values.games).toBe(1);
-    expect(r.focus?.value).toBe("10");
+    expect(r.focus).toMatchObject({ value: "10", hint: "Round 2 of 2" });
+    expect(play(misses(38), { rounds: 2 }).done).toBe(true);
+  });
+  it("scores the average per round, with the best round", () => {
+    const round = (first: string) => `${first} | ${misses(18)}`;
+    const r = play(`${round("S10 D10 T10")} | ${round("S10 miss miss")}`, { rounds: 2 });
+    expect(r.values).toMatchObject({ games: 2, best: 160, score: 85, part1: 85 });
+    expect(r.done).toBe(true);
+    expect(jdcChallenge.summary(r.values)).toContain("85");
+  });
+  it("an unfinished first round counts its points so far", () => {
+    expect(play("S10 D10 T10", { rounds: 3 }).values).toMatchObject({ games: 0, score: 160 });
+  });
+  it("has no time cap, about 30 seconds a visit", () => {
+    expect(jdcChallenge.noTimeCap).toBe(true);
+    expect(jdcChallenge.estimateMinutes?.({ rounds: 1 })).toBe(10);
+    expect(jdcChallenge.estimateMinutes?.({ rounds: 3 })).toBe(29);
   });
   it("can't go over the most points", () => {
     const shanghai = (from: number) => Array.from({ length: 6 }, (_, i) => `S${from + i} D${from + i} T${from + i}`).join(" | ");

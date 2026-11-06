@@ -28,7 +28,7 @@ export const DEFAULT_PAUSE_SECONDS = 15;
 
 export function newItem(gameId: string): RoutineItem {
   const g = gameById(gameId);
-  return { gameId: g.id, minutes: g.defaultMinutes, settings: { ...g.defaultSettings } };
+  return { gameId: g.id, minutes: g.noTimeCap ? 0 : g.defaultMinutes, settings: { ...g.defaultSettings } };
 }
 
 /** Default names are filled in in the language selected when the routine is made. */
@@ -67,7 +67,8 @@ export function cleanItems(items: RoutineItem[]): RoutineItem[] {
       const g = gameById(i.gameId);
       const settings = { ...g.defaultSettings, ...i.settings };
       // Only a game that ends by itself can run without a time cap.
-      const minutes = Number(i.minutes) > 0 || g.canEnd?.(settings) ? i.minutes : g.defaultMinutes;
+      // A game that is always played to the end never has one.
+      const minutes = g.noTimeCap ? 0 : Number(i.minutes) > 0 || g.canEnd?.(settings) ? i.minutes : g.defaultMinutes;
       return { ...i, minutes, settings };
     });
 }

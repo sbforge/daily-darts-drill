@@ -153,7 +153,9 @@
   $effect(() => {
     for (const it of items) {
       const g = gameById(it.gameId);
-      if (!(it.minutes > 0) && !g.canEnd?.(it.settings)) it.minutes = g.defaultMinutes;
+      if (g.noTimeCap) {
+        if (it.minutes !== 0) it.minutes = 0;
+      } else if (!(it.minutes > 0) && !g.canEnd?.(it.settings)) it.minutes = g.defaultMinutes;
     }
   });
 </script>
@@ -214,13 +216,15 @@
             <span class="summary">{summary(g, it)}</span>
           {/if}
         </button>
-        {#if g.canEnd?.(it.settings)}
+        {#if g.noTimeCap}
+          <span class="minutes" title={t("routines.toTheEndInfo")}>{t("routines.untilDone")}</span>
+        {:else if g.canEnd?.(it.settings)}
           <label class="nocap" title={t("routines.noCapInfo")}>
             <input type="checkbox" checked={!(it.minutes > 0)} onchange={(e) => (it.minutes = e.currentTarget.checked ? 0 : g.defaultMinutes)} />
             <span>{t("routines.noCap")}</span>
           </label>
         {/if}
-        {#if it.minutes > 0 || !g.canEnd?.(it.settings)}
+        {#if !g.noTimeCap && (it.minutes > 0 || !g.canEnd?.(it.settings))}
           <label class="minutes">
             <input type="number" min="1" max="120" bind:value={it.minutes} aria-label={t("routines.timeCap")} />
             <span>{t("routines.minutesUnit")}</span>

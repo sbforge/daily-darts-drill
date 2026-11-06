@@ -113,6 +113,8 @@ export interface GameDef {
   fields: Field[];
   /** Counts a rest down: follows the counting setting (Settings → Playing), there is no choice per game. */
   countsRest?: boolean;
+  /** The game is always played to the end: no time cap, not even as a choice (a test you compare, like the JDC Challenge). */
+  noTimeCap?: boolean;
   /** True when, with these settings, the game ends by itself, so it can run without a time cap inside a routine. */
   canEnd?(settings: Settings): boolean;
   /** About how long the game takes without a time cap, in minutes: the routine's length counts with it. */
