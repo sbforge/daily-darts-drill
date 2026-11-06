@@ -20,6 +20,7 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 ### Added
 - **Restore a backup in the app.** Settings → Your data → *Restore a backup…* lists your backups (the daily ones, the ones before an update or before *Erase all data*), or you choose a file you exported. D³ checks the file, saves your current data first and restarts with the backup. If you change your mind, restore the copy marked *Before a restore* the same way. A backup from a newer version of D³ is refused, so nothing breaks.
 - **Share your routines.** In the routine editor, the new export icon saves the routine as a file. Pass it on to a friend or your club: *Import* on the start page adds it to their D³, and the routine opens so they can check it. Only the routine is in the file, never your results. A game the other D³ doesn't know yet is left out, and D³ says so.
+- **JDC Challenge: the result of every round.** After the last dart of a round, its result lies over the board: the points, the three parts, your Shanghais, the doubles you hit and how often you hit the number, and with several rounds your best round so far and the average. Pull your darts and the next round starts, or the routine goes on.
 
 ### Changed
 - **A clearer update dialog.** When a new version is ready, the dialog now looks like the rest of D³: the version on offer at the top, the release notes in their own box, and *Update now*, *Later* and *Skip this version* at the bottom.
