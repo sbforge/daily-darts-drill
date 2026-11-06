@@ -19,7 +19,7 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ### Changed
 - **JDC Challenge: full rounds of 57 darts, no time cap.** The challenge now follows its usual rules: one visit at each number in the Shanghai parts and one dart at each double, 57 darts and at most 3380 points a round. Instead of visits per number you now choose how many rounds you play (1 to 5). The JDC Challenge has no time cap any more, so every round is played to the end and your results can be compared; with several rounds your score is the average per round, and the best round is shown too. A JDC Challenge already in your routines plays one round without a time cap.
-- **JDC Challenge in the DPI: your points.** The DPI now counts only your points per round (300 points are 0, 2200 points are 100), and only finished rounds: if you stop in the middle of the first round, the game is saved but doesn't count.
+- **JDC Challenge in the DPI: your points.** The DPI now counts only your points per round (300 points are 0, 1800 points are 100, so about 1200 points are 60), and only finished rounds: if you stop in the middle of the first round, the game is saved but doesn't count.
 
 ## [0.9.7] - 2026-11-05
 
