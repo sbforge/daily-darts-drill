@@ -165,7 +165,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           # tauri-action writes latest.json (all platforms, with signatures) into the draft release.
-          includeUpdaterJson: true
+          uploadUpdaterJson: true
           # Upload into the one draft made above; a manual run has none and only builds.
           releaseId: ${{ needs.release.outputs.id }}
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"bundle":{"createUpdaterArtifacts":true}}'
@@ -209,13 +209,20 @@ jobs:
           url=$(gh api "repos/$REPO/releases/$ID" --jq '.assets[] | select(.name == "latest.json") | .url')
           [ -n "$url" ] || { echo "latest.json is missing in the draft"; exit 1; }
           gh api -H "Accept: application/octet-stream" "$url" > latest.json
-          gh api "repos/$REPO/releases/$ID" --jq '.assets[].name' > assets.txt
+          # tauri-action 1.x links each update package by its asset id (api.github.com/…/releases/assets/<id>);
+          # older links named the file (…/releases/download/<tag>/<file>). Both are checked against the draft.
+          gh api "repos/$REPO/releases/$ID" --jq '.assets[] | .name, (.id | tostring)' > assets.txt
           for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
             url=$(jq -r --arg p "$p" '.platforms[$p].url // empty' latest.json)
             [ -n "$url" ] || { echo "latest.json has no $p"; exit 1; }
             sig=$(jq -r --arg p "$p" '.platforms[$p].signature // empty' latest.json)
             [ -n "$sig" ] || { echo "latest.json has no signature for $p"; exit 1; }
             # The update package latest.json points to must be in this release, or the update fails on that platform.
+            case "$url" in
+              https://api.github.com/repos/"$REPO"/releases/assets/*) ;;
+              https://github.com/"$REPO"/releases/*) ;;
+              *) echo "$p: $url is not in this repository's releases"; exit 1;;
+            esac
             name=$(basename "$url")
             grep -qxF "$name" assets.txt || { echo "$p: $name is not an asset of the draft"; exit 1; }
           done

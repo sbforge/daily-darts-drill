@@ -3,7 +3,7 @@
 //   node scripts/preview.js feed <latest.json> <tag> [current.json]
 //       Prints the latest.json for the moving `preview` release: the same file with every URL naming this
 //       release's tag (releases/download/<tag>/…) instead of releases/latest/download/…, which would point a beta's
-//       app at the stable release's files. Exits with 3, printing nothing, when the version in current.json
+//       app at the stable release's files. Asset-id URLs (tauri-action 1.x) are left as they are. Exits with 3, printing nothing, when the version in current.json
 //       (the preview release's file now) is the same or newer: the preview channel never goes backwards.
 //
 //   node scripts/preview.js stale <stable tag>
@@ -39,10 +39,14 @@ export function compare(a, b) {
   return x.pre.length - y.pre.length;
 }
 
-/** latest.json with every platform URL pointing into `tag`'s own release. */
+/**
+ * latest.json with every platform URL pointing into `tag`'s own release. Asset-id URLs (tauri-action 1.x:
+ * api.github.com/repos/…/releases/assets/<id>) already name one file of one release and stay as they are.
+ */
 export function feedFor(latest, tag) {
   const out = structuredClone(latest);
   for (const p of Object.values(out.platforms ?? {})) {
+    if (/\/releases\/assets\/\d+$/.test(p.url)) continue;
     const file = p.url.split("/").pop();
     p.url = p.url.replace(/\/releases\/(latest\/download|download\/[^/]+)\/[^/]+$/, `/releases/download/${tag}/${file}`);
   }
