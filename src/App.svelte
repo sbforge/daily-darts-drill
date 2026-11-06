@@ -44,7 +44,16 @@
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
   import { checkForUpdate, initUpdates, installUpdate, later, releasesUrl, setAutoCheck, setChannel, setDeveloper, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
-  import { chooseExportFile, lastBackup, prepareEraseBackup } from "./lib/backend";
+  import {
+    chooseExportFile,
+    chooseRoutineOpenFile,
+    chooseRoutineSaveFile,
+    lastBackup,
+    prepareEraseBackup,
+    readRoutineFile,
+    saveRoutineFile,
+  } from "./lib/backend";
+  import { ImportError, parseShareFile, shareFileName, toShareFile } from "./lib/routines/share";
   import CrashToasts from "./lib/CrashToasts.svelte";
   import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
@@ -906,6 +915,48 @@
     pendingRoutineDelete = false;
   }
 
+  // Routine files: export the routine being edited, import one as a new routine. The outcome shows as a banner.
+  let shareNote = $state<{ text: string; failed: boolean } | null>(null);
+
+  async function exportRoutine(r: Routine) {
+    shareNote = null;
+    try {
+      const path = await chooseRoutineSaveFile(shareFileName(r.name));
+      if (!path) return;
+      await saveRoutineFile(path, toShareFile($state.snapshot(r), __APP_VERSION__));
+      log.info(`routine exported: ${r.name}`);
+      shareNote = { text: t("share.exported", { name: r.name }), failed: false };
+    } catch (e) {
+      log.error(`routine export failed: ${e}`);
+      shareNote = { text: t("share.exportFailed", { msg: e instanceof Error ? e.message : String(e) }), failed: true };
+    }
+  }
+
+  async function importRoutine() {
+    shareNote = null;
+    try {
+      const path = await chooseRoutineOpenFile();
+      if (!path) return;
+      const { routine, dropped } = parseShareFile(await readRoutineFile(path));
+      if (!routine.name) routine.name = t("routines.new");
+      routines.push(routine);
+      selectedId = routine.id;
+      draftId = null;
+      pendingRoutineDelete = false;
+      log.info(`routine imported: ${routine.name} (${routine.items.length} games, ${dropped} left out)`);
+      shareNote = {
+        text: dropped ? t("share.importedDropped", { name: routine.name, n: dropped }) : t("share.imported", { name: routine.name }),
+        failed: false,
+      };
+      go("routines");
+    } catch (e) {
+      log.warn(`routine import failed: ${e}`);
+      const text =
+        e instanceof ImportError ? t(`share.${e.problem}`) : t("share.importFailed", { msg: e instanceof Error ? e.message : String(e) });
+      shareNote = { text, failed: true };
+    }
+  }
+
   /** The first click asks, the second deletes. */
   function deleteRoutine(id: string) {
     if (!pendingRoutineDelete) {
@@ -1410,6 +1461,12 @@
 
 {#if saveError}
   <p class="banner" role="alert">{saveError}</p>
+{/if}
+{#if shareNote}
+  <p class={shareNote.failed ? "banner" : "banner ok"} role={shareNote.failed ? "alert" : "status"}>
+    {shareNote.text}
+    <button class="link" onclick={() => (shareNote = null)}>{t("updates.dismiss")}</button>
+  </p>
 {/if}
 {#if updates.updatedTo}
   <p class="banner ok" role="status">
@@ -1967,6 +2024,11 @@
               />
             </svg>
           </button>
+          <button class="icon" aria-label={t("share.export")} title={t("share.export")} onclick={() => exportRoutine(r)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path fill="currentColor" d="M12 3 7 8l1.4 1.4L11 6.8V16h2V6.8l2.6 2.6L17 8l-5-5ZM5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5h-2v5H7v-5H5Z" />
+            </svg>
+          </button>
           <span class="delete-wrap">
             <button
               class="icon delete"
@@ -2018,10 +2080,18 @@
           {t("quick.name")}
         </button>
         <h2>{t("train.title")}</h2>
-        <button class="ghost small new" onclick={addRoutine}>
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
-          {t("routines.new")}
-        </button>
+        <div class="pick-actions">
+          <button class="ghost small" onclick={importRoutine} title={t("share.importHint")}>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path fill="currentColor" d="m12 16 5-5-1.4-1.4-2.6 2.6V3h-2v9.2L8.4 9.6 7 11l5 5Zm-7-2v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5h-2v5H7v-5H5Z" />
+            </svg>
+            {t("share.import")}
+          </button>
+          <button class="ghost small new" onclick={addRoutine}>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
+            {t("routines.new")}
+          </button>
+        </div>
       </div>
       <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} onedit={() => go("routines")} />
       <AddGameDialog bind:this={quickDialog} quick onadd={startQuick} />
@@ -2831,13 +2901,14 @@
   /* The title stays centred over the carousel; "New routine" sits at the right edge. */
   .pick-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
   .pick-head h2 { grid-column: 2; margin: 0; text-align: center; }
-  .pick-head .new { grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 0.35rem; }
+  .pick-head .pick-actions { grid-column: 3; justify-self: end; display: flex; gap: 0.5rem; }
+  .pick-actions button { display: inline-flex; align-items: center; gap: 0.35rem; }
   .pick-head .quick { grid-column: 1; grid-row: 1; justify-self: start; display: inline-flex; align-items: center; gap: 0.35rem; }
   @media (max-width: 640px) {
     .pick-head { grid-template-columns: 1fr auto auto; }
     .pick-head h2 { grid-column: 1; text-align: left; }
     .pick-head .quick { grid-column: 2; }
-    .pick-head .new { grid-column: 3; }
+    .pick-head .pick-actions { grid-column: 3; }
   }
   /* Shared form controls and buttons, also used by components in lib/. */
   :global {

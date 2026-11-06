@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Added
+- **Share your routines.** In the routine editor, the new export icon saves the routine as a file. Pass it on to a friend or your club: *Import* on the start page adds it to their D³, and the routine opens so they can check it. Only the routine is in the file, never your results. A game the other D³ doesn't know yet is left out, and D³ says so.
+
 ## [0.9.7] - 2026-11-05
 
 One setting for how the score is counted, and a way to try new versions before they are released.
