@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **"Next turn" also resets Autodarts.** Ending a turn with the button beside the dart boxes now clears the board in Autodarts as well, so the next dart starts a fresh turn there too, even with darts still in the board.
+
 ## [0.9.7] - 2026-11-05
 
 One setting for how the score is counted, and a way to try new versions before they are released.
