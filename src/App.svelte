@@ -735,12 +735,21 @@
   }
 
   /** Clears the darts on the board, like a takeout by hand. A running game takes it as the end of the turn. */
-  function resetBoard() {
+  function resetBoard(quiet = false) {
     if (!canReset) return;
     client.reset().then(
-      () => (log.info("autodarts reset"), noteBoard(t("board.resetDone"), false)),
-      (e) => (log.warn(`autodarts reset failed: ${e}`), noteBoard(t("board.resetFailed"), true)),
+      () => (log.info("autodarts reset"), quiet || noteBoard(t("board.resetDone"), false)),
+      (e) => (log.warn(`autodarts reset failed: ${e}`), quiet || noteBoard(t("board.resetFailed"), true)),
     );
+  }
+
+  /**
+   * "Next turn": the turn ends by hand, and Autodarts is reset too, so its turn ends with ours and the next
+   * dart starts a new one. That happens without the bubble over the board buttons.
+   */
+  function nextTurn() {
+    session?.endTurn();
+    resetBoard(true);
   }
 
   /** Starts the detection when it is stopped, stops it when it runs. */
@@ -2285,7 +2294,7 @@
           {/if}
           <!-- Ends the turn by hand, e.g. one set on the board; empty boxes count as misses. -->
           {#if !paused}
-            <button class="icon next-turn" title={t("run.nextTurn")} aria-label={t("run.nextTurn")} onclick={() => session?.endTurn()}>
+            <button class="icon next-turn" title={t("run.nextTurn")} aria-label={t("run.nextTurn")} onclick={nextTurn}>
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
                 <path fill="currentColor" d="M3 11h11.2l-4.6-4.6L11 5l7 7-7 7-1.4-1.4 4.6-4.6H3zM19 5h2v14h-2z" />
               </svg>
@@ -2728,7 +2737,7 @@
           {/if}
         </svg>
       </button>
-      <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={resetBoard}>
+      <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={() => resetBoard()}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" />
         </svg>
