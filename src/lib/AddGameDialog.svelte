@@ -71,7 +71,7 @@
 
   function current(): RoutineItem {
     const item = $state.snapshot(draft);
-    return capped === "off" && canEnd ? { ...item, minutes: 0 } : item;
+    return g.noTimeCap || (capped === "off" && canEnd) ? { ...item, minutes: 0 } : item;
   }
 
   /** Opens on the given games' settings (e.g. the ones played last), else on each game's defaults. */
@@ -135,10 +135,12 @@
         <p class="goal"><strong>{t("game.goal")}</strong> {g.goal}</p>
 
         <div class="fields">
-          {#if canEnd}
+          {#if g.noTimeCap}
+            <p class="to-the-end">{t("routines.toTheEndInfo")}</p>
+          {:else if canEnd}
             <GameField field={capField} bind:value={capped} />
           {/if}
-          {#if !canEnd || capped === "on"}
+          {#if !g.noTimeCap && (!canEnd || capped === "on")}
             <GameField field={timeCap} bind:value={draft.minutes} />
           {/if}
           {#each g.fields as f (`${g.id}-${f.key}`)}
@@ -214,6 +216,7 @@
   .goal { margin: 0 0 1rem; padding: 0.6rem 0.8rem; border-left: 3px solid var(--accent); border-radius: 4px; background: rgb(34 211 238 / 0.06); font-size: 0.9rem; line-height: 1.4; }
   .goal strong { color: var(--accent); margin-right: 0.25rem; }
 
+  .to-the-end { grid-column: 1 / -1; margin: 0 0 0.75rem; color: var(--dim); font-size: 0.9rem; line-height: 1.4; }
   .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; }
   .fields { --field-bg: var(--bg); }
   .fields :global(input) { background: var(--bg); }

@@ -1,7 +1,7 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
-import { doubleField, great, pct } from "./shared";
-import type { BoardField, GameDef, GameResult, Moment } from "./types";
+import { doubleField, great, opt, pct } from "./shared";
+import type { BoardField, GameDef, GameResult, Moment, StatLine } from "./types";
 
 /** Points for a Shanghai (single, double and treble of the number in one visit). */
 export const SHANGHAI_BONUS = 100;
@@ -60,19 +60,41 @@ export const jdcChallenge: GameDef = {
   },
   needsDarts: true,
   hasResult: true,
-  defaultMinutes: 5,
-  defaultSettings: {},
-  fields: [],
+  // Only for the type: the challenge has no time cap, it is always played to the end.
+  defaultMinutes: 10,
+  defaultSettings: { rounds: 1 },
+  fields: [
+    {
+      key: "rounds",
+      get label() {
+        return t("jdc.rounds");
+      },
+      get info() {
+        return t("jdc.roundsInfo");
+      },
+      kind: "select",
+      options: [1, 2, 3, 4, 5].map((n) => opt(n, () => String(n))),
+    },
+  ],
+  noTimeCap: true,
   canEnd: () => true,
-  // 19 visits, about 15 seconds each.
-  estimateMinutes: () => 5,
-  describe: () => t("jdc.describe"),
-  summary: (v) => t("jdc.summary", { score: v.score, shanghais: v.shanghais, rate: num(v.doubleRate, 1) }),
-  compute(turns, _s, ctx) {
+  // 19 visits a round, about 30 seconds each.
+  estimateMinutes: (s) => Math.ceil((roundsOf(s.rounds) * PLAN.length * 30) / 60),
+  describe: (s) => (roundsOf(s.rounds) > 1 ? t("jdc.describeRounds", { n: roundsOf(s.rounds) }) : t("jdc.describe")),
+  summary: (v) =>
+    t(Number(v.games) > 1 ? "jdc.summaryRounds" : "jdc.summary", {
+      score: v.score,
+      best: v.best,
+      games: v.games,
+      shanghais: v.shanghais,
+      rate: num(v.doubleRate, 1),
+    }),
+  compute(turns, s, ctx) {
+    const rounds = roundsOf(s.rounds);
     const visits = PLAN;
-    const parts = [0, 0, 0];
+    const parts = [0, 0, 0]; // the round being played
+    const finished: number[][] = []; // the parts of every finished round
     let idx = 0; // the visit of the next turn
-    let games = 0;
     let shanghais = 0;
     let segmentDarts = 0;
     let segmentHits = 0;
@@ -114,43 +136,50 @@ export const jdcChallenge: GameDef = {
       played++;
       idx++;
       if (idx < visits.length) continue;
-      games++;
-      if (ctx.repeat) idx = 0;
-      else over = true;
+      finished.push([...parts]);
+      if (finished.length >= rounds) over = true;
+      else {
+        idx = 0;
+        parts.fill(0);
+      }
     }
 
-    const score = parts[0] + parts[1] + parts[2];
+    const games = finished.length;
+    const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+    const roundScores = finished.map(sum);
+    const current = over ? finished[games - 1] : parts;
+    // The score to compare is the average of the finished rounds; before the first one is finished, its points so far.
+    const avg = (i: number) => (games ? Math.round(sum(finished.map((p) => p[i])) / games) : parts[i]);
+    const score = games ? Math.round(sum(roundScores) / games) : sum(parts);
+    const best = games ? Math.max(...roundScores) : 0;
     const segmentRate = pct(segmentHits, segmentDarts);
     const doubleRate = pct(doubleHits, doubleDarts);
     const v = over ? null : visits[idx];
+    const roundHint = rounds > 1 && v ? t("jdc.roundOf", { n: games + 1, total: rounds }) : undefined;
 
     let focus: NonNullable<GameResult["focus"]>;
     let targets: BoardField[] = [];
     let dartsLabel = "";
     if (!v) focus = { label: t("atc.complete"), value: String(score) };
     else if (v.kind === "shanghai") {
-      focus = {
-        label: t(v.part === 1 ? "jdc.part1" : "jdc.part3"),
-        value: String(v.number),
-      };
+      focus = { label: t(v.part === 1 ? "jdc.part1" : "jdc.part3"), value: String(v.number), hint: roundHint };
       targets = segment(v.number);
       dartsLabel = `${v.number} · D${v.number} · T${v.number}`;
     } else {
       const target = v.targets[Math.min(used, 2)];
-      focus = {
-        label: t("jdc.part2"),
-        value: doubleLabel(target),
-      };
+      focus = { label: t("jdc.part2"), value: doubleLabel(target), hint: roundHint };
       targets = [doubleField(target)];
       dartsLabel = v.targets.map(doubleLabel).join(" · ");
     }
 
+    const multi = rounds > 1;
     return {
       values: {
         score,
-        part1: parts[0],
-        part2: parts[1],
-        part3: parts[2],
+        best,
+        part1: avg(0),
+        part2: avg(1),
+        part3: avg(2),
         shanghais,
         segmentDarts,
         segmentHits,
@@ -161,17 +190,26 @@ export const jdcChallenge: GameDef = {
         darts,
         visits: played,
         games,
+        rounds,
       },
       lines: [
-        { key: "score", label: t("jdc.score"), value: String(score), hero: true },
-        { key: "part1", label: t("jdc.part1"), value: String(parts[0]), live: false },
-        { key: "part2", label: t("jdc.part2"), value: String(parts[1]), live: false },
-        { key: "part3", label: t("jdc.part3"), value: String(parts[2]), live: false },
+        multi && over
+          ? { key: "score", label: t("jdc.average"), value: String(score), hero: true }
+          : { key: "round", label: t("jdc.score"), value: String(sum(current)), hero: true },
+        { key: "part1", label: t("jdc.part1"), value: String(current[0]), live: false },
+        { key: "part2", label: t("jdc.part2"), value: String(current[1]), live: false },
+        { key: "part3", label: t("jdc.part3"), value: String(current[2]), live: false },
         { key: "shanghais", label: t("jdc.shanghais"), value: String(shanghais) },
         { key: "segmentRate", label: t("jdc.segmentRate"), value: segmentDarts ? `${num(segmentRate, 1)}%` : t("game.noneYet") },
         { key: "doubleRate", label: t("jdc.doubleRate"), value: doubleDarts ? `${num(doubleRate, 1)}%` : t("game.noneYet") },
         { key: "progress", label: t("jdc.progress"), value: t("game.xOfY", { n: over ? visits.length : idx, total: visits.length }), live: false },
-        ...(games > 0 && ctx.repeat ? [{ key: "games", label: t("jdc.games"), value: String(games) }] : []),
+        ...(multi
+          ? <StatLine[]>[
+              { key: "games", label: t("jdc.games"), value: t("game.xOfY", { n: games, total: rounds }), live: false },
+              ...(games ? [{ key: "best", label: t("jdc.best"), value: String(best) }] : []),
+              ...(games && !over ? [{ key: "score", label: t("jdc.average"), value: String(score) }] : []),
+            ]
+          : []),
       ],
       focus,
       targets,
@@ -181,3 +219,8 @@ export const jdcChallenge: GameDef = {
     };
   },
 };
+
+function roundsOf(value: string | number | undefined): number {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) && n >= 1 && n <= 5 ? n : 1;
+}
