@@ -121,3 +121,24 @@ export async function chooseRestoreFile(): Promise<string | null> {
   const picked = await open({ multiple: false, directory: false, filters: [{ name: "D³ data", extensions: ["db"] }] });
   return typeof picked === "string" ? picked : null;
 }
+
+/** Asks where to save a routine file, returns null when cancelled. */
+export async function chooseRoutineSaveFile(defaultName: string): Promise<string | null> {
+  const { save } = await import("@tauri-apps/plugin-dialog");
+  return save({ defaultPath: defaultName, filters: [{ name: "D³ routine", extensions: ["json"] }] });
+}
+
+/** Asks for a routine file to import, returns null when cancelled. */
+export async function chooseRoutineOpenFile(): Promise<string | null> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const picked = await open({ multiple: false, directory: false, filters: [{ name: "D³ routine", extensions: ["json"] }] });
+  return typeof picked === "string" ? picked : null;
+}
+
+export async function saveRoutineFile(path: string, contents: string): Promise<void> {
+  await invoke("save_routine_file", { path, contents });
+}
+
+export async function readRoutineFile(path: string): Promise<string> {
+  return invoke<string>("read_routine_file", { path });
+}

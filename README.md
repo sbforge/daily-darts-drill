@@ -40,6 +40,10 @@ legs, Clockwork, Bob's 27, Catch 40) can run without a time cap; the JDC Challen
 Two routines come with D³, so you can start training right away. They are normal routines: change them or delete
 them, and "Restore built-in routines" in the settings brings them back.
 
+Routines can be passed on: the export icon in the routine editor saves one as a small file
+(`<name>.d3-routine.json`), and "Import" on the start page adds it to someone else's D³. Only the routine goes in
+the file (name, description, break, the games and their settings), none of your results.
+
 | Routine | What is in it |
 |---|---|
 | **Everyday Drill** (about 77 min) | Loose Arm, Clockwork, Double Trouble and Plan B on D20, D16 and D18, Ton Machine, Checkout Ladder, finishing with four real legs of Solo Leg. |

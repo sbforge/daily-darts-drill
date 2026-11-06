@@ -73,6 +73,32 @@ fn discard_restore(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Routine files (export / import of one routine) are small JSON files at a path the player picked in a dialog.
+const MAX_ROUTINE_FILE: u64 = 256 * 1024;
+
+fn is_routine_file(p: &std::path::Path) -> bool {
+    p.extension().is_some_and(|e| e.eq_ignore_ascii_case("json"))
+}
+
+#[tauri::command]
+fn save_routine_file(path: String, contents: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if !is_routine_file(p) || contents.len() as u64 > MAX_ROUTINE_FILE {
+        return Err("not a routine file".into());
+    }
+    std::fs::write(p, contents).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn read_routine_file(path: String) -> Result<String, String> {
+    let p = std::path::Path::new(&path);
+    let size = std::fs::metadata(p).map_err(|e| e.to_string())?.len();
+    if !is_routine_file(p) || size > MAX_ROUTINE_FILE {
+        return Err("not a routine file".into());
+    }
+    std::fs::read_to_string(p).map_err(|e| e.to_string())
+}
+
 /// When the newest backup was made.
 #[tauri::command]
 fn last_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
@@ -476,6 +502,8 @@ fn main() {
             list_backups,
             stage_restore,
             discard_restore,
+            save_routine_file,
+            read_routine_file,
             preview_check,
             preview_install
         ])
@@ -502,6 +530,14 @@ mod tests {
         for ip in ["8.8.8.8", "100.128.0.1", "2001:db8::1", "board.local", "", "$(rm -rf /)"] {
             assert!(!is_local_address(ip), "{ip}");
         }
+    }
+
+    #[test]
+    fn routine_files_are_json_only() {
+        assert!(is_routine_file(std::path::Path::new("/tmp/Tuesday.d3-routine.json")));
+        assert!(is_routine_file(std::path::Path::new("C:/x/a.JSON")));
+        assert!(!is_routine_file(std::path::Path::new("/tmp/darttrainer.db")));
+        assert!(!is_routine_file(std::path::Path::new("/tmp/json")));
     }
 
     #[test]
