@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Added
+- **Restore a backup in the app.** Settings → Your data → *Restore a backup…* lists your backups (the daily ones, the ones before an update or before *Erase all data*), or you choose a file you exported. D³ checks the file, saves your current data first and restarts with the backup. If you change your mind, restore the copy marked *Before a restore* the same way. A backup from a newer version of D³ is refused, so nothing breaks.
+
 ### Changed
 - **A clearer update dialog.** When a new version is ready, the dialog now looks like the rest of D³: the version on offer at the top, the release notes in their own box, and *Update now*, *Later* and *Skip this version* at the bottom.
 - **Links that open your browser are marked.** Links in the app now have a small arrow icon, so you know your web browser opens when you click them.

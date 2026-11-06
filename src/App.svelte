@@ -59,6 +59,7 @@
   import LoadingScreen from "./lib/LoadingScreen.svelte";
   import SbomDialog from "./lib/SbomDialog.svelte";
   import LogDialog from "./lib/LogDialog.svelte";
+  import RestoreDialog from "./lib/RestoreDialog.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
@@ -99,6 +100,10 @@
   // The last run didn't close normally (the Rust side left its "running" marker behind).
   let closedBadly = $state(false);
   let logDialog = $state<LogDialog>();
+  let restoreDialog = $state<RestoreDialog>();
+  // Set on the start after a restore: the folder with the data it replaced, or why it failed.
+  let restoredFrom = $state("");
+  let restoreError = $state("");
   let saveError = $state("");
   type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
   let view = $state<View>("train");
@@ -1177,6 +1182,11 @@
         }
         lastBackupAt = await lastBackup();
         if (startup.crashedLastTime) closedBadly = true;
+        restoredFrom = startup.restored ?? "";
+        if (startup.restoreError) {
+          log.error(`restore failed: ${startup.restoreError}`);
+          restoreError = startup.restoreError;
+        }
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
@@ -1441,6 +1451,19 @@
     <button class="link" onclick={() => (backupError = "")}>{t("crash.dismiss")}</button>
   </p>
 {/if}
+{#if restoredFrom}
+  <p class="banner ok" role="status">
+    {t("restore.done")}
+    <button class="link" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+    <button class="link" onclick={() => (restoredFrom = "")}>{t("updates.dismiss")}</button>
+  </p>
+{/if}
+{#if restoreError}
+  <p class="banner" role="alert">
+    {t("restore.startFailed", { msg: restoreError })}
+    <button class="link" onclick={() => (restoreError = "")}>{t("crash.dismiss")}</button>
+  </p>
+{/if}
 {#if closedBadly}
   <div class="banner closed-badly" role="alert">
     <span>{t("crash.closedBadly")}</span>
@@ -1454,6 +1477,7 @@
   </div>
 {/if}
 <LogDialog bind:this={logDialog} />
+<RestoreDialog bind:this={restoreDialog} />
 
 <CrashToasts />
 
@@ -1473,7 +1497,10 @@
           {t("db.hintBefore")} <code>npm run tauri dev</code> {t("db.hintAfter")}
         </p>
       {/if}
-      <button type="button" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+      <div class="row">
+        <button type="button" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+        <button type="button" onclick={() => restoreDialog?.open()}>{t("restore.open")}</button>
+      </div>
     </section>
   {:else if !ready}
     <!-- The loading screen covers the window, see below. -->
@@ -1641,6 +1668,7 @@
           <div class="row">
             <button class="ghost" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
             <button class="ghost" disabled={inRun} onclick={exportData}>{t("export.button")}</button>
+            <button class="ghost" disabled={inRun} onclick={() => restoreDialog?.open()}>{t("restore.open")}</button>
           </div>
           <p class="hint">{t("export.hint")}</p>
           {#if exportNote}<p class={exportNote.failed ? "error" : "hint"} role="status">{exportNote.text}</p>{/if}
