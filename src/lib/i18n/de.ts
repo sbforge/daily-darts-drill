@@ -506,6 +506,7 @@ export const de: Record<Key, string> = {
   "train.total": "Höchstens {n} Minuten insgesamt.",
   "train.noGames": "Diese Routine hat noch keine Spiele. Füge über den Bearbeiten-Knopf auf ihrer Karte welche hinzu.",
   "train.start": "Routine starten",
+  "train.offline": "Nicht mit Autodarts verbunden. Verbinde den Client in den Einstellungen.",
   "carousel.games": "{n} Spiele",
   "carousel.game": "1 Spiel",
   "carousel.duration": "{n} Min.",

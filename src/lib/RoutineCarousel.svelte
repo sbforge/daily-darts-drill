@@ -10,12 +10,15 @@
     routines,
     selectedId = $bindable(),
     lastPlayed,
+    offline = false,
     onstart,
     onedit,
   }: {
     routines: Routine[];
     selectedId: string;
     lastPlayed: Record<string, string>;
+    /** No connection to Autodarts: a routine with darts to count can't start. */
+    offline?: boolean;
     onstart: () => void;
     onedit: () => void;
   } = $props();
@@ -55,11 +58,13 @@
     selectedId = routines[next].id;
   }
 
+  const blocked = (r: Routine) => offline && r.items.some((i) => gameById(i.gameId).needsDarts);
+
   function onkeydown(e: KeyboardEvent) {
     if (e.key === "ArrowLeft") rotate(-1);
     else if (e.key === "ArrowRight") rotate(1);
     // Enter on the carousel itself starts; on a focused button it is that button's click.
-    else if (e.key === "Enter" && e.target === e.currentTarget && routines[active]?.items.length) onstart();
+    else if (e.key === "Enter" && e.target === e.currentTarget && routines[active]?.items.length && !blocked(routines[active])) onstart();
     else return;
     e.preventDefault();
   }
@@ -217,6 +222,8 @@
             class="start"
             tabindex={isFront ? 0 : -1}
             class:empty={r.items.length === 0}
+            disabled={isFront && blocked(r)}
+            title={isFront && blocked(r) ? t("train.offline") : undefined}
             onclick={(e) => {
               e.stopPropagation();
               if (!isFront) selectedId = r.id;
@@ -226,6 +233,7 @@
           >
             {r.items.length === 0 ? t("carousel.addGames") : t("train.start")}
           </button>
+          {#if isFront && blocked(r)}<p class="offline">{t("train.offline")}</p>{/if}
         </div>
       </div>
     {/each}
@@ -447,7 +455,9 @@
     color: var(--on-accent, #04161c);
     cursor: pointer;
   }
-  .start:hover { background: var(--accent-hi, #67e8f9); }
+  .start:hover:not(:disabled) { background: var(--accent-hi, #67e8f9); }
+  .start:disabled { opacity: 0.45; cursor: not-allowed; }
+  .offline { margin: 0.4rem 0 0; color: var(--dim); font-size: 0.8rem; text-align: center; }
   /* An empty routine can't start yet; its button leads to the editor instead. */
   .start.empty { background: none; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
   .start.empty:hover { background: rgb(34 211 238 / 0.1); }
