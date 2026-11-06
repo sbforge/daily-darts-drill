@@ -41,6 +41,12 @@ describe("game index", () => {
     expect(gameIndex("bobs-27", {}, { ...v, finishedScore: 0 })).toBeCloseTo(70);
     expect(gameIndex("bobs-27", {}, v)).toBeCloseTo(100);
   });
+  it("JDC Challenge: only the points, 300 to 2200, and only finished rounds", () => {
+    const jdc = (values: Record<string, number>) => gameIndex("jdc-challenge", {}, values);
+    expect(jdc({ score: 1250, games: 1 })).toBe(50);
+    expect(jdc({ score: 2400, games: 2 })).toBe(100);
+    expect(jdc({ score: 900, games: 0 })).toBeNull();
+  });
   it("the warm-up has no index", () => {
     expect(hasIndex("warm-up")).toBe(false);
   });

@@ -1007,6 +1007,7 @@
     recoveryRate: { label: "bullx.recoveryRate", percent: true, digits: 1 },
     segmentRate: { label: "jdc.segmentRate", percent: true, digits: 1 },
     doubleRate: { label: "jdc.doubleRate", percent: true, digits: 1 },
+    score: { label: "jdc.average", digits: 0 },
   };
   const metricOf = (key: string) => METRICS[key] ?? { label: "dpi.metric" as Key, digits: 1 };
   const metricFormat = (key: string) => (n: number) => `${num(n, metricOf(key).digits)}${metricOf(key).percent ? "%" : ""}`;
