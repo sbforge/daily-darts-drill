@@ -54,6 +54,7 @@
   import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
   import GameShot from "./lib/GameShot.svelte";
+  import RoundEndOverlay from "./lib/RoundEnd.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
   import DpiChart from "./lib/DpiChart.svelte";
   import LoadingScreen from "./lib/LoadingScreen.svelte";
@@ -217,9 +218,14 @@
   // Autodarts keeps detecting after a bust or a checkout (that can't be stopped), but those darts are neither
   // counted nor shown: the boxes after it stay closed and the board doesn't draw them.
   const shownDarts = $derived(session ? session.shown.slice(0, bustAt) : []);
-  // The game's own moment of the checkout ("Ton out!") is shown on the Game shot overlay instead of a stamp.
+  // The end of a round (JDC Challenge): its result lies over the board until the takeout.
+  const roundEnd = $derived(session && result?.roundEnd?.turn === session.shownTurn ? result.roundEnd : null);
+  // The turn under an overlay: its moment ("Ton out!", "Shanghai!") is shown on the overlay instead of a stamp.
+  const overlayTurn = $derived(shot?.turn ?? roundEnd?.turn ?? null);
   const shotMoment = $derived(
-    shot && session && result ? (pickMoments(result, session.allTurns).play.find((m) => m.turn === shot.turn)?.text ?? "") : "",
+    overlayTurn !== null && session && result
+      ? (pickMoments(result, session.allTurns).play.find((m) => m.turn === overlayTurn)?.text ?? "")
+      : "",
   );
   const canStart = $derived(!!def && (detecting || !def.needsDarts));
   // A game with darts can't go on without the detection, so it waits paused until Autodarts is back.
@@ -808,7 +814,7 @@
     if (phase !== "running" || !session || !result) return;
     const game = gameStartedAt;
     const { play, skip } = pickMoments(result, session.allTurns);
-    const shotTurn = result.gameShot?.turn;
+    const shotTurn = result.gameShot?.turn ?? result.roundEnd?.turn;
     for (const m of skip) fx.skip(`${game}:${m.key}`);
     for (const m of play) {
       // A checkout's moment is on the Game shot overlay; it isn't stamped later either.
@@ -2201,6 +2207,8 @@
           />
           {#if shot}
             <GameShot next={shot.next} moment={shotMoment} pulling={throwPhase === "takeoutInProgress"} />
+          {:else if roundEnd}
+            <RoundEndOverlay round={roundEnd} moment={shotMoment} pulling={throwPhase === "takeoutInProgress"} />
           {/if}
         </div>
       </div>

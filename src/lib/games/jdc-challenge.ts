@@ -1,7 +1,7 @@
 import type { Dart } from "../autodarts";
 import { num, t } from "../i18n/index.svelte";
 import { doubleField, great, opt, pct } from "./shared";
-import type { BoardField, GameDef, GameResult, Moment, StatLine } from "./types";
+import type { BoardField, GameDef, GameResult, Moment, RoundEnd, StatLine } from "./types";
 
 /** Points for a Shanghai (single, double and treble of the number in one visit). */
 export const SHANGHAI_BONUS = 100;
@@ -105,6 +105,9 @@ export const jdcChallenge: GameDef = {
     let over = false;
     let used = 0; // darts of the turn on the board
     const moments: Moment[] = [];
+    // The round being played, for its result at the end.
+    const round = { shanghais: 0, segmentDarts: 0, segmentHits: 0, doubleHits: 0 };
+    let roundEndTurn = -1; // the last visit of a round is on the board, all its darts thrown
 
     for (let ti = 0; ti < turns.length && !over; ti++) {
       const open = ctx.open && ti === turns.length - 1;
@@ -115,10 +118,13 @@ export const jdcChallenge: GameDef = {
         const hit = thrown.filter((d) => onNumber(d, v.number));
         segmentDarts += thrown.length;
         segmentHits += hit.length;
+        round.segmentDarts += thrown.length;
+        round.segmentHits += hit.length;
         parts[v.part - 1] += hit.reduce((sum, d) => sum + d.score, 0);
         if (isShanghai(thrown, v.number)) {
           parts[v.part - 1] += SHANGHAI_BONUS;
           shanghais++;
+          round.shanghais++;
           moments.push({ ...great(ti, t("jdc.shanghai")), priority: 2 });
         }
       } else {
@@ -126,11 +132,14 @@ export const jdcChallenge: GameDef = {
         const hit = thrown.filter((d, i) => hitsDouble(d, v.targets[i])).length;
         doubleDarts += open ? thrown.length : 3;
         doubleHits += hit;
+        round.doubleHits += hit;
         parts[1] += thrown.reduce((sum, d, i) => sum + (hitsDouble(d, v.targets[i]) ? (v.targets[i] === 25 ? BULL_POINTS : DOUBLE_POINTS) : 0), 0);
         if (hit === 3) moments.push(great(ti, t("jdc.great")));
       }
       if (open) {
         used = thrown.length;
+        // The round's last darts are on the board: its result shows until the takeout.
+        if (idx === visits.length - 1 && thrown.length >= 3) roundEndTurn = ti;
         break;
       }
       played++;
@@ -141,6 +150,7 @@ export const jdcChallenge: GameDef = {
       else {
         idx = 0;
         parts.fill(0);
+        Object.assign(round, { shanghais: 0, segmentDarts: 0, segmentHits: 0, doubleHits: 0 });
       }
     }
 
@@ -173,6 +183,33 @@ export const jdcChallenge: GameDef = {
     }
 
     const multi = rounds > 1;
+    let roundEnd: RoundEnd | undefined;
+    if (roundEndTurn >= 0) {
+      const n = games + 1;
+      const total = sum(parts);
+      const all = [...roundScores, total];
+      roundEnd = {
+        turn: roundEndTurn,
+        title: multi ? t("jdc.roundDone", { n, total: rounds }) : t("jdc.roundComplete"),
+        score: { label: t("jdc.score"), value: String(total) },
+        badge: games && total > best ? t("jdc.newBest") : undefined,
+        lines: [
+          { label: t("jdc.part1"), value: String(parts[0]) },
+          { label: t("jdc.part2"), value: String(parts[1]) },
+          { label: t("jdc.part3"), value: String(parts[2]) },
+          { label: t("jdc.shanghais"), value: String(round.shanghais) },
+          { label: t("jdc.doublesHit"), value: t("game.xOfY", { n: round.doubleHits, total: DOUBLES.length }) },
+          { label: t("jdc.segmentRate"), value: `${num(pct(round.segmentHits, round.segmentDarts), 1)}%` },
+          ...(games
+            ? [
+                { label: t("jdc.bestBefore"), value: String(best) },
+                { label: t("jdc.average"), value: String(Math.round(sum(all) / all.length)) },
+              ]
+            : []),
+        ],
+        next: n < rounds ? t("jdc.nextRound", { n: n + 1 }) : t("jdc.challengeDone"),
+      };
+    }
     return {
       values: {
         score,
@@ -215,6 +252,7 @@ export const jdcChallenge: GameDef = {
       targets,
       darts: v ? { label: dartsLabel, total: 3, used, group: 3 } : undefined,
       moments,
+      roundEnd,
       done: over,
     };
   },

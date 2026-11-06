@@ -55,6 +55,23 @@ describe("JDC Challenge", () => {
     expect(done.done).toBe(true);
     expect(done.values).toMatchObject({ part3: 220, score: 220 });
   });
+  it("shows the round's result while its last darts are on the board", () => {
+    const open = (t: string, s = {}) => jdcChallenge.compute(turns(t), { ...jdcChallenge.defaultSettings, ...s }, { open: true });
+    // Not yet: two darts of the last visit.
+    expect(open(`${misses(18)} | S20 D20`).roundEnd).toBeUndefined();
+    const r = open(`S10 D10 T10 | ${misses(5)} | D1 D2 D3 | ${misses(11)} | S20 D20 T20`);
+    expect(r.roundEnd).toMatchObject({ turn: 18, title: "Round complete", score: { value: "530" }, next: "Challenge complete" });
+    expect(r.roundEnd?.lines).toContainEqual({ label: "Shanghais", value: "2" });
+    expect(r.roundEnd?.lines).toContainEqual({ label: "Doubles hit", value: "3 of 21" });
+    expect(r.done).toBe(false);
+    // The takeout closes the turn: the game is over.
+    expect(play(`S10 D10 T10 | ${misses(5)} | D1 D2 D3 | ${misses(11)} | S20 D20 T20`).roundEnd).toBeUndefined();
+    // Round 2 of 2 compares with round 1.
+    const second = open(`${misses(19)} | ${misses(18)} | S20 D20 T20`, { rounds: 2 });
+    expect(second.roundEnd).toMatchObject({ turn: 37, title: "Round 2 of 2 done", badge: "New best round!" });
+    expect(second.roundEnd?.lines).toContainEqual({ label: "Best round so far", value: "0" });
+    expect(open(`${misses(18)} | S20 D20 T20`, { rounds: 2 }).roundEnd?.next).toBe("Round 2 next");
+  });
   it("plays the rounds set, then ends", () => {
     const r = play(misses(19), { rounds: 2 });
     expect(r.done).toBe(false);
