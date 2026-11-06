@@ -72,6 +72,11 @@ describe("JDC Challenge", () => {
     expect(second.roundEnd?.lines).toContainEqual({ label: "Best round so far", value: "0" });
     expect(open(`${misses(18)} | S20 D20 T20`, { rounds: 2 }).roundEnd?.next).toBe("Round 2 next");
   });
+  it("a finished game of several rounds shows the parts' averages", () => {
+    const r = play(`S10 D10 T10 | ${misses(18)} | ${misses(19)}`, { rounds: 2 });
+    expect(r.done).toBe(true);
+    expect(r.lines.find((l) => l.key === "part1")?.value).toBe("80");
+  });
   it("plays the rounds set, then ends", () => {
     const r = play(misses(19), { rounds: 2 });
     expect(r.done).toBe(false);
