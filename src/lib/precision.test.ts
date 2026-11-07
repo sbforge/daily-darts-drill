@@ -105,6 +105,8 @@ describe("measuring", () => {
     expect(measurable(at(0, 0, { kind: "bull" }))).toBe(true);
     expect(measurable(at(0.1, 0.9, { bouncer: true }))).toBe(false);
     expect(measurable(at(0.1, 0.9, { failed: true }))).toBe(false);
+    expect(measurable(at(0.1, 0.9, { method: "manual" }))).toBe(false);
+    expect(measurable(at(0.1, 0.9, { method: "UnanimousCam" }))).toBe(true);
   });
 
   it("no darts, no spread", () => {
