@@ -64,6 +64,7 @@
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import ReleaseNotes from "./lib/ReleaseNotes.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
+  import Precision from "./lib/Precision.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
   import { fullscreen, fullscreenKeys, toggleFullscreen, watchFullscreen } from "./lib/fullscreen.svelte";
@@ -99,7 +100,7 @@
   let closedBadly = $state(false);
   let logDialog = $state<LogDialog>();
   let saveError = $state("");
-  type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
+  type View = "train" | "routines" | "history" | "stats" | "precision" | "settings" | "about";
   let view = $state<View>("train");
 
   // connection settings
@@ -1292,6 +1293,9 @@
     <button class="tab" aria-current={view === "stats" ? "page" : undefined} onclick={() => go("stats")}>
       {t("nav.dpi")}
     </button>
+    <button class="tab" aria-current={view === "precision" ? "page" : undefined} onclick={() => go("precision")}>
+      {t("nav.precision")}
+    </button>
   </nav>
   {#if updates.channel === "preview"}
     <span class="preview-pill" title={t("developer.previewTitle")}>{t("developer.previewLabel")}</span>
@@ -1949,6 +1953,8 @@
         </div>
       {/if}
     </section>
+  {:else if view === "precision"}
+    <Precision />
   {:else if view === "routines"}
     <section class="routines">
       <button class="back" onclick={() => go("train")}>

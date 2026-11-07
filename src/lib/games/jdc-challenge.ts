@@ -67,6 +67,8 @@ export const jdcChallenge: GameDef = {
     return t("jdc.goal");
   },
   needsDarts: true,
+  // The doubles part has a double for each dart; the Shanghai parts allow any bed of the number, so no aim there.
+  fixedTargets: true,
   hasResult: true,
   defaultMinutes: 25,
   defaultSettings: { visits: 5 },

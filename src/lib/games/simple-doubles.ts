@@ -18,6 +18,7 @@ export const simpleDoubles: GameDef = {
     return t("simpleDoubles.goal");
   },
   needsDarts: true,
+  fixedTargets: true,
   hasResult: true,
   defaultMinutes: 5,
   defaultSettings: { double: 20 },

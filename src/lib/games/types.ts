@@ -107,6 +107,11 @@ export interface GameDef {
   /** Why to play it: what it trains. */
   goal: string;
   needsDarts: boolean; // false: can run without an Autodarts connection
+  /**
+   * The rules fix what each dart is thrown at, so `targets` is never a suggestion (a checkout route is one): a single
+   * field there (or both bulls) is the dart's aim, and the precision view measures how far the dart landed from it.
+   */
+  fixedTargets?: true;
   hasResult: boolean;
   defaultMinutes: number;
   defaultSettings: Settings;

@@ -98,6 +98,8 @@ export const bullX: GameDef = {
     return t("bullx.goal");
   },
   needsDarts: true,
+  // The bull, then the double or treble of the segment hit; the Shanghai variant leaves a choice, so it has no aim.
+  fixedTargets: true,
   hasResult: true,
   defaultMinutes: 10,
   defaultSettings: { variant: "doubles", bullseyeOnly: "off" },
