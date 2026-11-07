@@ -125,9 +125,14 @@ export interface AimedDart {
   startedAt: string;
 }
 
-/** A dart without a position can't be measured: a failed detection, a bouncer, or one entered without a spot. */
+/**
+ * Only darts the cameras placed are measured. A dart set or corrected by hand (on the board in D³ or in Autodarts)
+ * sits where the click was, not where the dart landed; a failed detection, a bouncer or a dart without a spot has no
+ * real position either.
+ */
 export function measurable(d: Dart): boolean {
   if (d.failed || d.bouncer) return false;
+  if (d.method.toLowerCase().includes("manual")) return false;
   if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) return false;
   return !(d.x === 0 && d.y === 0 && d.kind !== "bull");
 }
