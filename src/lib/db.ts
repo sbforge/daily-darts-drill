@@ -378,6 +378,66 @@ export async function loadResults(): Promise<ResultRecord[]> {
   });
 }
 
+/**
+ * The results of some games started from `from` (inclusive) to `to` (exclusive), without their darts, for the
+ * precision view. Runs still in progress don't count yet.
+ */
+export async function loadGameList(
+  gameIds: string[],
+  from: string,
+  to: string,
+): Promise<{ id: string; gameId: string; startedAt: string; minutes: number; settings: Settings }[]> {
+  if (!gameIds.length) return [];
+  const marks = gameIds.map((_, i) => `$${i + 3}`).join(",");
+  const rows = await conn().select<any[]>(
+    `SELECT g.id, g.game_id, g.started_at, g.minutes, g.settings_json
+     FROM game_results g JOIN sessions s ON s.id = g.session_id
+     WHERE s.status != 'running' AND g.started_at >= $1 AND g.started_at < $2 AND g.game_id IN (${marks})
+     ORDER BY g.started_at`,
+    [from, to, ...gameIds],
+  );
+  return rows.flatMap((g) => {
+    try {
+      return [{ id: g.id, gameId: g.game_id, startedAt: g.started_at, minutes: g.minutes, settings: JSON.parse(g.settings_json) }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+/** The stored darts of some results, as the turns they were thrown in (a turn without darts stays an empty one). */
+export async function loadTurns(resultIds: string[]): Promise<Map<string, Dart[][]>> {
+  const out = new Map<string, Dart[][]>();
+  // SQLite allows only so many parameters in one statement.
+  for (let i = 0; i < resultIds.length; i += 400) {
+    const ids = resultIds.slice(i, i + 400);
+    const marks = ids.map((_, j) => `$${j + 1}`).join(",");
+    const rows = await conn().select<any[]>(
+      `SELECT game_result_id, turn_index, dart_index, kind, number, zone, score, x, y, radius, bouncer, failed, method
+       FROM darts WHERE game_result_id IN (${marks}) ORDER BY game_result_id, turn_index, dart_index`,
+      ids,
+    );
+    for (const r of rows) {
+      const turns = out.get(r.game_result_id) ?? [];
+      while (turns.length <= r.turn_index) turns.push([]);
+      turns[r.turn_index].push({
+        kind: r.kind,
+        number: r.number ?? null,
+        zone: r.zone ?? null,
+        score: r.score,
+        x: r.x,
+        y: r.y,
+        radius: r.radius,
+        bouncer: !!r.bouncer,
+        failed: !!r.failed,
+        method: r.method ?? "",
+      });
+      out.set(r.game_result_id, turns);
+    }
+  }
+  return out;
+}
+
 // --------------------------------------------------------------- export
 
 /**

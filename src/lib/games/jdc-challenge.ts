@@ -59,6 +59,8 @@ export const jdcChallenge: GameDef = {
     return t("jdc.goal");
   },
   needsDarts: true,
+  // The doubles part has a double for each dart; the Shanghai parts allow any bed of the number, so no aim there.
+  fixedTargets: true,
   hasResult: true,
   // Only for the type: the challenge has no time cap, it is always played to the end.
   defaultMinutes: 10,

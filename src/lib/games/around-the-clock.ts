@@ -65,6 +65,7 @@ export const aroundTheClock: GameDef = {
     return t("atc.goal");
   },
   needsDarts: true,
+  fixedTargets: true,
   hasResult: true,
   defaultMinutes: 5,
   defaultSettings: { direction: "cw", zone: "innerSingle", finish: "bull" },
