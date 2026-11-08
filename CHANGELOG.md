@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Added
+- **Correct a dart with one click.** Mostly the cameras are off by a few millimetres only, so the right field is right next to the one counted. When you click a dart box to correct it, buttons with the fields next to it appear: for a single the treble and double of the number, for a double the single and treble, for a treble the single and double, and the same field of the two numbers beside it (for S20 also S5 and S1). One click and the dart is corrected. Anything else you still click on the board.
+
 ## [0.9.8] - 2026-11-08
 
 See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.

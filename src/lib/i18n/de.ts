@@ -664,6 +664,8 @@ export const de: Record<Key, string> = {
   "run.correctDart": "Dart {n}: {dart}. Klicken zum Korrigieren",
   "run.nextTurn": "Nächste Aufnahme (leere Felder zählen als Fehlwurf)",
   "run.pickHint": "Klick, wo Dart {n} steckt. Neben die Scheibe = Fehlwurf.",
+  "run.quickHint": "oder klick, wo Dart {n} steckt",
+  "run.quickAria": "Die Felder daneben",
   "run.noScore": "No Score",
   "run.time": "Zeit",
   "run.noScoreHint": "Überworfen: die Aufnahme zählt nicht",
