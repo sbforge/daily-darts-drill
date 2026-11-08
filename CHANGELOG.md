@@ -17,6 +17,10 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **Precision: stray darts don't count.** A dart more than 8 cm from the centre of its field wasn't really thrown at it, for example when your mind wandered for a moment. Precision leaves it out and says how many were left out.
+- **Precision: a suggestion only from 30 darts on.** With fewer darts on a field, or on everything you picked, Precision still shows all figures, but instead of a suggestion it says how many darts are still missing for a reliable reading. In the field table such fields are marked in yellow.
+
 ## [0.9.8] - 2026-11-08
 
 See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.
