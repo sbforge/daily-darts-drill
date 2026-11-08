@@ -27,8 +27,17 @@ export function neighbours(n: number): [number, number] {
  * - bull and 25: each other
  * They keep the spot the cameras saw (a few millimetres off at most) and are marked "manual", like every dart
  * corrected by hand.
+ *
+ * Order, left to right: the segment counted first (with a miss, the 25 or the bull that touch it), then the numbers
+ * beside it, the lower number first; within a number the higher score first. For M20: D20 S20 D1 S1 D5 S5.
  */
 export function quickFixes(d: Dart): Dart[] {
+  const own = d.kind === "miss" ? missSegment(d) : d.number;
+  const group = (f: Dart) => (f.number === null || f.number === own ? 0 : f.number);
+  return touching(d).sort((a, b) => group(a) - group(b) || b.score - a.score);
+}
+
+function touching(d: Dart): Dart[] {
   const base = { x: d.x, y: d.y, radius: d.radius, bouncer: false, failed: false, method: "manual" };
   const single = (n: number, zone: "inner" | "outer"): Dart => ({ ...base, kind: "single", number: n, zone, score: n });
   const double = (n: number): Dart => ({ ...base, kind: "double", number: n, zone: null, score: n * 2 });
