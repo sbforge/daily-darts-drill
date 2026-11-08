@@ -33,9 +33,11 @@ stored: every game played so far counts.
 - **Periods**: by default the last 30 days, compared with the 30 days before; a game counts by its start time.
 - **Reading the figures** (`readSpread`): the average point is unsure by scatter ÷ √darts (below 10 darts a scatter of
   at least 15 mm is assumed); over 3 mm it is "unsure". A tendency is "clear" when it is at least a third of the scatter
-  and more than twice the uncertainty. On doubles a clear tendency whose radial part dominates is "inside" (safe, the
-  miss scores a single) or "outside" (costs darts). The verdict: too few darts / correct the aim / sensible tendency
-  (doubles inside) / work on repeating the throw.
+  and more than twice the uncertainty. The centre is the goal on every field, doubles too: in the training games a
+  miss inside is as much a miss as one outside. On doubles a clear tendency whose radial part dominates is only named
+  ("toward the single" / "over the edge"), never judged; the help shows what each side means in a match (outside: the
+  same double again; inside: even doubles halve, odd ones need a set-up, D1 busts) and leaves the choice to the player
+  (decided with the user 2026-11-08). The verdict: too few darts / correct the aim / work on repeating the throw.
 - **Changes in a comparison** are grey with "~" when smaller than chance could make them: √(sA²/nA + sB²/nB) for mm,
   the standard error of the difference of two shares for the share in the field.
 - The help (ⓘ next to the title) explains all of this with drawn examples; the examples are fixed made-up darts.

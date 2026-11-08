@@ -145,7 +145,7 @@
   const gamesB = $derived(new Set(inB.map((d) => d.gameResultId)).size);
 
   /** The field the zoom draws: the picked one, a kind of field at the top of the board, or none for everything. */
-  // Doubles have a safe side (inside), so their tendency reads differently.
+  // On doubles the side of a clear tendency is named: toward the single or off the board.
   const doubles = $derived(
     (scope.kind === "group" && scope.group === "double") || (scope.kind === "field" && scope.key.startsWith("double:")),
   );
@@ -233,7 +233,7 @@
         <div>
           <dt>{t("precision.bias")}</dt>
           <dd class="nowrap">{@render arrow(s)}<span>{biasText(s)}</span></dd>
-          <dd class="read" data-tone={r.bias === "clear" && r.doubles !== "inside" ? "act" : r.bias === "unsure" ? "unsure" : "ok"}>
+          <dd class="read" data-tone={r.bias === "clear" ? "act" : r.bias === "unsure" ? "unsure" : "ok"}>
             {t(r.doubles ? `precision.read.bias.doubles.${r.doubles}` : `precision.read.bias.${r.bias}`, { n: num(uncertainty(s), 1) })}
           </dd>
         </div>

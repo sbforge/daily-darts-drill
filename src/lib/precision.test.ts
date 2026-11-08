@@ -134,8 +134,8 @@ describe("reading a spread", () => {
   it("a tendency of a third of the scatter, well beyond chance: correct the aim", () => {
     expect(readSpread(spread(6, 12, 100), -6, false)).toMatchObject({ bias: "clear", verdict: "aim" });
   });
-  it("on doubles a clear tendency inward is the safe side, outward costs darts", () => {
-    expect(readSpread(spread(6, 12, 100), -6, true)).toMatchObject({ doubles: "inside", verdict: "doublesInside" });
+  it("on doubles the side of a clear tendency is named, but the centre is still the goal", () => {
+    expect(readSpread(spread(6, 12, 100), -6, true)).toMatchObject({ doubles: "inside", verdict: "aim" });
     expect(readSpread(spread(6, 12, 100), 6, true)).toMatchObject({ doubles: "outside", verdict: "aim" });
   });
   it("a small tendency next to a big scatter: work on repeating the throw", () => {

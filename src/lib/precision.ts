@@ -196,7 +196,7 @@ export function spreadOf(darts: AimedDart[]): Spread | null {
 
 /**
  * The mean offset toward the board's edge (+) or its centre (-), mm, over the darts aimed at a segment (bulls have no
- * such direction); null without any. On a double, inward is the safe side: a dart just inside still scores a single.
+ * such direction); null without any. On a double it tells a miss toward the single from one off the board.
  */
 export function radialBias(darts: AimedDart[]): number | null {
   const seg = darts.filter((d) => d.field.number !== undefined);
@@ -223,17 +223,20 @@ export const UNSURE_MM = 3;
 export interface Reading {
   /** The tendency: too few darts to tell, clear (worth correcting), or small next to the scatter. */
   bias: "unsure" | "clear" | "small";
-  /** Clear bias on doubles that points inward (safe) or outward (costs darts), when the radial part dominates. */
+  /**
+   * A clear tendency on doubles that points mostly inward (toward the single) or outward (off the board). Only named,
+   * never judged: which side is better in a match depends on the double and on the player (see the help).
+   */
   doubles?: "inside" | "outside";
   /** The scatter is most of the distance to the centre. */
   scatterRules: boolean;
   /** The verdict: what to work on. */
-  verdict: "unsure" | "aim" | "doublesInside" | "repeat";
+  verdict: "unsure" | "aim" | "repeat";
 }
 
 /**
  * Reads a spread: a tendency is worth correcting when it is at least a third of the scatter and well beyond chance
- * (twice the uncertainty). On doubles a tendency inward is no fault. Otherwise the scatter is the thing to work on.
+ * (twice the uncertainty), on every field: the centre is the goal. Otherwise the scatter is the thing to work on.
  */
 export function readSpread(s: Spread, radial: number | null, doubles: boolean): Reading {
   const u = uncertainty(s);
@@ -242,8 +245,7 @@ export function readSpread(s: Spread, radial: number | null, doubles: boolean): 
   let side: Reading["doubles"];
   if (doubles && clear && radial !== null && Math.abs(radial) >= s.bias * 0.7) side = radial < 0 ? "inside" : "outside";
   const scatterRules = s.scatter >= s.bias * 2;
-  const verdict: Reading["verdict"] =
-    bias === "unsure" ? "unsure" : bias === "clear" ? (side === "inside" ? "doublesInside" : "aim") : "repeat";
+  const verdict: Reading["verdict"] = bias === "unsure" ? "unsure" : bias === "clear" ? "aim" : "repeat";
   return { bias, doubles: side, scatterRules, verdict };
 }
 

@@ -118,13 +118,14 @@
   <div class="examples two">
     <figure>
       {@render doubleRing(INSIDE)}
-      <figcaption><strong class="ok">{t("precision.help.insideTitle")}</strong>{t("precision.help.inside")}</figcaption>
+      <figcaption><strong>{t("precision.help.insideTitle")}</strong>{t("precision.help.inside")}</figcaption>
     </figure>
     <figure>
       {@render doubleRing(OUTSIDE)}
-      <figcaption><strong class="warn">{t("precision.help.outsideTitle")}</strong>{t("precision.help.outside")}</figcaption>
+      <figcaption><strong>{t("precision.help.outsideTitle")}</strong>{t("precision.help.outside")}</figcaption>
     </figure>
   </div>
+  <p>{t("precision.help.doublesYours")}</p>
 
   <h4>{t("precision.help.howManyTitle")}</h4>
   <p>{t("precision.help.howMany")}</p>
@@ -165,8 +166,6 @@
   figure svg { display: block; width: 100%; height: auto; }
   figcaption { margin-top: 0.4rem; font-size: 0.85rem; color: var(--dim); line-height: 1.4; }
   figcaption strong { display: block; color: var(--chalk); }
-  figcaption strong.ok { color: var(--ok); }
-  figcaption strong.warn { color: #ff9b8f; }
   .bg { fill: #020507; }
   .grid { fill: none; stroke: var(--line); stroke-width: 0.4; }
   .dot { fill: var(--dart); fill-opacity: 0.75; }
