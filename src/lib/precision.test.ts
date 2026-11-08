@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Dart } from "./autodarts";
 import { aroundTheClock, bobs27, bullX, complexDoubles, jdcChallenge, simpleDoubles, soloLeg } from "./games";
 import { turns } from "./games/test-helpers";
-import { aimsOf, byField, changeNoise, fieldCenter, fieldKey, measurable, measureGame, MM, radialBias, readSpread, spreadOf } from "./precision";
+import { aimsOf, byField, changeNoise, counts, fieldCenter, fieldKey, measurable, measureGame, MM, radialBias, readSpread, spreadOf } from "./precision";
 
 const label = (a: ReturnType<typeof aimsOf>) =>
   a.map((turn) => turn.map((x) => (x ? `${fieldKey(x.field)}${x.hit ? "+" : ""}` : "-")).join(" ")).join(" | ");
@@ -125,11 +125,30 @@ describe("reading a spread", () => {
     hitRate: 30,
   });
 
-  it("few darts: unsure, whatever the numbers", () => {
+  it("fewer than 30 darts: no suggestion, whatever the numbers", () => {
     // 15 mm scatter over 10 darts: the mean is unsure by 4.7 mm
-    expect(readSpread(spread(2, 15, 10), -2, false).verdict).toBe("unsure");
-    // one dart has no scatter of its own: still unsure
-    expect(readSpread(spread(9, 0, 1), -9, false).verdict).toBe("unsure");
+    expect(readSpread(spread(2, 15, 10), -2, false)).toMatchObject({ bias: "unsure", verdict: "few" });
+    // one dart has no scatter of its own
+    expect(readSpread(spread(9, 0, 1), -9, false)).toMatchObject({ bias: "unsure", verdict: "few" });
+    // a big tendency over 29 darts would be clear with one more
+    expect(readSpread(spread(10, 12, 29), -10, true)).toMatchObject({ bias: "unsure", doubles: undefined, verdict: "few" });
+    expect(readSpread(spread(10, 12, 30), -10, true)).toMatchObject({ bias: "clear", doubles: "inside", verdict: "aim" });
+  });
+  it("enough darts but a wide scatter: still unsure", () => {
+    // 40 mm scatter over 36 darts: the mean is unsure by 6.7 mm
+    expect(readSpread(spread(3, 40, 36), -3, false)).toMatchObject({ bias: "unsure", verdict: "unsure" });
+  });
+  it("a dart more than 8 cm off its field doesn't count", () => {
+    const d20 = fieldCenter({ bed: "double", number: 20 });
+    const g = {
+      id: "g",
+      gameId: "simple-doubles",
+      startedAt: "",
+      minutes: 5,
+      settings: { double: 20 },
+      turns: [[at(d20.x, d20.y - 80 / MM, { kind: "single", zone: "outer" }), at(d20.x, d20.y - 81 / MM, { kind: "single", zone: "outer" })]],
+    };
+    expect(measureGame(simpleDoubles, g).map(counts)).toEqual([true, false]);
   });
   it("a tendency of a third of the scatter, well beyond chance: correct the aim", () => {
     expect(readSpread(spread(6, 12, 100), -6, false)).toMatchObject({ bias: "clear", verdict: "aim" });

@@ -139,6 +139,9 @@
   </div>
   <p>{t("precision.help.howManyRule")}</p>
 
+  <h4>{t("precision.help.countsTitle")}</h4>
+  <p>{t("precision.help.counts")}</p>
+
   <h4>{t("precision.help.compareTitle")}</h4>
   <p>{t("precision.help.compare")}</p>
 

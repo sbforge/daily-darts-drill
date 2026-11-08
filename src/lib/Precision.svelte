@@ -14,14 +14,17 @@
   import {
     byField,
     changeNoise,
+    counts,
     fieldFromKey,
     GROUPS,
     groupOf,
     inScope,
     measureGame,
+    MIN_DARTS,
     radialBias,
     readSpread,
     spreadOf,
+    STRAY_MM,
     uncertainty,
     UNSURE_MM,
     type Group,
@@ -67,8 +70,11 @@
   const spanA = $derived(span(fromA, toA));
   const spanB = $derived(compare ? span(fromB, toB) : null);
   const within = (s: { from: string; to: string } | null) => (d: AimedDart) => !!s && d.startedAt >= s.from && d.startedAt < s.to;
-  const dartsA = $derived(darts.filter(within(spanA)));
-  const dartsB = $derived(spanB ? darts.filter(within(spanB)) : []);
+  // A dart far off its field wasn't thrown at it: it doesn't count, the view only says how many were left out.
+  const allA = $derived(darts.filter(within(spanA)));
+  const allB = $derived(spanB ? darts.filter(within(spanB)) : []);
+  const dartsA = $derived(allA.filter(counts));
+  const dartsB = $derived(allB.filter(counts));
 
   /** Loads the darts of both periods at once; games measured before come from memory. */
   async function load() {
@@ -143,6 +149,8 @@
   const spreadB = $derived(spreadOf(inB));
   const gamesA = $derived(new Set(inA.map((d) => d.gameResultId)).size);
   const gamesB = $derived(new Set(inB.map((d) => d.gameResultId)).size);
+  const strayA = $derived(allA.filter((d) => !counts(d) && inScope(d, scope)).length);
+  const strayB = $derived(allB.filter((d) => !counts(d) && inScope(d, scope)).length);
 
   /** The field the zoom draws: the picked one, a kind of field at the top of the board, or none for everything. */
   // On doubles the side of a clear tendency is named: toward the single or off the board.
@@ -215,7 +223,7 @@
   </span>
 {/snippet}
 
-{#snippet panel(title: string, sub: string, ds: AimedDart[], s: Spread | null, games: number, other: Spread | null)}
+{#snippet panel(title: string, sub: string, ds: AimedDart[], s: Spread | null, games: number, other: Spread | null, strays: number)}
   {@const r = s ? readSpread(s, radialBias(ds), doubles) : null}
   {@const noise = s && other ? changeNoise(s, other) : null}
   <div class="side">
@@ -251,6 +259,9 @@
         <div>
           <dt>{t("precision.darts")}</dt>
           <dd>{num(s.darts)}</dd>
+          {#if strays}
+            <dd class="read">{t("precision.strays", { n: strays, cm: num(STRAY_MM / 10) })}</dd>
+          {/if}
         </div>
       </dl>
       <div class="verdict" data-verdict={r.verdict}>
@@ -260,11 +271,14 @@
         </svg>
         <p>
           <strong>{t(`precision.verdict.${r.verdict}.title`)}</strong>
-          {t(`precision.verdict.${r.verdict}`, { n: num(uncertainty(s), 1) })}
+          {r.verdict === "few"
+            ? t("precision.verdict.few", { n: num(s.darts), min: MIN_DARTS })
+            : t(`precision.verdict.${r.verdict}`, { n: num(uncertainty(s), 1) })}
         </p>
       </div>
     {:else}
       <p class="hint">{t("precision.noneInPeriod")}</p>
+      {#if strays}<p class="hint">{t("precision.strays", { n: strays, cm: num(STRAY_MM / 10) })}</p>{/if}
     {/if}
   </div>
 {/snippet}
@@ -313,9 +327,9 @@
       <p class="hint note">{note}</p>
       <div class="sides" class:two={compare}>
         {#if compare}
-          {@render panel(t("precision.comparePeriod"), periodLabel(fromB, toB), inB, spreadB, gamesB, null)}
+          {@render panel(t("precision.comparePeriod"), periodLabel(fromB, toB), inB, spreadB, gamesB, null, strayB)}
         {/if}
-        {@render panel(t("precision.period"), periodLabel(fromA, toA), inA, spreadA, gamesA, compare ? spreadB : null)}
+        {@render panel(t("precision.period"), periodLabel(fromA, toA), inA, spreadA, gamesA, compare ? spreadB : null, strayA)}
       </div>
     </div>
 
@@ -343,8 +357,13 @@
               <td class="n">{a ? mm(a.meanDist) : "–"}</td>
               <td>
                 {#if a}
-                  {@const unsure = uncertainty(a) > UNSURE_MM}
-                  <span class="bias-cell" class:unsure title={unsure ? t("precision.read.bias.unsure", { n: num(uncertainty(a), 1) }) : undefined}>
+                  {@const few = a.darts < MIN_DARTS}
+                  {@const unsure = few || uncertainty(a) > UNSURE_MM}
+                  <span
+                    class="bias-cell"
+                    class:unsure
+                    title={few ? t("precision.verdict.few", { n: num(a.darts), min: MIN_DARTS }) : unsure ? t("precision.read.bias.unsure", { n: num(uncertainty(a), 1) }) : undefined}
+                  >
                     {@render arrow(a)} {biasText(a)}{unsure ? " ?" : ""}
                   </span>
                 {:else}–{/if}
@@ -374,8 +393,8 @@
   .figures dd.read[data-tone="act"] { color: var(--accent-hi); }
   .figures dd.read[data-tone="unsure"] { color: var(--dart); }
   .verdict { display: flex; gap: 0.6rem; align-items: flex-start; margin-top: 1rem; padding: 0.7rem 0.9rem; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; background: rgb(34 211 238 / 0.08); }
-  .verdict[data-verdict="unsure"] { border-color: var(--dart); background: rgb(242 193 78 / 0.08); }
-  .verdict[data-verdict="unsure"] svg { color: var(--dart); }
+  .verdict[data-verdict="unsure"], .verdict[data-verdict="few"] { border-color: var(--dart); background: rgb(242 193 78 / 0.08); }
+  .verdict[data-verdict="unsure"] svg, .verdict[data-verdict="few"] svg { color: var(--dart); }
   .verdict svg { flex: none; margin-top: 0.1rem; color: var(--accent); }
   .verdict p { margin: 0; line-height: 1.45; color: var(--dim); font-size: 0.92rem; }
   .verdict strong { display: block; color: var(--chalk); margin-bottom: 0.1rem; }
