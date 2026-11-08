@@ -667,6 +667,8 @@ export const en = {
   "run.correctDart": "Dart {n}: {dart}. Click to correct it",
   "run.nextTurn": "Next turn (empty boxes count as misses)",
   "run.pickHint": "Click where dart {n} landed. Off the board = miss.",
+  "run.quickHint": "or click where dart {n} landed",
+  "run.quickAria": "The fields next to it",
   "run.noScore": "No Score",
   "run.time": "Time",
   "run.noScoreHint": "Bust: the turn does not count",

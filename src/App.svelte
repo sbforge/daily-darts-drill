@@ -60,6 +60,7 @@
   import { pickMoments } from "./lib/fx/moments";
   import { en } from "./lib/i18n/en";
   import { Session } from "./lib/session.svelte";
+  import { quickFixes } from "./lib/quickfix";
   import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
   import GameShot from "./lib/GameShot.svelte";
@@ -234,6 +235,11 @@
   // Autodarts keeps detecting after a bust or a checkout (that can't be stopped), but those darts are neither
   // counted nor shown: the boxes after it stay closed and the board doesn't draw them.
   const shownDarts = $derived(session ? session.shown.slice(0, bustAt) : []);
+  // While a dart is corrected: the fields next to the one it counted.
+  const fixes = $derived.by(() => {
+    const i = session?.edit ?? null;
+    return i !== null && shownDarts[i] ? quickFixes(shownDarts[i]) : [];
+  });
   // The end of a round (JDC Challenge): its result lies over the board until the takeout.
   const roundEnd = $derived(session && result?.roundEnd?.turn === session.shownTurn ? result.roundEnd : null);
   // The turn under an overlay: its moment ("Ton out!", "Shanghai!") is shown on the overlay instead of a stamp.
@@ -2328,9 +2334,19 @@
             {/if}
           {/each}
         </div>
-        <p class="pick-hint" class:show={session.edit !== null} aria-live="polite">
-          {session.edit !== null ? t("run.pickHint", { n: session.edit + 1 }) : ""}
-        </p>
+        <!-- While a dart is corrected: the fields next to the one it counted, one click each, or a click on the board. -->
+        <div class="pick-hint" class:show={session.edit !== null}>
+          {#if fixes.length}
+            <span class="quick" role="group" aria-label={t("run.quickAria")}>
+              {#each fixes as f (dartLabel(f) + (f.zone ?? ""))}
+                <button class="chip" onclick={() => session?.correct(f)}>{dartLabel(f)}</button>
+              {/each}
+            </span>
+          {/if}
+          <span class="pick-text" aria-live="polite">
+            {session.edit !== null ? t(fixes.length ? "run.quickHint" : "run.pickHint", { n: session.edit + 1 }) : ""}
+          </span>
+        </div>
         <div class="board" bind:this={boardEl}>
           <Board
             turns={session.allTurns.filter((_, k) => k !== session?.shownTurn)}
@@ -3458,8 +3474,13 @@
   /* Thrown after a bust, or never to be thrown: the turn is over. */
   .dart-box.closed { color: #ff6b5b; opacity: 0.55; border-style: dashed; font-size: 1.2rem; }
   .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
-  .pick-hint { max-width: 400px; width: 100%; height: 1.4em; line-height: 1.4em; margin: -0.5rem 0; overflow: hidden; color: var(--accent); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
+  /* Always takes its height, so the board doesn't jump when a correction starts. */
+  .pick-hint { max-width: 400px; width: 100%; height: 2rem; margin: -0.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.6rem; overflow: hidden; color: var(--accent); font-size: 0.9rem; white-space: nowrap; visibility: hidden; }
   .pick-hint.show { visibility: visible; }
+  .pick-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .quick { display: flex; gap: 0.35rem; flex: none; }
+  .quick .chip { appearance: none; min-width: 2.6rem; padding: 0.2rem 0.5rem; border: 1px solid var(--accent); border-radius: 999px; background: rgb(34 211 238 / 0.1); color: var(--chalk); font: inherit; font-weight: 700; line-height: 1.3; cursor: pointer; }
+  .quick .chip:hover, .quick .chip:focus-visible { background: rgb(34 211 238 / 0.25); }
 
   /* ------------------------------------------------------------------------------------------------
      Nothing scrolls inside a routine (countdown, game, break): main.fit is exactly as high as the window
@@ -3490,14 +3511,14 @@
   /* The board takes what's left of its column: the dart boxes above it keep their fixed height. */
   main.fit .views {
     /* The padding (3.6rem a side) leaves room beside the dart boxes for the phase icon and the next-turn button. */
-    --bs: min(100cqw, calc(100cqh - 5.6rem), 800px);
+    --bs: min(100cqw, calc(100cqh - 6.4rem), 800px);
     container-type: size;
     min-height: 0;
     justify-content: center;
     gap: 0.5rem;
   }
   main.fit .board, main.fit .darts, main.fit .pick-hint { width: var(--bs); max-width: none; }
-  main.fit .pick-hint { height: 1.2rem; line-height: 1.2rem; margin: 0; }
+  main.fit .pick-hint { height: 2rem; margin: 0; }
 
   /* The left panel: sizes follow its own height, with floors so text stays readable. */
   main.fit .stage .panel { container-type: size; min-height: 0; justify-content: center; }

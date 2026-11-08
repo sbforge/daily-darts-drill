@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Added
+- **Correct a dart with one click.** Mostly the cameras are off by a few millimetres only, so the right field is right next to the one counted. When you click a dart box to correct it, buttons with the fields next to it appear: for a single the treble and double of the number, for a double the single and treble, for a treble the single and double, and the same field of the two numbers beside it (for S20 also S5 and S1). One click and the dart is corrected. Anything else you still click on the board.
+
 ### Changed
 - **Precision: stray darts don't count.** A dart more than 8 cm from the centre of its field wasn't really thrown at it, for example when your mind wandered for a moment. Precision leaves it out and says how many were left out.
 - **Precision: a suggestion only from 30 darts on.** With fewer darts on a field, or on everything you picked, Precision still shows all figures, but instead of a suggestion it says how many darts are still missing for a reliable reading. In the field table such fields are marked in yellow.
