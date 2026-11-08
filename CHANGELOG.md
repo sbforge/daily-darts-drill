@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **Solo Leg: the leg average starts at 0.0.** Before the first dart of a leg, the leg average now shows 0.0 like the match average, instead of "none yet".
+
 ## [0.9.8] - 2026-11-08
 
 See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.
