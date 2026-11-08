@@ -11,7 +11,24 @@
   import { GAMES, gameById } from "./games";
   import { date, num, t } from "./i18n/index.svelte";
   import { log } from "./log";
-  import { byField, fieldFromKey, fieldKey, GROUPS, groupOf, inScope, measureGame, spreadOf, type Group, type Scope, type Spread } from "./precision";
+  import {
+    byField,
+    changeNoise,
+    fieldFromKey,
+    GROUPS,
+    groupOf,
+    inScope,
+    measureGame,
+    radialBias,
+    readSpread,
+    spreadOf,
+    uncertainty,
+    UNSURE_MM,
+    type Group,
+    type Scope,
+    type Spread,
+  } from "./precision";
+  import PrecisionHelp from "./PrecisionHelp.svelte";
   import SegmentZoom from "./SegmentZoom.svelte";
   import Select from "./Select.svelte";
 
@@ -128,6 +145,12 @@
   const gamesB = $derived(new Set(inB.map((d) => d.gameResultId)).size);
 
   /** The field the zoom draws: the picked one, a kind of field at the top of the board, or none for everything. */
+  // Doubles have a safe side (inside), so their tendency reads differently.
+  const doubles = $derived(
+    (scope.kind === "group" && scope.group === "double") || (scope.kind === "field" && scope.key.startsWith("double:")),
+  );
+  let help = $state<PrecisionHelp>();
+
   const zoomField = $derived<BoardField | null>(
     scope.kind === "field"
       ? fieldFromKey(scope.key)
@@ -168,7 +191,7 @@
 </script>
 
 {#snippet arrow(s: Spread)}
-  {#if s.bias >= 0.5}
+  {#if Math.abs(s.biasX) >= 0.5 || Math.abs(s.biasY) >= 0.5}
     <svg class="dir" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" style={`transform: rotate(${biasAngle(s)}deg)`}>
       <path d="M8 13V3M4 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
@@ -177,46 +200,69 @@
   {/if}
 {/snippet}
 
-{#snippet change(now: number, before: number, lowerIsBetter: boolean, unit: "mm" | "%")}
+<!-- A change smaller than chance alone could make stays grey: it says nothing yet. -->
+{#snippet change(now: number, before: number, lowerIsBetter: boolean, unit: "mm" | "%", noise: number)}
   {@const diff = now - before}
   {@const good = lowerIsBetter ? diff < 0 : diff > 0}
-  {#if Math.abs(diff) >= (unit === "mm" ? 0.05 : 0.05)}
-    <span class="delta" class:good class:bad={!good}>{diff > 0 ? "+" : "−"}{num(Math.abs(diff), 1)}{unit === "mm" ? " mm" : " %"}</span>
-  {:else}
-    <span class="delta">±0</span>
-  {/if}
+  {@const real = Math.abs(diff) >= noise && Math.abs(diff) >= 0.05}
+  <span
+    class="delta"
+    class:good={real && good}
+    class:bad={real && !good}
+    title={real ? undefined : t("precision.withinChance", { n: num(noise, 1), unit: unit === "mm" ? "mm" : "%" })}
+  >
+    {Math.abs(diff) < 0.05 ? "±0" : `${diff > 0 ? "+" : "−"}${num(Math.abs(diff), 1)}${unit === "mm" ? " mm" : " %"}`}{real ? "" : " ~"}
+  </span>
 {/snippet}
 
 {#snippet panel(title: string, sub: string, ds: AimedDart[], s: Spread | null, games: number, other: Spread | null)}
+  {@const r = s ? readSpread(s, radialBias(ds), doubles) : null}
+  {@const noise = s && other ? changeNoise(s, other) : null}
   <div class="side">
     <div class="side-head">
       <strong>{title}</strong>
       <span class="plan-meta">{sub}{s ? ` · ${t("precision.games", { n: games })}` : ""}</span>
     </div>
     <SegmentZoom field={zoomField} generic={scope.kind === "group"} darts={ds} spread={s} {range} />
-    {#if s}
+    {#if s && r}
       <dl class="figures">
         <div>
           <dt>{t("precision.meanDist")}</dt>
-          <dd class="hero">{mm(s.meanDist)} {#if other}{@render change(s.meanDist, other.meanDist, true, "mm")}{/if}</dd>
+          <dd class="hero">{mm(s.meanDist)} {#if other && noise}{@render change(s.meanDist, other.meanDist, true, "mm", noise.mm)}{/if}</dd>
         </div>
         <div>
           <dt>{t("precision.bias")}</dt>
-          <dd>{@render arrow(s)} {biasText(s)}</dd>
+          <dd class="nowrap">{@render arrow(s)}<span>{biasText(s)}</span></dd>
+          <dd class="read" data-tone={r.bias === "clear" && r.doubles !== "inside" ? "act" : r.bias === "unsure" ? "unsure" : "ok"}>
+            {t(r.doubles ? `precision.read.bias.doubles.${r.doubles}` : `precision.read.bias.${r.bias}`, { n: num(uncertainty(s), 1) })}
+          </dd>
         </div>
         <div>
           <dt>{t("precision.scatter")}</dt>
-          <dd>{mm(s.scatter)} {#if other}{@render change(s.scatter, other.scatter, true, "mm")}{/if}</dd>
+          <dd>{mm(s.scatter)} {#if other && noise}{@render change(s.scatter, other.scatter, true, "mm", noise.mm)}{/if}</dd>
+          <dd class="read" data-tone={r.scatterRules && r.bias !== "unsure" ? "act" : "ok"}>
+            {t(r.scatterRules ? "precision.read.scatter.rules" : "precision.read.scatter.minor")}
+          </dd>
         </div>
         <div>
           <dt>{t("precision.hitRate")}</dt>
-          <dd>{num(s.hitRate, 1)}% {#if other}{@render change(s.hitRate, other.hitRate, false, "%")}{/if}</dd>
+          <dd>{num(s.hitRate, 1)}% {#if other && noise}{@render change(s.hitRate, other.hitRate, false, "%", noise.pct)}{/if}</dd>
         </div>
         <div>
           <dt>{t("precision.darts")}</dt>
           <dd>{num(s.darts)}</dd>
         </div>
       </dl>
+      <div class="verdict" data-verdict={r.verdict}>
+        <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.4" />
+          <circle cx="8" cy="8" r="2.4" fill="currentColor" />
+        </svg>
+        <p>
+          <strong>{t(`precision.verdict.${r.verdict}.title`)}</strong>
+          {t(`precision.verdict.${r.verdict}`, { n: num(uncertainty(s), 1) })}
+        </p>
+      </div>
     {:else}
       <p class="hint">{t("precision.noneInPeriod")}</p>
     {/if}
@@ -224,7 +270,16 @@
 {/snippet}
 
 <section class="precision">
-  <h2>{t("precision.title")}</h2>
+  <h2>
+    {t("precision.title")}
+    <button class="info" aria-label={t("precision.helpOpen")} title={t("precision.helpOpen")} onclick={() => help?.open()}>
+      <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+        <circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.4" />
+        <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
+        <path d="M8 7.3v4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+    </button>
+  </h2>
   <p class="lede">{t("precision.lede", { games: FIXED.map((g) => g.name).join(", ") })}</p>
 
   <div class="filters">
@@ -286,10 +341,17 @@
               <td><button class="link" onclick={(e) => { e.stopPropagation(); pick(f.key); }}>{fieldLabel(f.field)}</button></td>
               <td class="n">{a ? num(a.darts) : "–"}</td>
               <td class="n">{a ? mm(a.meanDist) : "–"}</td>
-              <td>{#if a}<span class="bias-cell">{@render arrow(a)} {biasText(a)}</span>{:else}–{/if}</td>
+              <td>
+                {#if a}
+                  {@const unsure = uncertainty(a) > UNSURE_MM}
+                  <span class="bias-cell" class:unsure title={unsure ? t("precision.read.bias.unsure", { n: num(uncertainty(a), 1) }) : undefined}>
+                    {@render arrow(a)} {biasText(a)}{unsure ? " ?" : ""}
+                  </span>
+                {:else}–{/if}
+              </td>
               <td class="n">{a ? `${num(a.hitRate, 1)}%` : "–"}</td>
               {#if compare}
-                <td class="n">{#if a && b}{@render change(a.meanDist, b.meanDist, true, "mm")}{:else}–{/if}</td>
+                <td class="n">{#if a && b}{@render change(a.meanDist, b.meanDist, true, "mm", changeNoise(a, b).mm)}{:else}–{/if}</td>
               {/if}
             </tr>
           {/each}
@@ -299,8 +361,24 @@
   {/if}
 </section>
 
+<PrecisionHelp bind:this={help} />
+
 <style>
-  .precision h2 { margin-top: 0; }
+  .precision h2 { margin-top: 0; display: flex; align-items: center; gap: 0.4rem; }
+  .info { display: grid; place-items: center; padding: 0.2rem; border: 0; border-radius: 50%; background: none; color: var(--dim); cursor: pointer; }
+  .info:hover { color: var(--accent); }
+  /* What a figure means: a short line under it, coloured by whether it calls for something. */
+  .figures dd.nowrap { flex-wrap: nowrap; align-items: flex-start; }
+  .figures dd.nowrap .dir { margin-top: 0.15rem; }
+  .figures dd.read { margin-top: 0.3rem; font-size: 0.85rem; line-height: 1.35; color: var(--dim); }
+  .figures dd.read[data-tone="act"] { color: var(--accent-hi); }
+  .figures dd.read[data-tone="unsure"] { color: var(--dart); }
+  .verdict { display: flex; gap: 0.6rem; align-items: flex-start; margin-top: 1rem; padding: 0.7rem 0.9rem; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; background: rgb(34 211 238 / 0.08); }
+  .verdict[data-verdict="unsure"] { border-color: var(--dart); background: rgb(242 193 78 / 0.08); }
+  .verdict[data-verdict="unsure"] svg { color: var(--dart); }
+  .verdict svg { flex: none; margin-top: 0.1rem; color: var(--accent); }
+  .verdict p { margin: 0; line-height: 1.45; color: var(--dim); font-size: 0.92rem; }
+  .verdict strong { display: block; color: var(--chalk); margin-bottom: 0.1rem; }
   .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1.25rem; margin-bottom: 1.5rem; }
   fieldset { display: flex; gap: 0.75rem; margin: 0; padding: 0.35rem 0.75rem 0.75rem; border: 1px solid var(--line); border-radius: 10px; }
   legend { padding: 0 0.35rem; color: var(--dim); font-size: 0.85rem; }
@@ -334,6 +412,9 @@
   tbody tr:hover { background: rgb(34 211 238 / 0.06); }
   tr.picked { background: rgb(34 211 238 / 0.12); box-shadow: inset 3px 0 0 var(--accent); }
   .bias-cell { display: inline-flex; align-items: center; gap: 0.35rem; }
+  /* Too few darts to read a tendency from: shown, but marked. */
+  .bias-cell.unsure { color: var(--dart); cursor: help; }
+  .bias-cell.unsure .dir { color: var(--dart); }
   button.link { padding: 0; border: 0; background: none; color: var(--chalk); font: inherit; font-weight: 700; cursor: pointer; }
   button.link:hover { color: var(--accent-hi); }
 </style>
