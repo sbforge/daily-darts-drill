@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Dart } from "./autodarts";
 import { aroundTheClock, bobs27, bullX, complexDoubles, jdcChallenge, simpleDoubles, soloLeg } from "./games";
 import { turns } from "./games/test-helpers";
-import { aimsOf, byField, fieldCenter, fieldKey, measurable, measureGame, MM, spreadOf } from "./precision";
+import { aimsOf, byField, changeNoise, fieldCenter, fieldKey, measurable, measureGame, MM, radialBias, readSpread, spreadOf } from "./precision";
 
 const label = (a: ReturnType<typeof aimsOf>) =>
   a.map((turn) => turn.map((x) => (x ? `${fieldKey(x.field)}${x.hit ? "+" : ""}` : "-")).join(" ")).join(" | ");
@@ -111,5 +111,54 @@ describe("measuring", () => {
 
   it("no darts, no spread", () => {
     expect(spreadOf([])).toBeNull();
+  });
+});
+
+describe("reading a spread", () => {
+  const spread = (bias: number, scatter: number, darts: number) => ({
+    darts,
+    meanDist: bias + scatter,
+    biasX: 0,
+    biasY: -bias,
+    bias,
+    scatter,
+    hitRate: 30,
+  });
+
+  it("few darts: unsure, whatever the numbers", () => {
+    // 15 mm scatter over 10 darts: the mean is unsure by 4.7 mm
+    expect(readSpread(spread(2, 15, 10), -2, false).verdict).toBe("unsure");
+    // one dart has no scatter of its own: still unsure
+    expect(readSpread(spread(9, 0, 1), -9, false).verdict).toBe("unsure");
+  });
+  it("a tendency of a third of the scatter, well beyond chance: correct the aim", () => {
+    expect(readSpread(spread(6, 12, 100), -6, false)).toMatchObject({ bias: "clear", verdict: "aim" });
+  });
+  it("on doubles a clear tendency inward is the safe side, outward costs darts", () => {
+    expect(readSpread(spread(6, 12, 100), -6, true)).toMatchObject({ doubles: "inside", verdict: "doublesInside" });
+    expect(readSpread(spread(6, 12, 100), 6, true)).toMatchObject({ doubles: "outside", verdict: "aim" });
+  });
+  it("a small tendency next to a big scatter: work on repeating the throw", () => {
+    expect(readSpread(spread(2, 15, 200), -2, false)).toMatchObject({ bias: "small", scatterRules: true, verdict: "repeat" });
+  });
+  it("the radial part of a tendency: + toward the edge", () => {
+    const d20 = fieldCenter({ bed: "double", number: 20 });
+    const d3 = fieldCenter({ bed: "double", number: 3 });
+    const g = (c: { x: number; y: number }, n: number) => ({
+      id: "g",
+      gameId: "simple-doubles",
+      startedAt: "",
+      minutes: 5,
+      settings: { double: n },
+      turns: [[at(c.x, c.y - 4 / MM, { number: n })]],
+    });
+    // 4 mm low on D20 is inward; 4 mm low on D3 (bottom of the board) is outward
+    expect(radialBias(measureGame(simpleDoubles, g(d20, 20)))).toBeCloseTo(-4);
+    expect(radialBias(measureGame(simpleDoubles, g(d3, 3)))).toBeCloseTo(4);
+  });
+  it("a change within chance", () => {
+    const n = changeNoise(spread(2, 15, 25), spread(2, 15, 25));
+    expect(n.mm).toBeCloseTo(Math.sqrt(2 * 9));
+    expect(n.pct).toBeGreaterThan(10);
   });
 });

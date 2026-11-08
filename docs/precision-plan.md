@@ -31,4 +31,12 @@ stored: every game played so far counts.
 - **Figures**: average distance to the centre, tendency (mean offset), scatter (RMS around the darts' own mean point),
   share in the field. The comparison shows the change of the main period against the comparison period.
 - **Periods**: by default the last 30 days, compared with the 30 days before; a game counts by its start time.
+- **Reading the figures** (`readSpread`): the average point is unsure by scatter ÷ √darts (below 10 darts a scatter of
+  at least 15 mm is assumed); over 3 mm it is "unsure". A tendency is "clear" when it is at least a third of the scatter
+  and more than twice the uncertainty. On doubles a clear tendency whose radial part dominates is "inside" (safe, the
+  miss scores a single) or "outside" (costs darts). The verdict: too few darts / correct the aim / sensible tendency
+  (doubles inside) / work on repeating the throw.
+- **Changes in a comparison** are grey with "~" when smaller than chance could make them: √(sA²/nA + sB²/nB) for mm,
+  the standard error of the difference of two shares for the share in the field.
+- The help (ⓘ next to the title) explains all of this with drawn examples; the examples are fixed made-up darts.
 - The view's choices (period, field) aren't saved; they reset when the tab is opened again.

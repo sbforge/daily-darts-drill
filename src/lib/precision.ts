@@ -194,6 +194,71 @@ export function spreadOf(darts: AimedDart[]): Spread | null {
   return { darts: n, meanDist: sd / n, biasX, biasY, bias: Math.hypot(biasX, biasY), scatter, hitRate: (hits / n) * 100 };
 }
 
+/**
+ * The mean offset toward the board's edge (+) or its centre (-), mm, over the darts aimed at a segment (bulls have no
+ * such direction); null without any. On a double, inward is the safe side: a dart just inside still scores a single.
+ */
+export function radialBias(darts: AimedDart[]): number | null {
+  const seg = darts.filter((d) => d.field.number !== undefined);
+  if (!seg.length) return null;
+  const sum = seg.reduce((s, d) => {
+    const a = (segmentAngle(d.field.number) * Math.PI) / 180;
+    return s + d.dx * Math.sin(a) + d.dy * Math.cos(a);
+  }, 0);
+  return sum / seg.length;
+}
+
+/** Below this many darts their own scatter says little (one dart has none), so a typical one is assumed. */
+const FEW_DARTS = 10;
+const TYPICAL_SCATTER = 15;
+
+/** How far the average point may be off by chance alone, mm (the standard error of the mean). */
+export const uncertainty = (s: Spread) =>
+  (s.darts < FEW_DARTS ? Math.max(s.scatter, TYPICAL_SCATTER) : s.scatter) / Math.sqrt(s.darts);
+
+/** Above this, the average point is too unsure to read a tendency from it, mm. */
+export const UNSURE_MM = 3;
+
+/** What the figures say, as keys of the texts in the view. */
+export interface Reading {
+  /** The tendency: too few darts to tell, clear (worth correcting), or small next to the scatter. */
+  bias: "unsure" | "clear" | "small";
+  /** Clear bias on doubles that points inward (safe) or outward (costs darts), when the radial part dominates. */
+  doubles?: "inside" | "outside";
+  /** The scatter is most of the distance to the centre. */
+  scatterRules: boolean;
+  /** The verdict: what to work on. */
+  verdict: "unsure" | "aim" | "doublesInside" | "repeat";
+}
+
+/**
+ * Reads a spread: a tendency is worth correcting when it is at least a third of the scatter and well beyond chance
+ * (twice the uncertainty). On doubles a tendency inward is no fault. Otherwise the scatter is the thing to work on.
+ */
+export function readSpread(s: Spread, radial: number | null, doubles: boolean): Reading {
+  const u = uncertainty(s);
+  const clear = s.bias >= s.scatter / 3 && s.bias > 2 * u;
+  const bias: Reading["bias"] = u > UNSURE_MM && !clear ? "unsure" : clear ? "clear" : "small";
+  let side: Reading["doubles"];
+  if (doubles && clear && radial !== null && Math.abs(radial) >= s.bias * 0.7) side = radial < 0 ? "inside" : "outside";
+  const scatterRules = s.scatter >= s.bias * 2;
+  const verdict: Reading["verdict"] =
+    bias === "unsure" ? "unsure" : bias === "clear" ? (side === "inside" ? "doublesInside" : "aim") : "repeat";
+  return { bias, doubles: side, scatterRules, verdict };
+}
+
+/**
+ * How big a change between two periods can be by chance alone: for distance and scatter (mm) from the scatter and
+ * the darts of both, for the share in the field (percentage points) from the two shares.
+ */
+export function changeNoise(a: Spread, b: Spread): { mm: number; pct: number } {
+  const p = (s: Spread) => s.hitRate / 100;
+  return {
+    mm: Math.sqrt(a.scatter ** 2 / a.darts + b.scatter ** 2 / b.darts),
+    pct: 100 * Math.sqrt((p(a) * (1 - p(a))) / a.darts + (p(b) * (1 - p(b))) / b.darts),
+  };
+}
+
 /** A choice in the precision view: everything, one kind of field (all doubles, ...) or one field. */
 export type Scope = { kind: "all" } | { kind: "group"; group: Group } | { kind: "field"; key: string };
 export type Group = "double" | "triple" | "outerSingle" | "innerSingle" | "bull";
