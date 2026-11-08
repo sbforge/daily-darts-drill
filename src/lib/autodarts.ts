@@ -78,9 +78,25 @@ export function dartLabel(d: Dart): string {
       return "25";
     case "bull":
       return t("dart.bull");
-    default:
-      return t("dart.miss");
+    default: {
+      // Off the board: M4 is a miss beside the 4, as Autodarts shows it.
+      const n = missSegment(d);
+      return n ? `M${n}` : t("dart.miss");
+    }
   }
+}
+
+const SEGMENTS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+
+/**
+ * The segment a miss landed beside, from where the cameras saw it off the board; null for a miss without a real spot
+ * (one set by hand or without coordinates, a failed detection).
+ */
+export function missSegment(d: Dart): number | null {
+  if (d.kind !== "miss" || d.failed || d.method.toLowerCase().includes("manual")) return null;
+  if (!Number.isFinite(d.x) || !Number.isFinite(d.y) || Math.hypot(d.x, d.y) <= 1) return null;
+  const deg = (Math.atan2(d.x, d.y) * 180) / Math.PI;
+  return SEGMENTS[((Math.round(deg / 18) % 20) + 20) % 20];
 }
 
 export function sameDart(a: Dart, b: Dart): boolean {
