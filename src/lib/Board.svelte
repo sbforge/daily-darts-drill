@@ -122,14 +122,23 @@
     return [p.x, p.y];
   }
 
+  /**
+   * A click this far from the centre is a miss (the ring around the board, drawn while picking); further out, in the
+   * corners of the view, a click does nothing.
+   */
+  const MISS_R = 1.17;
+  function inReach(p: [number, number] | null | false): p is [number, number] {
+    return !!p && Math.hypot(...p) <= MISS_R;
+  }
+
   function pick(e: MouseEvent) {
     const p = picking && boardPoint(e);
-    if (p) onpick?.(dartAt(...p));
+    if (inReach(p)) onpick?.(dartAt(...p));
   }
 
   function move(e: PointerEvent) {
     const p = picking && boardPoint(e);
-    hover = p ? dartAt(...p) : null;
+    hover = inReach(p) ? dartAt(...p) : null;
   }
 
   $effect(() => {
@@ -149,8 +158,8 @@
   onpointermove={move}
   onpointerleave={() => (hover = null)}
 >
-  <!-- Catches clicks next to the board, which count as a miss. -->
-  <rect x="-1.2" y="-1.2" width="2.4" height="2.4" class="pad" />
+  <!-- The ring around the board catches clicks that count as a miss; while picking it is drawn, lighter on hover. -->
+  <circle r={MISS_R} class="pad" class:shown={picking} class:hot={hover?.kind === "miss"} />
   {#each wedges as w (w.n)}
     <path d={w.inner} class={w.dark ? "single dark" : "single light"} />
     <path d={w.outer} class={w.dark ? "single dark" : "single light"} />
@@ -196,7 +205,12 @@
     display: block;
   }
   .pad { fill: transparent; }
-  .picking { cursor: crosshair; }
+  /* Light enough that the background still shows through. */
+  .pad.shown { fill: rgb(255 255 255 / 0.06); stroke: rgb(255 255 255 / 0.14); stroke-width: 0.005; }
+  .pad.shown.hot { fill: rgb(255 255 255 / 0.12); stroke: rgb(255 255 255 / 0.3); }
+  /* Only the board and the ring around it take a click. */
+  .picking { cursor: default; }
+  .picking :is(.pad, path, .ring) { cursor: crosshair; }
   /* Targets glow in the accent colour; the field under the pointer is a plain light wash on top. */
   .target {
     fill: var(--accent);

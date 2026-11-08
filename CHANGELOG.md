@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **You see where a click counts as a miss.** While you can set or correct a dart on the board, a light ring around it shows the area for a miss; it gets a bit lighter under the pointer. A click outside that ring, in the corners next to the board, no longer counts.
+
 ## [0.9.8] - 2026-11-08
 
 See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.
