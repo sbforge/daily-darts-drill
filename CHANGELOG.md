@@ -17,6 +17,9 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+### Changed
+- **Loose Arm is now called Warmup.** Same game, a clearer name, in English and German alike. Your routines keep it as they are.
+
 ## [0.9.8] - 2026-11-08
 
 See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.
