@@ -756,9 +756,9 @@ export const en = {
   "game.xOfY": "{n} of {total}",
 
   // warm up
-  "warmUp.name": "Loose Arm",
+  "warmUp.name": "Warmup",
   "warmUp.blurb": "Throw freely at whatever you like. No score and no pressure: the clock only keeps your routine on schedule.",
-  "warmUp.classic": "Warm up",
+  "warmUp.classic": "Warmup",
   "warmUp.goal": "Loosen your arm and find your rhythm before the drills that count.",
   "warmUp.focus": "Throw freely",
 

@@ -46,8 +46,8 @@ the file (name, description, break, the games and their settings), none of your 
 
 | Routine | What is in it |
 |---|---|
-| **Everyday Drill** (about 77 min) | Loose Arm, Clockwork, Double Trouble and Plan B on D20, D16 and D18, Ton Machine, Checkout Ladder, finishing with four real legs of Solo Leg. |
-| **Intense Doubles** (about 45 min) | Loose Arm, Bull-X, Double Trouble and Plan B on D20 and D16, and one round of Bob's 27. |
+| **Everyday Drill** (about 77 min) | Warmup, Clockwork, Double Trouble and Plan B on D20, D16 and D18, Ton Machine, Checkout Ladder, finishing with four real legs of Solo Leg. |
+| **Intense Doubles** (about 45 min) | Warmup, Bull-X, Double Trouble and Plan B on D20 and D16, and one round of Bob's 27. |
 
 ![Picking a routine](docs/screenshots/training.png)
 
@@ -61,7 +61,7 @@ The games so far:
 
 | Game | What it is | Why play it |
 |---|---|---|
-| **Loose Arm** (warm up) | Throw freely. No result, the clock just keeps the routine on schedule. | Loosen your arm and find your rhythm before the drills that count. |
+| **Warmup** | Throw freely. No result, the clock just keeps the routine on schedule. | Loosen your arm and find your rhythm before the drills that count. |
 | **Clockwork** (around the clock) | Hit every number in board order, then finish on the bull. | Accuracy all over the board, not just on the 20. |
 | **Double Trouble** (simple doubles) | Throw at one double, only that double counts. | Makes your favourite double automatic. |
 | **Plan B** (complex doubles) | Check out the double over three darts. A hit halves the double for the next dart (D20, D10, D5), a miss counts off what is left, a bust starts over. Every dart has a target. | Recovering when the first dart misses. |

@@ -758,9 +758,9 @@ export const de: Record<Key, string> = {
   "game.xOfY": "{n} von {total}",
 
   // warm up
-  "warmUp.name": "Loose Arm",
+  "warmUp.name": "Warmup",
   "warmUp.blurb": "Wirf frei, worauf du willst. Keine Wertung, kein Druck: die Uhr hält nur deine Routine im Zeitplan.",
-  "warmUp.classic": "Aufwärmen",
+  "warmUp.classic": "Warmup",
   "warmUp.goal": "Lockere deinen Arm und finde deinen Rhythmus, bevor die Übungen zählen.",
   "warmUp.focus": "Frei werfen",
 

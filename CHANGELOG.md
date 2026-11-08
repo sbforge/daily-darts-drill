@@ -26,6 +26,7 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 - **Precision: a suggestion only from 30 darts on.** With fewer darts on a field, or on everything you picked, Precision still shows all figures, but instead of a suggestion it says how many darts are still missing for a reliable reading. In the field table such fields are marked in yellow.
 - **You see where a click counts as a miss.** While you can set or correct a dart on the board, a light ring around it shows the area for a miss; it gets a bit lighter under the pointer. A click outside that ring, in the corners next to the board, no longer counts.
 - **Solo Leg: the leg average starts at 0.0.** Before the first dart of a leg, the leg average now shows 0.0 like the match average, instead of "none yet".
+- **Loose Arm is now called Warmup.** Same game, a clearer name, in English and German alike. Your routines keep it as they are.
 
 ## [0.9.8] - 2026-11-08
 
