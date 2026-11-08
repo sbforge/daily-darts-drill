@@ -90,12 +90,13 @@ export function withSample(n: number, config = DPI_CONFIG): IndexConfig {
 
 /** The index config. Changing a baseline, target or weight means a new version: the whole history is recalculated with it. */
 export const DPI_CONFIG: IndexConfig = {
-  version: 3,
+  version: 6,
   games: [
     {
       gameId: "scoring",
       area: "scoring",
-      metrics: [higher("average", 20, 80)],
+      // Version 6: a 70 average is 60, a 120 average is 100. Aiming only at the treble, the average is higher than in a leg.
+      metrics: [higher("average", -5, 120)],
       sample: { keys: ["darts"], min: 15 },
     },
     {
@@ -130,14 +131,15 @@ export const DPI_CONFIG: IndexConfig = {
       area: "consistency",
       // The 3-dart average only (version 3): darts per leg depend mostly on the checkouts, and the checkout rate
       // can't tell a set-up dart on an even rest (S4 on 24 for D10) from a dart at the double. The same for every start.
-      metrics: [higher("average", 30, 100)],
+      // Version 6: a 60 average is 60, a 90 average is 100.
+      metrics: [higher("average", 15, 90)],
       sample: { keys: ["legs"], min: 1 },
     },
     {
       gameId: "big-fish",
       area: "checkout",
-      // Darts per leg from 170: 18 is three visits of three too many, 6 is two visits.
-      metrics: [lower("dartsPerLeg", 18, 6)],
+      // The 3-dart average over the legs from 170 (version 6), not the darts per leg: a 50 average is 60, an 85 average is 100.
+      metrics: [higher("average", -2.5, 85)],
       sample: { keys: ["legs"], min: 2 },
     },
     {
@@ -174,9 +176,10 @@ export const DPI_CONFIG: IndexConfig = {
     {
       gameId: "jdc-challenge",
       area: "accuracy",
-      // Darts on the number in the Shanghai parts (any bed of it), and the doubles of part 2.
-      metrics: [higher("segmentRate", 20, 70, 0.6), higher("doubleRate", 5, 40, 0.4)],
-      sample: { keys: ["darts"], min: 30 },
+      // The points, the average per finished round (version 4). Only finished rounds count: a round cut short
+      // says nothing comparable. Version 5: 300 to 1800, so the best juniors (about 1600) are near 87.
+      metrics: [higher("score", 300, 1800)],
+      sample: { keys: ["games"], min: 1 },
     },
     {
       gameId: "around-the-clock",

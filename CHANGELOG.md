@@ -17,6 +17,27 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-11-08
+
+See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.
+
+### Added
+- **Restore a backup in the app.** Settings → Your data → *Restore a backup…* lists your backups (the daily ones, the ones before an update or before *Erase all data*), or you choose a file you exported. D³ checks the file, saves your current data first and restarts with the backup. If you change your mind, restore the copy marked *Before a restore* the same way. A backup from a newer version of D³ is refused, so nothing breaks.
+- **Share your routines.** In the routine editor, the new export icon saves the routine as a file. Pass it on to a friend or your club: *Import* on the start page adds it to their D³, and the routine opens so they can check it. Only the routine is in the file, never your results. A game the other D³ doesn't know yet is left out, and D³ says so.
+- **JDC Challenge: the result of every round.** After the last dart of a round, its result lies over the board: the points, the three parts, your Shanghais, the doubles you hit and how often you hit the number, and with several rounds your best round so far and the average. Pull your darts and the next round starts, or the routine goes on.
+- **Precision: how close you land to the centre of the field.** The new *Precision* tab shows, for every dart thrown at a target the game fixes (Around the Clock, the doubles games, Bob's 27, Bull-X and the doubles of the JDC Challenge), how far it landed from the centre of that field: the average distance in mm, your tendency (e.g. "3 mm low · 1 mm left"), how widely you scatter and how often you were in the field. Pick all fields, a kind of field (all doubles, all trebles, ...) or a single field such as D16: the field is drawn zoomed in with the segments next to it, every dart on it, and your average point. Under the tendency and the scatter a short line says what they mean, and a box below sums up what to work on: your aim, repeating your throw, or simply more darts first. Tick *Compare with another period* to see two periods side by side, with the change; a change too small to tell from chance stays grey. The ⓘ next to the title explains how to read it all, with drawn examples. Every game you have played so far counts, nothing needs to be set up. Only darts the cameras placed count: a dart you set or corrected by hand is left out. Checkout games don't count, because their route is only a suggestion.
+
+### Changed
+- **A clearer update dialog.** When a new version is ready, the dialog now looks like the rest of D³: the version on offer at the top, the release notes in their own box, and *Update now*, *Later* and *Skip this version* at the bottom.
+- **Links that open your browser are marked.** Links in the app now have a small arrow icon, so you know your web browser opens when you click them.
+- **JDC Challenge: full rounds of 57 darts, no time cap.** The challenge now follows its usual rules: one visit at each number in the Shanghai parts and one dart at each double, 57 darts and at most 3380 points a round. Instead of visits per number you now choose how many rounds you play (1 to 5). The JDC Challenge has no time cap any more, so every round is played to the end and your results can be compared; with several rounds your score is the average per round, and the best round is shown too. A JDC Challenge already in your routines plays one round without a time cap.
+- **JDC Challenge in the DPI: your points.** The DPI now counts only your points per round (300 points are 0, 1800 points are 100, so about 1200 points are 60), and only finished rounds: if you stop in the middle of the first round, the game is saved but doesn't count.
+- **New DPI scales for your average.** Ton Machine: a 70 average is 60, 120 is 100. Solo Leg: a 60 average is 60, 90 is 100. Big Fish now counts your 3-dart average instead of the darts per leg: a 50 average is 60, 85 is 100. Your history is recalculated, your results themselves stay as they are.
+- **"Next turn" also resets Autodarts.** Ending a turn with the button beside the dart boxes now clears the board in Autodarts as well, so the next dart starts a fresh turn there too, even with darts still in the board.
+
+### Fixed
+- **No start without Autodarts.** A routine or a quick game that counts darts can no longer be started while D³ isn't connected to Autodarts; the start button says why. Loose Arm on its own still starts without a connection.
+
 ## [0.9.7] - 2026-11-05
 
 One setting for how the score is counted, and a way to try new versions before they are released.

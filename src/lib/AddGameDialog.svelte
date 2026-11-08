@@ -12,10 +12,13 @@
   let {
     onadd,
     quick = false,
+    offline = false,
   }: {
     onadd: (item: RoutineItem) => void;
     /** Starts a single game instead of adding one to a routine. */
     quick?: boolean;
+    /** No connection to Autodarts: a quick game with darts to count can't start. */
+    offline?: boolean;
   } = $props();
 
   let dialog = $state<HTMLDialogElement>();
@@ -71,7 +74,7 @@
 
   function current(): RoutineItem {
     const item = $state.snapshot(draft);
-    return capped === "off" && canEnd ? { ...item, minutes: 0 } : item;
+    return g.noTimeCap || (capped === "off" && canEnd) ? { ...item, minutes: 0 } : item;
   }
 
   /** Opens on the given games' settings (e.g. the ones played last), else on each game's defaults. */
@@ -94,8 +97,11 @@
     load(made[id], id);
   }
 
+  const blocked = $derived(quick && offline && g.needsDarts);
+
   function add(e: SubmitEvent) {
     e.preventDefault();
+    if (blocked) return;
     onadd(current());
     dialog?.close();
   }
@@ -135,10 +141,12 @@
         <p class="goal"><strong>{t("game.goal")}</strong> {g.goal}</p>
 
         <div class="fields">
-          {#if canEnd}
+          {#if g.noTimeCap}
+            <p class="to-the-end">{t("routines.toTheEndInfo")}</p>
+          {:else if canEnd}
             <GameField field={capField} bind:value={capped} />
           {/if}
-          {#if !canEnd || capped === "on"}
+          {#if !g.noTimeCap && (!canEnd || capped === "on")}
             <GameField field={timeCap} bind:value={draft.minutes} />
           {/if}
           {#each g.fields as f (`${g.id}-${f.key}`)}
@@ -150,7 +158,8 @@
 
     <div class="foot">
       <button type="button" class="ghost" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
-      <button type="submit" class="primary">{t(quick ? "run.startGame" : "routines.addGame")}</button>
+      {#if blocked}<p class="offline">{t("train.offline")}</p>{/if}
+      <button type="submit" class="primary" disabled={blocked}>{t(quick ? "run.startGame" : "routines.addGame")}</button>
     </div>
   </form>
 </dialog>
@@ -214,9 +223,11 @@
   .goal { margin: 0 0 1rem; padding: 0.6rem 0.8rem; border-left: 3px solid var(--accent); border-radius: 4px; background: rgb(34 211 238 / 0.06); font-size: 0.9rem; line-height: 1.4; }
   .goal strong { color: var(--accent); margin-right: 0.25rem; }
 
+  .to-the-end { grid-column: 1 / -1; margin: 0 0 0.75rem; color: var(--dim); font-size: 0.9rem; line-height: 1.4; }
   .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 1rem; }
   .fields { --field-bg: var(--bg); }
   .fields :global(input) { background: var(--bg); }
+  .offline { margin: 0 auto 0 0; align-self: center; color: var(--dim); font-size: 0.88rem; }
   .foot { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem 1.5rem 1.25rem; border-top: 1px solid var(--line); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 

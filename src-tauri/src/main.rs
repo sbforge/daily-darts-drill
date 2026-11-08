@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod backup;
+mod restore;
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -30,6 +31,10 @@ struct Startup {
     daily_backup: Option<String>,
     /// Why a backup failed, if it did.
     backup_error: Option<String>,
+    /// A backup was restored on this start; the folder holds the data it replaced.
+    restored: Option<String>,
+    /// Why a staged restore couldn't be put in place.
+    restore_error: Option<String>,
     /// The `running` marker of the last start was still there: the app didn't close normally.
     crashed_last_time: bool,
 }
@@ -37,6 +42,61 @@ struct Startup {
 #[tauri::command]
 fn startup_report(startup: State<'_, Startup>) -> &Startup {
     startup.inner()
+}
+
+/// Every backup that can be restored, newest first.
+#[tauri::command]
+fn list_backups(app: tauri::AppHandle) -> Result<Vec<restore::BackupEntry>, String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    Ok(restore::list(&config))
+}
+
+/// Copies a backup or an export into place for the next start and checks it. The app restarts afterwards.
+/// Errors: "notADatabase", "notD3", "newer:<version>", "io:<message>".
+#[tauri::command]
+fn stage_restore(app: tauri::AppHandle, source: String) -> Result<(), String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    let known = migrations().iter().map(|m| m.version).max().unwrap_or(0);
+    restore::stage(&config, std::path::Path::new(&source), known).map_err(|e| {
+        log::warn!("restore refused: {e}");
+        e.to_string()
+    })?;
+    log::info!("restore staged from {source}");
+    Ok(())
+}
+
+/// Drops a staged restore.
+#[tauri::command]
+fn discard_restore(app: tauri::AppHandle) -> Result<(), String> {
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    restore::discard(&config);
+    Ok(())
+}
+
+/// Routine files (export / import of one routine) are small JSON files at a path the player picked in a dialog.
+const MAX_ROUTINE_FILE: u64 = 256 * 1024;
+
+fn is_routine_file(p: &std::path::Path) -> bool {
+    p.extension().is_some_and(|e| e.eq_ignore_ascii_case("json"))
+}
+
+#[tauri::command]
+fn save_routine_file(path: String, contents: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if !is_routine_file(p) || contents.len() as u64 > MAX_ROUTINE_FILE {
+        return Err("not a routine file".into());
+    }
+    std::fs::write(p, contents).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn read_routine_file(path: String) -> Result<String, String> {
+    let p = std::path::Path::new(&path);
+    let size = std::fs::metadata(p).map_err(|e| e.to_string())?.len();
+    if !is_routine_file(p) || size > MAX_ROUTINE_FILE {
+        return Err("not a routine file".into());
+    }
+    std::fs::read_to_string(p).map_err(|e| e.to_string())
 }
 
 /// When the newest backup was made.
@@ -373,6 +433,18 @@ fn main() {
             }
             let _ = std::fs::create_dir_all(marker.parent().unwrap());
             let _ = std::fs::write(&marker, "");
+            // A restore chosen in the last run goes in first, so the backups below already see the restored data.
+            match restore::apply_pending(&config) {
+                Ok(Some(dir)) => {
+                    log::info!("backup restored, the data it replaced: {}", dir.display());
+                    startup.restored = Some(dir.display().to_string());
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    log::error!("restore failed: {e}");
+                    startup.restore_error = Some(e);
+                }
+            }
             match backup::update_backup(&config, env!("CARGO_PKG_VERSION")) {
                 Ok(Some(dir)) => {
                     log::info!("backup before the update: {}", dir.display());
@@ -427,6 +499,11 @@ fn main() {
             set_running_marker,
             prepare_update_backup,
             prepare_erase_backup,
+            list_backups,
+            stage_restore,
+            discard_restore,
+            save_routine_file,
+            read_routine_file,
             preview_check,
             preview_install
         ])
@@ -453,6 +530,14 @@ mod tests {
         for ip in ["8.8.8.8", "100.128.0.1", "2001:db8::1", "board.local", "", "$(rm -rf /)"] {
             assert!(!is_local_address(ip), "{ip}");
         }
+    }
+
+    #[test]
+    fn routine_files_are_json_only() {
+        assert!(is_routine_file(std::path::Path::new("/tmp/Tuesday.d3-routine.json")));
+        assert!(is_routine_file(std::path::Path::new("C:/x/a.JSON")));
+        assert!(!is_routine_file(std::path::Path::new("/tmp/darttrainer.db")));
+        assert!(!is_routine_file(std::path::Path::new("/tmp/json")));
     }
 
     #[test]

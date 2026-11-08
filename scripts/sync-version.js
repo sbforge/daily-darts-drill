@@ -28,7 +28,8 @@ const NAME = "dart-trainer";
 const toml = read("src-tauri/Cargo.toml");
 const lock = read("src-tauri/Cargo.lock");
 const tomlRe = /^(\[package\][\s\S]*?^version\s*=\s*)"[^"]*"/m;
-const lockRe = new RegExp(`(\\[\\[package\\]\\]\\nname = "${NAME}"\\nversion = )"[^"]*"`);
+// \r?\n: a Windows checkout (the Windows build in CI) has CRLF line endings.
+const lockRe = new RegExp(`(\\[\\[package\\]\\]\\r?\\nname = "${NAME}"\\r?\\nversion = )"[^"]*"`);
 
 if (!tomlRe.test(toml) || !lockRe.test(lock)) {
   console.error("Could not find the package version in Cargo.toml or Cargo.lock.");

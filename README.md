@@ -35,10 +35,14 @@ you're actually progressing.
 A routine is your daily drill: a list of games, each with its own settings and a time cap, and a short break
 between them. Pick a routine from the carousel and start it. Routines are easy to build and change: add games,
 reorder them by drag & drop, set the break between games. A game that ends by itself (Solo Leg with a number of
-legs, Clockwork, Bob's 27, Catch 40, JDC Challenge) can run without a time cap.
+legs, Clockwork, Bob's 27, Catch 40) can run without a time cap; the JDC Challenge never has one, so its results stay comparable.
 
 Two routines come with D³, so you can start training right away. They are normal routines: change them or delete
 them, and "Restore built-in routines" in the settings brings them back.
+
+Routines can be passed on: the export icon in the routine editor saves one as a small file
+(`<name>.d3-routine.json`), and "Import" on the start page adds it to someone else's D³. Only the routine goes in
+the file (name, description, break, the games and their settings), none of your results.
 
 | Routine | What is in it |
 |---|---|
@@ -67,7 +71,7 @@ The games so far:
 | **Wild Card** (random checkout) | A random checkout from the range you pick, with 3, 6 or 9 darts. No checkout twice before the whole range has come up. | Reading any finish quickly. |
 | **Bob's 27** | Start with 27 points and go round D1 to D20 and the bull, three darts each. Hits add the double's value, a miss with all three subtracts it. | Doubles with something at stake. |
 | **Bull-X** (bullseye drill) | Dart 1 goes at the bull; hit it and darts 2 and 3 stay there. Miss and they go at the double, treble or (Shanghai) the other two parts of the segment dart 1 hit. | Pressure on the bull, and a way back when it isn't there. |
-| **JDC Challenge** | Three parts: Shanghai 10–15 (every hit on the number scores, a Shanghai is 100 extra), one dart at each double from D1 to the bull (50 each, 100 for the bull), then Shanghai 15–20. 1 to 5 visits per number. | Scoring numbers, doubles and the bull in one comparable score. |
+| **JDC Challenge** | Three parts: Shanghai 10–15 (every hit on the number scores, a Shanghai is 100 extra), one dart at each double from D1 to the bull (50 each, 100 for the bull), then Shanghai 15–20. 1 to 5 rounds of 57 darts (at most 3380 points each), always played to the end without a time cap. | Scoring numbers, doubles and the bull in one comparable score. |
 | **Big Fish** (170) | Leg after leg from 170, double out, bust is no score. | The high finishes and the nerve for them. |
 | **Solo Leg** (solo 501) | A normal leg against yourself (301, 501 or 701), leg after leg or a set number of legs: match and leg average side by side. | Your whole game in one number. |
 
@@ -120,7 +124,9 @@ detection, reset the board and calibrate the cameras without leaving D³. The ap
 
 Once a day, when D³ starts, it copies your data (the last 5 copies are kept), and it takes a copy before the
 first start of a new version. "Your data" in the settings shows the last backup, opens the backup folder and
-exports everything into one file you can keep on a USB stick or take to a new computer. "Erase all data", the
+exports everything into one file you can keep on a USB stick or take to a new computer. "Restore a backup…"
+goes back to one of the backups or to an exported file: D³ checks it, saves your current data first and restarts
+with it. "Erase all data", the
 last button in the settings, starts over with the built-in routines; it asks twice and keeps one copy in the
 backup folder. If a start goes wrong,
 D³ writes a short log (`d3.log`) and, for every error it didn't expect, a crash report; "Report on GitHub" opens
@@ -193,8 +199,9 @@ Backups are in the `backups` folder next to it, and the log and crash reports in
 | macOS | `~/Library/Application Support/dev.darttrainer.app/` |
 | Linux | `~/.config/dev.darttrainer.app/` |
 
-**Restoring a backup:** close D³, then copy the files from a folder in `backups` (`darttrainer.db` and, if there,
-`darttrainer.db-wal`) over the ones in the data folder.
+**Restoring a backup:** Settings → Your data → "Restore a backup…". If D³ doesn't start at all, close it and copy
+the files from a folder in `backups` (`darttrainer.db` and, if there, `darttrainer.db-wal`) over the ones in the
+data folder, and delete `darttrainer.db-shm` there.
 
 ## Development
 

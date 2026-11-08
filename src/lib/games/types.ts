@@ -77,10 +77,31 @@ export interface GameResult {
    * checkout only starts after the takeout. `next` says what comes then, shown on the board's overlay.
    */
   gameShot?: { turn: number; darts: number; next: string };
+  /**
+   * Games played in rounds: the turn on the board is the last of a round, all its darts are thrown. The board shows
+   * the round's result over it until the takeout; then the next round starts, or the game ends.
+   */
+  roundEnd?: RoundEnd;
   /** Moments to show, e.g. a great turn. 180 and No Score are added by the training screen for every game. */
   moments?: Moment[];
   /** True when the game has been completed before the time cap. */
   done: boolean;
+}
+
+/** The result of one round, shown over the board at its end. */
+export interface RoundEnd {
+  /** The turn that ends the round (an index into turns). */
+  turn: number;
+  /** "Round 2 of 3" or "Round complete". */
+  title: string;
+  /** The round's main number and what it is. */
+  score: { label: string; value: string };
+  /** A short line under the score, e.g. "New best round". */
+  badge?: string;
+  /** The round's numbers. */
+  lines: { label: string; value: string }[];
+  /** What comes after the takeout ("Round 3 next", "Challenge complete"). */
+  next: string;
 }
 
 export interface ComputeContext {
@@ -107,12 +128,19 @@ export interface GameDef {
   /** Why to play it: what it trains. */
   goal: string;
   needsDarts: boolean; // false: can run without an Autodarts connection
+  /**
+   * The rules fix what each dart is thrown at, so `targets` is never a suggestion (a checkout route is one): a single
+   * field there (or both bulls) is the dart's aim, and the precision view measures how far the dart landed from it.
+   */
+  fixedTargets?: true;
   hasResult: boolean;
   defaultMinutes: number;
   defaultSettings: Settings;
   fields: Field[];
   /** Counts a rest down: follows the counting setting (Settings → Playing), there is no choice per game. */
   countsRest?: boolean;
+  /** The game is always played to the end: no time cap, not even as a choice (a test you compare, like the JDC Challenge). */
+  noTimeCap?: boolean;
   /** True when, with these settings, the game ends by itself, so it can run without a time cap inside a routine. */
   canEnd?(settings: Settings): boolean;
   /** About how long the game takes without a time cap, in minutes: the routine's length counts with it. */

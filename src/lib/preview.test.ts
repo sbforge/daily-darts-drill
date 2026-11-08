@@ -23,6 +23,12 @@ describe("preview channel helpers", () => {
     expect(latest.platforms["darwin-aarch64"].url, "the input stays as it was").toContain("/latest/download/");
   });
 
+  it("leaves asset-id URLs (tauri-action 1.x) as they are", () => {
+    const url = "https://api.github.com/repos/o/r/releases/assets/123456";
+    const latest = { version: "0.9.8-beta.1", platforms: { "linux-x86_64": { signature: "s", url } } };
+    expect(feedFor(latest, "v0.9.8-beta.1").platforms["linux-x86_64"].url).toBe(url);
+  });
+
   it("finds the betas a stable version makes obsolete, and nothing else", () => {
     const tags = ["v1.2.0", "v1.2.1-beta.1", "v1.3.0-beta.1", "v1.3.0-beta.2", "v1.3.0", "v1.4.0-beta.1", "preview", "v1.3.0-rc.1"];
     expect(stale(tags, "v1.3.0")).toEqual(["v1.2.1-beta.1", "v1.3.0-beta.1", "v1.3.0-beta.2", "v1.3.0-rc.1"]);

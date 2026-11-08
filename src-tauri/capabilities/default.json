@@ -12,6 +12,7 @@
     "sql:allow-close",
     "opener:default",
     "dialog:allow-save",
+    "dialog:allow-open",
     "log:default",
     "updater:default",
     "process:allow-restart",

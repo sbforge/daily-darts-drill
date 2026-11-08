@@ -25,6 +25,7 @@ export const bobs27: GameDef = {
     return t("bob.goal");
   },
   needsDarts: true,
+  fixedTargets: true,
   hasResult: true,
   defaultMinutes: 10,
   defaultSettings: { playOn: "off" },

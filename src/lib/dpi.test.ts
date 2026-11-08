@@ -24,8 +24,15 @@ describe("game index", () => {
     expect(i).toBeCloseTo(70);
   });
   it("a result that is too short doesn't count", () => {
-    expect(gameIndex("scoring", {}, { average: 80, darts: 3 })).toBeNull();
-    expect(gameIndex("scoring", {}, { average: 80, darts: 30 })).toBe(100);
+    expect(gameIndex("scoring", {}, { average: 120, darts: 3 })).toBeNull();
+    expect(gameIndex("scoring", {}, { average: 120, darts: 30 })).toBe(100);
+  });
+  it("the averages of Ton Machine, Solo Leg and Big Fish (version 6)", () => {
+    expect(gameIndex("scoring", {}, { average: 70, darts: 30 })).toBeCloseTo(60);
+    expect(gameIndex("solo-leg", {}, { average: 60, legs: 1 })).toBeCloseTo(60);
+    expect(gameIndex("solo-leg", {}, { average: 90, legs: 1 })).toBeCloseTo(100);
+    expect(gameIndex("big-fish", {}, { average: 50, dartsPerLeg: 30, legs: 2 })).toBeCloseTo(60);
+    expect(gameIndex("big-fish", {}, { average: 85, legs: 2 })).toBeCloseTo(100);
   });
   it("Around the clock has a scale per ring", () => {
     const v = { accuracy: 50, darts: 30 };
@@ -40,6 +47,13 @@ describe("game index", () => {
     expect(gameIndex("bobs-27", {}, { ...v, finishedScore: 862 })).toBeCloseTo(100);
     expect(gameIndex("bobs-27", {}, { ...v, finishedScore: 0 })).toBeCloseTo(70);
     expect(gameIndex("bobs-27", {}, v)).toBeCloseTo(100);
+  });
+  it("JDC Challenge: only the points, 300 to 1800, and only finished rounds", () => {
+    const jdc = (values: Record<string, number>) => gameIndex("jdc-challenge", {}, values);
+    expect(jdc({ score: 1050, games: 1 })).toBe(50);
+    expect(Math.round(jdc({ score: 1213, games: 1 })!)).toBe(61);
+    expect(jdc({ score: 2000, games: 2 })).toBe(100);
+    expect(jdc({ score: 900, games: 0 })).toBeNull();
   });
   it("the warm-up has no index", () => {
     expect(hasIndex("warm-up")).toBe(false);
@@ -56,7 +70,7 @@ describe("every configured game", () => {
 describe("session index", () => {
   const r = (gameId: string, values: Record<string, number>): ResultRecord => ({ id: gameId, sessionId: "s", gameId, settings: {}, values, startedAt: "2026-01-01" });
   it("averages per area and scales up missing areas", () => {
-    const only = sessionIndex([r("scoring", { average: 80, darts: 30 })]);
+    const only = sessionIndex([r("scoring", { average: 120, darts: 30 })]);
     expect(only).toBe(100);
   });
   it("is null without any counting result", () => {

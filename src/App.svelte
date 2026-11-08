@@ -44,7 +44,16 @@
   import { FxLayer, fx, useFx } from "./lib/fx";
   import { log } from "./lib/log";
   import { checkForUpdate, initUpdates, installUpdate, later, releasesUrl, setAutoCheck, setChannel, setDeveloper, skipVersion, updateAvailable, updates } from "./lib/updates.svelte";
-  import { chooseExportFile, lastBackup, prepareEraseBackup } from "./lib/backend";
+  import {
+    chooseExportFile,
+    chooseRoutineOpenFile,
+    chooseRoutineSaveFile,
+    lastBackup,
+    prepareEraseBackup,
+    readRoutineFile,
+    saveRoutineFile,
+  } from "./lib/backend";
+  import { ImportError, parseShareFile, shareFileName, toShareFile } from "./lib/routines/share";
   import CrashToasts from "./lib/CrashToasts.svelte";
   import { installCrashHandlers, reportCrash, setCrashContext } from "./lib/crash.svelte";
   import { isNewerDatabase, openFolder, startupReport } from "./lib/backend";
@@ -54,16 +63,20 @@
   import AddGameDialog from "./lib/AddGameDialog.svelte";
   import Board from "./lib/Board.svelte";
   import GameShot from "./lib/GameShot.svelte";
+  import RoundEndOverlay from "./lib/RoundEnd.svelte";
   import DartMeter from "./lib/DartMeter.svelte";
   import DpiChart from "./lib/DpiChart.svelte";
   import LoadingScreen from "./lib/LoadingScreen.svelte";
   import SbomDialog from "./lib/SbomDialog.svelte";
   import LogDialog from "./lib/LogDialog.svelte";
+  import RestoreDialog from "./lib/RestoreDialog.svelte";
   import Logo from "./lib/Logo.svelte";
   import Quote from "./lib/Quote.svelte";
   import RoutineCarousel from "./lib/RoutineCarousel.svelte";
   import ReleaseNotes from "./lib/ReleaseNotes.svelte";
+  import ExternalLink from "./lib/ExternalLink.svelte";
   import RoutineItems from "./lib/RoutineItems.svelte";
+  import Precision from "./lib/Precision.svelte";
     import Select from "./lib/Select.svelte";
   import { discoverBoards, type FoundBoard } from "./lib/discovery";
   import { fullscreen, fullscreenKeys, toggleFullscreen, watchFullscreen } from "./lib/fullscreen.svelte";
@@ -98,8 +111,12 @@
   // The last run didn't close normally (the Rust side left its "running" marker behind).
   let closedBadly = $state(false);
   let logDialog = $state<LogDialog>();
+  let restoreDialog = $state<RestoreDialog>();
+  // Set on the start after a restore: the folder with the data it replaced, or why it failed.
+  let restoredFrom = $state("");
+  let restoreError = $state("");
   let saveError = $state("");
-  type View = "train" | "routines" | "history" | "stats" | "settings" | "about";
+  type View = "train" | "routines" | "history" | "stats" | "precision" | "settings" | "about";
   let view = $state<View>("train");
 
   // connection settings
@@ -217,9 +234,14 @@
   // Autodarts keeps detecting after a bust or a checkout (that can't be stopped), but those darts are neither
   // counted nor shown: the boxes after it stay closed and the board doesn't draw them.
   const shownDarts = $derived(session ? session.shown.slice(0, bustAt) : []);
-  // The game's own moment of the checkout ("Ton out!") is shown on the Game shot overlay instead of a stamp.
+  // The end of a round (JDC Challenge): its result lies over the board until the takeout.
+  const roundEnd = $derived(session && result?.roundEnd?.turn === session.shownTurn ? result.roundEnd : null);
+  // The turn under an overlay: its moment ("Ton out!", "Shanghai!") is shown on the overlay instead of a stamp.
+  const overlayTurn = $derived(shot?.turn ?? roundEnd?.turn ?? null);
   const shotMoment = $derived(
-    shot && session && result ? (pickMoments(result, session.allTurns).play.find((m) => m.turn === shot.turn)?.text ?? "") : "",
+    overlayTurn !== null && session && result
+      ? (pickMoments(result, session.allTurns).play.find((m) => m.turn === overlayTurn)?.text ?? "")
+      : "",
   );
   const canStart = $derived(!!def && (detecting || !def.needsDarts));
   // A game with darts can't go on without the detection, so it waits paused until Autodarts is back.
@@ -341,9 +363,13 @@
 
   // ---- running a routine
 
+  // Without a connection to Autodarts, nothing that counts darts can start: the session would only wait.
+  const offline = $derived(conn !== "connected");
+
   function startRoutine() {
     const r = routines.find((x) => x.id === selectedId);
     if (!r || r.items.length === 0) return;
+    if (offline && r.items.some((i) => gameById(i.gameId).needsDarts)) return;
     begin(structuredClone($state.snapshot(r)), false);
   }
 
@@ -359,6 +385,7 @@
   }
 
   function startQuick(item: RoutineItem) {
+    if (offline && gameById(item.gameId).needsDarts) return;
     quickLast = item.gameId;
     quickItems = [...quickItems.filter((i) => i.gameId !== item.gameId), item];
     db.saveQuickGame(quickLast, $state.snapshot(quickItems)).catch(failed);
@@ -715,12 +742,21 @@
   }
 
   /** Clears the darts on the board, like a takeout by hand. A running game takes it as the end of the turn. */
-  function resetBoard() {
+  function resetBoard(quiet = false) {
     if (!canReset) return;
     client.reset().then(
-      () => (log.info("autodarts reset"), noteBoard(t("board.resetDone"), false)),
-      (e) => (log.warn(`autodarts reset failed: ${e}`), noteBoard(t("board.resetFailed"), true)),
+      () => (log.info("autodarts reset"), quiet || noteBoard(t("board.resetDone"), false)),
+      (e) => (log.warn(`autodarts reset failed: ${e}`), quiet || noteBoard(t("board.resetFailed"), true)),
     );
+  }
+
+  /**
+   * "Next turn": the turn ends by hand, and Autodarts is reset too, so its turn ends with ours and the next
+   * dart starts a new one. That happens without the bubble over the board buttons.
+   */
+  function nextTurn() {
+    session?.endTurn();
+    resetBoard(true);
   }
 
   /** Starts the detection when it is stopped, stops it when it runs. */
@@ -808,7 +844,7 @@
     if (phase !== "running" || !session || !result) return;
     const game = gameStartedAt;
     const { play, skip } = pickMoments(result, session.allTurns);
-    const shotTurn = result.gameShot?.turn;
+    const shotTurn = result.gameShot?.turn ?? result.roundEnd?.turn;
     for (const m of skip) fx.skip(`${game}:${m.key}`);
     for (const m of play) {
       // A checkout's moment is on the Game shot overlay; it isn't stamped later either.
@@ -904,6 +940,48 @@
     // Duplicating a draft keeps it, so only the copy is new now.
     draftId = null;
     pendingRoutineDelete = false;
+  }
+
+  // Routine files: export the routine being edited, import one as a new routine. The outcome shows as a banner.
+  let shareNote = $state<{ text: string; failed: boolean } | null>(null);
+
+  async function exportRoutine(r: Routine) {
+    shareNote = null;
+    try {
+      const path = await chooseRoutineSaveFile(shareFileName(r.name));
+      if (!path) return;
+      await saveRoutineFile(path, toShareFile($state.snapshot(r), __APP_VERSION__));
+      log.info(`routine exported: ${r.name}`);
+      shareNote = { text: t("share.exported", { name: r.name }), failed: false };
+    } catch (e) {
+      log.error(`routine export failed: ${e}`);
+      shareNote = { text: t("share.exportFailed", { msg: e instanceof Error ? e.message : String(e) }), failed: true };
+    }
+  }
+
+  async function importRoutine() {
+    shareNote = null;
+    try {
+      const path = await chooseRoutineOpenFile();
+      if (!path) return;
+      const { routine, dropped } = parseShareFile(await readRoutineFile(path));
+      if (!routine.name) routine.name = t("routines.new");
+      routines.push(routine);
+      selectedId = routine.id;
+      draftId = null;
+      pendingRoutineDelete = false;
+      log.info(`routine imported: ${routine.name} (${routine.items.length} games, ${dropped} left out)`);
+      shareNote = {
+        text: dropped ? t("share.importedDropped", { name: routine.name, n: dropped }) : t("share.imported", { name: routine.name }),
+        failed: false,
+      };
+      go("routines");
+    } catch (e) {
+      log.warn(`routine import failed: ${e}`);
+      const text =
+        e instanceof ImportError ? t(`share.${e.problem}`) : t("share.importFailed", { msg: e instanceof Error ? e.message : String(e) });
+      shareNote = { text, failed: true };
+    }
   }
 
   /** The first click asks, the second deletes. */
@@ -1006,6 +1084,7 @@
     recoveryRate: { label: "bullx.recoveryRate", percent: true, digits: 1 },
     segmentRate: { label: "jdc.segmentRate", percent: true, digits: 1 },
     doubleRate: { label: "jdc.doubleRate", percent: true, digits: 1 },
+    score: { label: "jdc.average", digits: 0 },
   };
   const metricOf = (key: string) => METRICS[key] ?? { label: "dpi.metric" as Key, digits: 1 };
   const metricFormat = (key: string) => (n: number) => `${num(n, metricOf(key).digits)}${metricOf(key).percent ? "%" : ""}`;
@@ -1175,6 +1254,11 @@
         }
         lastBackupAt = await lastBackup();
         if (startup.crashedLastTime) closedBadly = true;
+        restoredFrom = startup.restored ?? "";
+        if (startup.restoreError) {
+          log.error(`restore failed: ${startup.restoreError}`);
+          restoreError = startup.restoreError;
+        }
         await db.openDb();
         // Before the routines load, so a first start names its starter routine in this language.
         const lang = await db.getSetting("language");
@@ -1255,28 +1339,45 @@
   }}
 />
 
-{#snippet updatePanel()}
-  <h4>{t("updates.available", { v: updates.version })}</h4>
+{#snippet updateIcon(size: number)}
+  <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+    <path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.6l3.3-3.3 1.4 1.4-5.7 5.7-5.7-5.7 1.4-1.4 3.3 3.3V4a1 1 0 0 1 1-1ZM5 19h14v2H5z" />
+  </svg>
+{/snippet}
+
+<!-- The version on offer: its notes, then install, later or skip. `dialog` moves title and buttons into the dialog's own head and foot. -->
+{#snippet updatePanel(dialog: boolean)}
+  {#if !dialog}<h4>{t("updates.available", { v: updates.version })}</h4>{/if}
   {#if updates.notes}
     <div class="notes"><ReleaseNotes text={updates.notes} /></div>
-  {:else}
-    <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.notesOnline")}</a>
   {/if}
+  <p class="notes-link"><ExternalLink href={releasesUrl()} text={t("updates.notesOnline")} /></p>
   {#if updates.status === "available"}
     {#if updates.blocker}
       <p class="hint">{t(updates.blocker === "macos-not-installed" ? "updates.blockedMac" : "updates.blockedLinux")}</p>
-      <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.manual")}</a>
+      <p><ExternalLink href={releasesUrl()} text={t("updates.manual")} /></p>
     {:else}
-      <div class="row">
-        <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
-        <button class="ghost" onclick={later}>{t("updates.later")}</button>
-        <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
-      </div>
       {#if inRun}<p class="hint">{t("updates.notDuringTraining")}</p>{/if}
+      {#if dialog}
+        <div class="foot update-actions">
+          <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
+          <span class="spacer"></span>
+          <button class="ghost" onclick={later}>{t("updates.later")}</button>
+          <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
+        </div>
+      {:else}
+        <div class="row">
+          <button class="primary" disabled={inRun} onclick={installUpdate}>{t("updates.now")}</button>
+          <button class="ghost" onclick={later}>{t("updates.later")}</button>
+          <button class="ghost" onclick={skipVersion}>{t("updates.skip")}</button>
+        </div>
+      {/if}
     {/if}
   {:else}
-    <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
-    <p class="hint">{t(updates.status === "installing" ? "updates.installing" : "updates.downloading")}{updates.total ? ` ${Math.round((updates.done / updates.total) * 100)}%` : ""}</p>
+    <div class="update-progress">
+      <progress max={updates.total || undefined} value={updates.total ? updates.done : undefined}></progress>
+      <p class="hint">{t(updates.status === "installing" ? "updates.installing" : "updates.downloading")}{updates.total ? ` ${Math.round((updates.done / updates.total) * 100)}%` : ""}</p>
+    </div>
   {/if}
 {/snippet}
 
@@ -1292,15 +1393,16 @@
     <button class="tab" aria-current={view === "stats" ? "page" : undefined} onclick={() => go("stats")}>
       {t("nav.dpi")}
     </button>
+    <button class="tab" aria-current={view === "precision" ? "page" : undefined} onclick={() => go("precision")}>
+      {t("nav.precision")}
+    </button>
   </nav>
   {#if updates.channel === "preview"}
     <span class="preview-pill" title={t("developer.previewTitle")}>{t("developer.previewLabel")}</span>
   {/if}
   {#if updateAvailable()}
     <button class="update-btn" onclick={() => updateDialog?.showModal()} title={t("updates.badge")}>
-      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-        <path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.6l3.3-3.3 1.4 1.4-5.7 5.7-5.7-5.7 1.4-1.4 3.3 3.3V4a1 1 0 0 1 1-1ZM5 19h14v2H5z" />
-      </svg>
+      {@render updateIcon(16)}
       {t("updates.buttonLabel", { v: updates.version })}
     </button>
   {/if}
@@ -1411,6 +1513,12 @@
 {#if saveError}
   <p class="banner" role="alert">{saveError}</p>
 {/if}
+{#if shareNote}
+  <p class={shareNote.failed ? "banner" : "banner ok"} role={shareNote.failed ? "alert" : "status"}>
+    {shareNote.text}
+    <button class="link" onclick={() => (shareNote = null)}>{t("updates.dismiss")}</button>
+  </p>
+{/if}
 {#if updates.updatedTo}
   <p class="banner ok" role="status">
     {t("updates.updated", { v: updates.updatedTo })}
@@ -1422,6 +1530,19 @@
     {t("backup.failed", { msg: backupError })}
     <button class="link" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
     <button class="link" onclick={() => (backupError = "")}>{t("crash.dismiss")}</button>
+  </p>
+{/if}
+{#if restoredFrom}
+  <p class="banner ok" role="status">
+    {t("restore.done")}
+    <button class="link" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+    <button class="link" onclick={() => (restoredFrom = "")}>{t("updates.dismiss")}</button>
+  </p>
+{/if}
+{#if restoreError}
+  <p class="banner" role="alert">
+    {t("restore.startFailed", { msg: restoreError })}
+    <button class="link" onclick={() => (restoreError = "")}>{t("crash.dismiss")}</button>
   </p>
 {/if}
 {#if closedBadly}
@@ -1437,6 +1558,7 @@
   </div>
 {/if}
 <LogDialog bind:this={logDialog} />
+<RestoreDialog bind:this={restoreDialog} />
 
 <CrashToasts />
 
@@ -1456,7 +1578,10 @@
           {t("db.hintBefore")} <code>npm run tauri dev</code> {t("db.hintAfter")}
         </p>
       {/if}
-      <button type="button" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+      <div class="row">
+        <button type="button" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
+        <button type="button" onclick={() => restoreDialog?.open()}>{t("restore.open")}</button>
+      </div>
     </section>
   {:else if !ready}
     <!-- The loading screen covers the window, see below. -->
@@ -1611,9 +1736,9 @@
           {:else if updates.status === "error"}
             <p class="error" role="alert">{t("updates.error")}</p>
             <p class="hint">{updates.error}</p>
-            <a href={releasesUrl()} onclick={(e) => openExternal(e, releasesUrl())}>{t("updates.manual")}</a>
+            <p><ExternalLink href={releasesUrl()} text={t("updates.manual")} /></p>
           {:else if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
-            {@render updatePanel()}
+            {@render updatePanel(false)}
           {/if}
         </section>
 
@@ -1624,6 +1749,7 @@
           <div class="row">
             <button class="ghost" onclick={() => openFolder("backups")}>{t("backup.openFolder")}</button>
             <button class="ghost" disabled={inRun} onclick={exportData}>{t("export.button")}</button>
+            <button class="ghost" disabled={inRun} onclick={() => restoreDialog?.open()}>{t("restore.open")}</button>
           </div>
           <p class="hint">{t("export.hint")}</p>
           {#if exportNote}<p class={exportNote.failed ? "error" : "hint"} role="status">{exportNote.text}</p>{/if}
@@ -1710,7 +1836,7 @@
           <ul class="links">
             {#each [[GITHUB_URL, "about.github", "about.githubHint"], [ISSUES_URL, "about.issues", "about.issuesHint"], [AUTODARTS_URL, "about.autodarts", "about.autodartsHint"], [COFFEE_URL, "footer.coffee", "about.coffeeHint"]] as const as [url, label, hint]}
               <li>
-                <a href={url} onclick={(e) => openExternal(e, url)}>{t(label)}</a>
+                <ExternalLink href={url} text={t(label)} />
                 <span class="hint">{t(hint)}</span>
               </li>
             {/each}
@@ -1721,7 +1847,7 @@
           <h3 id="about-licenses">{t("about.licensesTitle")}</h3>
           <p>
             {t("about.license")}
-            <a href={LICENSE_URL} onclick={(e) => openExternal(e, LICENSE_URL)}>{t("about.licenseLink")}</a>
+            <ExternalLink href={LICENSE_URL} text={t("about.licenseLink")} />
           </p>
           <p class="hint">{t("about.thirdParty")}</p>
           <div class="row">
@@ -1949,6 +2075,8 @@
         </div>
       {/if}
     </section>
+  {:else if view === "precision"}
+    <Precision />
   {:else if view === "routines"}
     <section class="routines">
       <button class="back" onclick={() => go("train")}>
@@ -1965,6 +2093,11 @@
                 fill="currentColor"
                 d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"
               />
+            </svg>
+          </button>
+          <button class="icon" aria-label={t("share.export")} title={t("share.export")} onclick={() => exportRoutine(r)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path fill="currentColor" d="M12 3 7 8l1.4 1.4L11 6.8V16h2V6.8l2.6 2.6L17 8l-5-5ZM5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5h-2v5H7v-5H5Z" />
             </svg>
           </button>
           <span class="delete-wrap">
@@ -2018,13 +2151,21 @@
           {t("quick.name")}
         </button>
         <h2>{t("train.title")}</h2>
-        <button class="ghost small new" onclick={addRoutine}>
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
-          {t("routines.new")}
-        </button>
+        <div class="pick-actions">
+          <button class="ghost small" onclick={importRoutine} title={t("share.importHint")}>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path fill="currentColor" d="m12 16 5-5-1.4-1.4-2.6 2.6V3h-2v9.2L8.4 9.6 7 11l5 5Zm-7-2v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5h-2v5H7v-5H5Z" />
+            </svg>
+            {t("share.import")}
+          </button>
+          <button class="ghost small new" onclick={addRoutine}>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
+            {t("routines.new")}
+          </button>
+        </div>
       </div>
-      <RoutineCarousel {routines} bind:selectedId {lastPlayed} onstart={startRoutine} onedit={() => go("routines")} />
-      <AddGameDialog bind:this={quickDialog} quick onadd={startQuick} />
+      <RoutineCarousel {routines} bind:selectedId {lastPlayed} {offline} onstart={startRoutine} onedit={() => go("routines")} />
+      <AddGameDialog bind:this={quickDialog} quick {offline} onadd={startQuick} />
     </section>
   {:else if phase === "countdown" && run && item && def}
     <section class="countdown">
@@ -2165,7 +2306,7 @@
           {/if}
           <!-- Ends the turn by hand, e.g. one set on the board; empty boxes count as misses. -->
           {#if !paused}
-            <button class="icon next-turn" title={t("run.nextTurn")} aria-label={t("run.nextTurn")} onclick={() => session?.endTurn()}>
+            <button class="icon next-turn" title={t("run.nextTurn")} aria-label={t("run.nextTurn")} onclick={nextTurn}>
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
                 <path fill="currentColor" d="M3 11h11.2l-4.6-4.6L11 5l7 7-7 7-1.4-1.4 4.6-4.6H3zM19 5h2v14h-2z" />
               </svg>
@@ -2200,6 +2341,8 @@
           />
           {#if shot}
             <GameShot next={shot.next} moment={shotMoment} pulling={throwPhase === "takeoutInProgress"} />
+          {:else if roundEnd}
+            <RoundEndOverlay round={roundEnd} moment={shotMoment} pulling={throwPhase === "takeoutInProgress"} />
           {/if}
         </div>
       </div>
@@ -2464,18 +2607,26 @@
 <dialog
   class="confirm update-dialog"
   bind:this={updateDialog}
-  aria-label={t("updates.badge")}
+  aria-labelledby="update-title"
   onclick={(e) => {
     if (e.target === updateDialog) updateDialog?.close();
   }}
 >
-  <p class="hint">{t("updates.current", { v: __APP_VERSION__ })}</p>
-  {#if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
-    {@render updatePanel()}
-  {/if}
-  <div class="foot">
-    <button class="ghost" onclick={() => updateDialog?.close()}>{t("history.close")}</button>
+  <div class="update-head">
+    <span class="update-badge">{@render updateIcon(22)}</span>
+    <div>
+      <h3 id="update-title">{t("updates.available", { v: updates.version })}</h3>
+      <p class="hint">{t("updates.current", { v: __APP_VERSION__ })}</p>
+    </div>
+    <button class="close" aria-label={t("history.close")} title={t("history.close")} onclick={() => updateDialog?.close()}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
+      </svg>
+    </button>
   </div>
+  {#if updates.status === "available" || updates.status === "downloading" || updates.status === "installing"}
+    {@render updatePanel(true)}
+  {/if}
 </dialog>
 
 <dialog
@@ -2600,7 +2751,7 @@
           {/if}
         </svg>
       </button>
-      <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={resetBoard}>
+      <button class="icon" aria-label={t("board.reset")} title={t("board.reset")} disabled={!canReset} onclick={() => resetBoard()}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z" />
         </svg>
@@ -2831,13 +2982,14 @@
   /* The title stays centred over the carousel; "New routine" sits at the right edge. */
   .pick-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
   .pick-head h2 { grid-column: 2; margin: 0; text-align: center; }
-  .pick-head .new { grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 0.35rem; }
+  .pick-head .pick-actions { grid-column: 3; justify-self: end; display: flex; gap: 0.5rem; }
+  .pick-actions button { display: inline-flex; align-items: center; gap: 0.35rem; }
   .pick-head .quick { grid-column: 1; grid-row: 1; justify-self: start; display: inline-flex; align-items: center; gap: 0.35rem; }
   @media (max-width: 640px) {
     .pick-head { grid-template-columns: 1fr auto auto; }
     .pick-head h2 { grid-column: 1; text-align: left; }
     .pick-head .quick { grid-column: 2; }
-    .pick-head .new { grid-column: 3; }
+    .pick-head .pick-actions { grid-column: 3; }
   }
   /* Shared form controls and buttons, also used by components in lib/. */
   :global {
@@ -3037,9 +3189,43 @@
 
   button.icon { position: relative; }
   .banner.ok { background: #1f4a2c; color: #d8f5e0; }
-  .notes { max-height: 16rem; overflow: auto; background: var(--panel); padding: 0.2rem 0.8rem 0.6rem; border-radius: 6px; }
-  .update-dialog { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 4rem); overflow-y: auto; }
+  /* Release notes: a recessed card, darker than the panel around it, scrolling on its own. */
+  .notes {
+    max-height: 16rem;
+    overflow: auto;
+    margin: 0.75rem 0 0;
+    padding: 0.1rem 1rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+    scrollbar-color: var(--line) transparent;
+  }
+  .notes-link { margin: 0.6rem 0 0; font-size: 0.9rem; }
+  .update-progress { margin-top: 1.25rem; }
+  .update-progress progress { accent-color: var(--accent); }
+  .update-progress .hint { margin: 0.4rem 0 0; }
+  .update-dialog { width: min(36rem, calc(100vw - 2rem)); max-height: calc(100vh - 4rem); overflow-y: auto; padding: 1.5rem 1.75rem; }
   .update-dialog .notes { max-height: 50vh; }
+  .update-head { display: flex; align-items: flex-start; gap: 0.9rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+  .update-head > div { flex: 1; min-width: 0; }
+  .update-head h3 { margin: 0.1rem 0 0.15rem; font-size: 1.2rem; }
+  .update-head .hint { margin: 0; }
+  .update-badge {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    background: rgb(34 211 238 / 0.14);
+    color: var(--accent);
+  }
+  .update-head .close { flex: none; display: grid; place-items: center; margin: -0.25rem -0.5rem 0 0; padding: 0.35rem; border: 0; border-radius: 50%; background: none; color: var(--dim); cursor: pointer; }
+  .update-head .close:hover { background: var(--line); color: var(--chalk); }
+  .update-dialog .notes-link { margin-bottom: 0; }
+  .update-actions { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .update-actions .spacer { flex: 1; }
   /* In the top navigation, so a new version is hard to miss; a click opens the notes. */
   .update-btn {
     display: inline-flex;
@@ -3089,8 +3275,6 @@
   .links { margin: 0; padding: 0; list-style: none; }
   .links li { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
   .links li:last-child { border-bottom: 0; padding-bottom: 0; }
-  .about a { color: var(--accent); font-weight: 600; text-decoration: none; }
-  .about a:hover { text-decoration: underline; }
   .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
   .group { padding: 1.25rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
   .group.wide { grid-column: 1 / -1; }

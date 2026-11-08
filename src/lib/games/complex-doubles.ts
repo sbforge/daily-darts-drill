@@ -105,6 +105,8 @@ export const complexDoubles: GameDef = {
     return t("complexDoubles.goal");
   },
   needsDarts: true,
+  // The doubles of a visit follow from the rules; set-up darts have no target on the board, so they don't count.
+  fixedTargets: true,
   hasResult: true,
   defaultMinutes: 5,
   defaultSettings: { double: 20 },
