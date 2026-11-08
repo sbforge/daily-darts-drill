@@ -17,6 +17,10 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-11-08
+
+See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.
+
 ### Added
 - **Restore a backup in the app.** Settings → Your data → *Restore a backup…* lists your backups (the daily ones, the ones before an update or before *Erase all data*), or you choose a file you exported. D³ checks the file, saves your current data first and restarts with the backup. If you change your mind, restore the copy marked *Before a restore* the same way. A backup from a newer version of D³ is refused, so nothing breaks.
 - **Share your routines.** In the routine editor, the new export icon saves the routine as a file. Pass it on to a friend or your club: *Import* on the start page adds it to their D³, and the routine opens so they can check it. Only the routine is in the file, never your results. A game the other D³ doesn't know yet is left out, and D³ says so.
