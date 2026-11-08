@@ -2337,13 +2337,14 @@
         <!-- While a dart is corrected: the fields next to the one it counted, one click each, or a click on the board. -->
         <div class="pick-hint" class:show={session.edit !== null}>
           {#if fixes.length}
-            <span class="quick" role="group" aria-label={t("run.quickAria")}>
+            <span class="quickfix" role="group" aria-label={t("run.quickAria")}>
               {#each fixes as f (dartLabel(f) + (f.zone ?? ""))}
                 <button class="chip" onclick={() => session?.correct(f)}>{dartLabel(f)}</button>
               {/each}
             </span>
           {/if}
-          <span class="pick-text" aria-live="polite">
+          <!-- With buttons the hint is for screen readers only: the row belongs to the buttons. -->
+          <span class="pick-text" class:sr-only={fixes.length > 0} aria-live="polite">
             {session.edit !== null ? t(fixes.length ? "run.quickHint" : "run.pickHint", { n: session.edit + 1 }) : ""}
           </span>
         </div>
@@ -3475,12 +3476,13 @@
   .dart-box.closed { color: #ff6b5b; opacity: 0.55; border-style: dashed; font-size: 1.2rem; }
   .dart-box.editing { opacity: 1; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgb(34 211 238 / 0.25); }
   /* Always takes its height, so the board doesn't jump when a correction starts. */
-  .pick-hint { max-width: 400px; width: 100%; height: 2rem; margin: -0.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.6rem; overflow: hidden; color: var(--accent); font-size: 0.9rem; white-space: nowrap; visibility: hidden; }
+  .pick-hint { max-width: 400px; width: 100%; height: 2.6rem; margin: -0.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.6rem; overflow: hidden; color: var(--accent); font-size: 0.9rem; white-space: nowrap; visibility: hidden; }
   .pick-hint.show { visibility: visible; }
   .pick-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .quick { display: flex; gap: 0.35rem; flex: none; }
-  .quick .chip { appearance: none; min-width: 2.6rem; padding: 0.2rem 0.5rem; border: 1px solid var(--accent); border-radius: 999px; background: rgb(34 211 238 / 0.1); color: var(--chalk); font: inherit; font-weight: 700; line-height: 1.3; cursor: pointer; }
-  .quick .chip:hover, .quick .chip:focus-visible { background: rgb(34 211 238 / 0.25); }
+  /* Up to six buttons share the row under the dart boxes; they shrink with a narrow board, never cover it. */
+  .quickfix { display: flex; justify-content: center; gap: 0.4rem; width: 100%; height: 100%; }
+  .quickfix .chip { appearance: none; flex: 1 1 0; min-width: 0; max-width: 5rem; padding: 0 0.3rem; border: 1px solid var(--accent); border-radius: 8px; background: rgb(34 211 238 / 0.1); color: var(--chalk); font: inherit; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+  .quickfix .chip:hover, .quickfix .chip:focus-visible { background: rgb(34 211 238 / 0.25); }
 
   /* ------------------------------------------------------------------------------------------------
      Nothing scrolls inside a routine (countdown, game, break): main.fit is exactly as high as the window
@@ -3511,14 +3513,14 @@
   /* The board takes what's left of its column: the dart boxes above it keep their fixed height. */
   main.fit .views {
     /* The padding (3.6rem a side) leaves room beside the dart boxes for the phase icon and the next-turn button. */
-    --bs: min(100cqw, calc(100cqh - 6.4rem), 800px);
+    --bs: min(100cqw, calc(100cqh - 7rem), 800px);
     container-type: size;
     min-height: 0;
     justify-content: center;
     gap: 0.5rem;
   }
   main.fit .board, main.fit .darts, main.fit .pick-hint { width: var(--bs); max-width: none; }
-  main.fit .pick-hint { height: 2rem; margin: 0; }
+  main.fit .pick-hint { height: 2.6rem; margin: 0; }
 
   /* The left panel: sizes follow its own height, with floors so text stays readable. */
   main.fit .stage .panel { container-type: size; min-height: 0; justify-content: center; }

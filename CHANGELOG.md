@@ -18,7 +18,8 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 ## [Unreleased]
 
 ### Added
-- **Correct a dart with one click.** Mostly the cameras are off by a few millimetres only, so the right field is right next to the one counted. When you click a dart box to correct it, buttons with the fields next to it appear: for a single the treble and double of the number, for a double the single and treble, for a treble the single and double, and the same field of the two numbers beside it (for S20 also S5 and S1). One click and the dart is corrected. Anything else you still click on the board.
+- **Correct a dart with one click.** Mostly the cameras are off by a few millimetres only, so the right field is right next to the one counted. When you click a dart box to correct it, buttons with the fields touching it appear under the dart boxes: for S20 for example T20, D20, S5 and S1, for T20 S20, T5, T1, S5 and S1, for D20 S20, a miss, D5, D1, S5 and S1. One click and the dart is corrected. Anything further away you still click on the board.
+- **Misses beside a number.** A dart that lands off the board now shows where, as in Autodarts: M4 is a miss beside the 4. Correcting it offers D4 and S4 and the doubles and singles beside them.
 
 ## [0.9.8] - 2026-11-08
 

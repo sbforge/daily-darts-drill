@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Dart } from "./autodarts";
+import { dartLabel, missSegment } from "./autodarts";
 import { neighbours, quickFixes } from "./quickfix";
 
 const dart = (over: Partial<Dart>): Dart => ({
@@ -16,6 +17,11 @@ const dart = (over: Partial<Dart>): Dart => ({
   ...over,
 });
 const labels = (d: Dart) => quickFixes(d).map((f) => `${f.kind}:${f.number ?? ""}:${f.zone ?? ""}:${f.score}`);
+/** A miss seen just off the board at an angle (degrees clockwise from the top). */
+const missAt = (deg: number, over: Partial<Dart> = {}) => {
+  const a = (deg * Math.PI) / 180;
+  return dart({ kind: "miss", number: null, zone: null, score: 0, x: 1.05 * Math.sin(a), y: 1.05 * Math.cos(a), radius: 1.05, ...over });
+};
 
 describe("neighbours", () => {
   it("left one first, as on the board", () => {
@@ -27,25 +33,66 @@ describe("neighbours", () => {
   });
 });
 
-describe("quick fixes", () => {
-  it("a single: the triple and double of the number, the single beside it", () => {
+describe("quick fixes: the fields touching the one counted", () => {
+  it("an outer single: treble and double of the number, the singles beside it", () => {
     expect(labels(dart({}))).toEqual(["triple:20::60", "double:20::40", "single:5:outer:5", "single:1:outer:1"]);
-    expect(labels(dart({ zone: "inner", radius: 0.3 }))).toEqual(["triple:20::60", "double:20::40", "single:5:inner:5", "single:1:inner:1"]);
   });
-  it("a double: the single and triple of the number, the doubles beside it", () => {
-    expect(labels(dart({ kind: "double", zone: null, score: 40 }))).toEqual(["single:20:outer:20", "triple:20::60", "double:5::10", "double:1::2"]);
+  it("an inner single: treble of the number, the 25, the singles beside it", () => {
+    expect(labels(dart({ zone: "inner", radius: 0.3 }))).toEqual(["triple:20::60", "outerBull:::25", "single:5:inner:5", "single:1:inner:1"]);
   });
-  it("a triple: the single on the dart's side, the double, the triples beside it", () => {
-    expect(labels(dart({ kind: "triple", zone: null, score: 60, radius: 0.59 }))[0]).toBe("single:20:inner:20");
-    expect(labels(dart({ kind: "triple", zone: null, score: 60, radius: 0.62 }))).toEqual(["single:20:outer:20", "double:20::40", "triple:5::15", "triple:1::3"]);
+  it("a treble: the single on the dart's side, the trebles and singles beside it, no double", () => {
+    expect(labels(dart({ kind: "triple", zone: null, score: 60, radius: 0.62 }))).toEqual([
+      "single:20:outer:20",
+      "triple:5::15",
+      "triple:1::3",
+      "single:5:outer:5",
+      "single:1:outer:1",
+    ]);
+    expect(labels(dart({ kind: "triple", zone: null, score: 60, radius: 0.59 }))).toEqual([
+      "single:20:inner:20",
+      "triple:5::15",
+      "triple:1::3",
+      "single:5:inner:5",
+      "single:1:inner:1",
+    ]);
   });
-  it("the bulls swap, a miss has none", () => {
+  it("a double: the single, a miss, the doubles and singles beside it, no treble", () => {
+    expect(labels(dart({ kind: "double", zone: null, score: 40, radius: 0.97 }))).toEqual([
+      "single:20:outer:20",
+      "miss:::0",
+      "double:5::10",
+      "double:1::2",
+      "single:5:outer:5",
+      "single:1:outer:1",
+    ]);
+  });
+  it("a miss beside the 4 (M4): double and single of the 4, the doubles and singles beside it", () => {
+    expect(labels(missAt(54))).toEqual(["double:4::8", "single:4:outer:4", "double:18::36", "double:13::26", "single:18:outer:18", "single:13:outer:13"]);
+  });
+  it("a miss without a spot of its own has none", () => {
+    expect(quickFixes(missAt(54, { method: "manual" }))).toEqual([]);
+    expect(quickFixes(missAt(54, { x: 0, y: 0, radius: 0 }))).toEqual([]);
+    expect(quickFixes(missAt(54, { failed: true }))).toEqual([]);
+  });
+  it("the bulls swap", () => {
     expect(labels(dart({ kind: "bull", number: null, zone: null, score: 50 }))).toEqual(["outerBull:::25"]);
     expect(labels(dart({ kind: "outerBull", number: null, zone: null, score: 25 }))).toEqual(["bull:::50"]);
-    expect(quickFixes(dart({ kind: "miss", number: null, zone: null, score: 0 }))).toEqual([]);
   });
   it("keeps the spot, marked as set by hand", () => {
     const [f] = quickFixes(dart({ x: 0.02, y: 0.61, radius: 0.61 }));
     expect(f).toMatchObject({ x: 0.02, y: 0.61, radius: 0.61, method: "manual", bouncer: false, failed: false });
+  });
+});
+
+describe("misses beside a number", () => {
+  it("are named after it, like Autodarts does", () => {
+    expect(missSegment(missAt(54))).toBe(4);
+    expect(missSegment(missAt(180))).toBe(3);
+    expect(missSegment(missAt(-18))).toBe(5);
+    expect(dartLabel(missAt(54))).toBe("M4");
+  });
+  it("a miss set by hand stays a plain miss", () => {
+    expect(missSegment(missAt(54, { method: "manual" }))).toBeNull();
+    expect(dartLabel(missAt(54, { method: "manual" }))).not.toBe("M4");
   });
 });
