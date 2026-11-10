@@ -30,4 +30,4 @@ src-tauri/target
 src-tauri/gen
 
 # tools/screenshot output
-screenshots
+/screenshots

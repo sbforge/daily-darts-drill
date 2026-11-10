@@ -31,6 +31,15 @@ with `?reset` to start empty). Good for clicking through screens; without a boar
 "Connecting…", and what only Tauri can do (backups, file dialogs, updates) does nothing. The mock is only injected by
 that dev server, never into a build.
 
+### The README screenshots
+
+`node tools/screenshot/readme.mjs generate` builds six weeks of training in a fresh database (`screenshots/demo.db`,
+about 20 minutes): a simulated player (`player.mjs`) throws at a fake Autodarts client (`tools/preview/fake-board.mjs`,
+websocket and REST on port 3180) through the app's own screens, aims at what the app highlights, finds its own
+checkouts and gets a little better every week. Playwright's clock puts each session on its own day.
+`D3_VERSION=1.0.0 node tools/screenshot/readme.mjs shoot` then takes every picture in `docs/screenshots` from that
+database, showing the version you pass. Both are seeded, so a run gives the same pictures again.
+
 ### Screenshots without the app
 
 `node tools/screenshot/shoot.mjs [out dir] [--lang de-DE] [--scale 2] [--db file.db]` starts a Vite dev server, opens

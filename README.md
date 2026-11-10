@@ -4,7 +4,8 @@
 
 D³ is a desktop app for structured, daily darts practice. You put together a training routine from a set of
 drills, give every drill a time cap, and throw. An automatic scoring system counts every dart, and D³ turns
-the results into a performance index that shows whether your training is paying off.
+the results into a performance index that shows whether your training is paying off, and into a precision view
+that shows where your darts land around the field you aimed at.
 
 ![The D³ loading screen](docs/screenshots/loading.png)
 
@@ -46,7 +47,7 @@ the file (name, description, break, the games and their settings), none of your 
 
 | Routine | What is in it |
 |---|---|
-| **Everyday Drill** (about 77 min) | Warmup, Clockwork, Double Trouble and Plan B on D20, D16 and D18, Ton Machine, Checkout Ladder, finishing with four real legs of Solo Leg. |
+| **Everyday Drill** (about 80 min) | Warmup, Clockwork, Double Trouble and Plan B on D20, D16 and D18, Ton Machine, Checkout Ladder, finishing with four real legs of Solo Leg. |
 | **Intense Doubles** (about 45 min) | Warmup, Bull-X, Double Trouble and Plan B on D20 and D16, and one round of Bob's 27. |
 
 ![Picking a routine](docs/screenshots/training.png)
@@ -80,28 +81,60 @@ The games so far:
 ### Live board
 
 While you play, D³ shows every dart on the board as it lands, with the score of the current turn and the
-game's numbers next to it. Corrections in the autoscorer are picked up. Pause, skip a game or stop at any time.
+game's numbers next to it. A dart that misses the board shows where, as in Autodarts: M4 is a miss beside the 4.
+Pause, skip a game or stop at any time; the button beside the dart boxes ends a turn early and clears the board in
+Autodarts as well.
 
 ![A Solo Leg in progress: match and leg average side by side](docs/screenshots/game.png)
 
+**Correcting a dart:** corrections in Autodarts are picked up, and you can correct a dart in D³ too. Click its dart
+box: the fields touching the one counted appear as buttons under the dart boxes (for S20 that is T20, D20, S1 and
+S5), because the cameras are mostly off by a few millimetres only. One click and the dart is corrected. Anything
+further away you click on the board; a light ring around it marks where a click counts as a miss.
+
+![Correcting a dart: the fields next to it, one click each](docs/screenshots/correct.png)
+
 **Game shot:** in the games you check out in (Solo Leg, Big Fish, Checkout Ladder, Catch 40, Wild Card), a checkout
 locks the board until you pull your darts. Darts thrown after a checkout or a bust don't count and aren't shown;
-the next leg or checkout starts after the takeout.
+the next leg or checkout starts after the takeout. The JDC Challenge does the same at the end of each round and
+shows the round's result over the board: the points, the three parts, your Shanghais and the doubles you hit.
 
 ![Game shot: the board is locked until the darts are pulled](docs/screenshots/game-shot.png)
 
-### Performance index
+**Counting the score:** in the games that count a rest down, the rest changes when your visit is over, as in a
+match where nobody does the sums for you. Settings → Playing switches to counting after every dart. A bust or a
+checkout always shows at once.
+
+### Performance
 
 The **D³ Performance Index (DPI)** rates every result from 0 to 100 against a target per game: 100 means you
 reached the target, not that you were perfect. The overall index combines your games. For any period you get
 your level, the trend against the period before, and the chart over time.
 
-![The overall index](docs/screenshots/statistics.png)
+![The overall index](docs/screenshots/performance.png)
 
 Each game has its own index, and the chart switches between the index and the game's own values,
-like the 3-dart average.
+like the 3-dart average. How many results each comparison uses is up to you: Settings → Performance.
 
-![The index per game](docs/screenshots/statistics-game.png)
+![The index per game](docs/screenshots/performance-game.png)
+
+### Precision
+
+How close do you land to the centre of the field you aimed at? The Precision tab measures it for every dart thrown
+at a target the game fixes: Clockwork, the doubles games, Bob's 27, Bull-X and the doubles of the JDC Challenge. It
+shows the average distance in mm, your tendency (e.g. "3 mm low · 1 mm left"), how widely you scatter and how often
+you were in the field, with a short line on what each of them means and a box that sums up what to work on.
+Nothing needs to be set up: every game you have played counts.
+
+![Precision over all fields](docs/screenshots/precision.png)
+
+Pick all fields, a kind of field (all doubles, all trebles, …) or a single field such as D16: it is drawn zoomed
+in, with every dart on it and your average point. Tick *Compare with another period* to see two periods side by
+side. A dart more than 8 cm from the centre of its field wasn't really thrown at it and is left out, and so is a
+dart you set or corrected by hand. Below 30 darts on a field D³ shows the figures, but says how many darts are
+still missing for a reliable suggestion.
+
+![Precision on one double: every dart and the average point](docs/screenshots/precision-field.png)
 
 ### History
 
@@ -115,8 +148,10 @@ with its result. Deleting a session updates the index, so D³ asks first.
 ### Settings
 
 D³ finds your autoscorer in the local network by itself. You can also search for it, or enter the address by
-hand. The connection card shows whether the detection is running, and the footer lets you start and stop the
-detection, reset the board and calibrate the cameras without leaving D³. The app speaks English and German.
+hand. The connection card shows whether the detection is running and the last darts it saw, and the footer lets
+you start and stop the detection, reset the board and calibrate the cameras without leaving D³. A routine or quick
+game that counts darts only starts while D³ is connected. Below the connection: the language (English and German),
+animations, how the score is counted, and how many results each Performance comparison uses.
 
 ![The settings](docs/screenshots/settings.png)
 
@@ -139,11 +174,15 @@ You decide when to install it, never during a routine. The check reads one small
 GitHub project and sends nothing about you; you can switch it off in the settings, the manual button always
 works. Updates are signed, so only versions from this project install. Your data is backed up before the update.
 
+Want to try new versions before they are released? Settings → Developer → developer mode lets you pick the
+*Preview* channel, which also offers beta versions. Only do this if you don't mind rough edges: a beta can still
+have mistakes and may change your data so that released versions can't read it any more.
+
 ## Supported autoscorers
 
 | System | Status |
 |---|---|
-| [Autodarts](https://autodarts.io) | ✅ Supported |
+| [Autodarts](https://autodarts.com) | ✅ Supported |
 
 D³ talks to the **Autodarts client** in your local network (port `3180` by default): it reads the live event
 stream (`ws://<host>:3180/api/events/system`) and uses its local API to start and stop the detection, reset
@@ -165,7 +204,7 @@ D³ runs on **Windows, macOS and Linux**. Download the file for your system from
 | macOS, Intel | `Daily Darts Drill_<version>_x64.dmg` |
 | Linux (x86-64) | `Daily Darts Drill_<version>_amd64.AppImage` (updates itself) or `…_amd64.deb` (updated by hand) |
 
-You also need an [Autodarts](https://autodarts.io) board whose client runs in the same network (see
+You also need an [Autodarts](https://autodarts.com) board whose client runs in the same network (see
 [Supported autoscorers](#supported-autoscorers)).
 
 The installers are not signed with a paid certificate, so your system warns you the first time:
