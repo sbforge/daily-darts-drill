@@ -17,6 +17,10 @@ Add entries under `[Unreleased]` while you work. To release, rename that heading
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-10
+
+Version 1.0: D³ is ready for your daily training. This last round makes correcting a dart a single click, shows where a miss landed, and makes the Precision figures more reliable.
+
 ### Added
 - **Correct a dart with one click.** Mostly the cameras are off by a few millimetres only, so the right field is right next to the one counted. When you click a dart box to correct it, buttons with the fields touching it appear under the dart boxes: for S20 for example T20, D20, S1 and S5, for T20 S20, T1, S1, T5 and S5, for D20 S20, a miss, D1, S1, D5 and S5. The number counted comes first, then the numbers beside it. One click and the dart is corrected. Anything further away you still click on the board.
 - **Misses beside a number.** A dart that lands off the board now shows where, as in Autodarts: M4 is a miss beside the 4. Correcting it offers D4 and S4, then the double and single of the 13 and the 18 beside it.
@@ -167,7 +171,10 @@ offers new versions in the app.
 ### Changed
 - Games in a routine no longer need a time cap, and breaks are 15 seconds.
 
-[Unreleased]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.6...HEAD
+[Unreleased]: https://github.com/sbforge/daily-darts-drill/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.8...v1.0.0
+[0.9.8]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.7...v0.9.8
+[0.9.7]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.6...v0.9.7
 [0.9.6]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.5...v0.9.6
 [0.9.5]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/sbforge/daily-darts-drill/compare/v0.9.3...v0.9.4
