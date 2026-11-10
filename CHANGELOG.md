@@ -34,6 +34,9 @@ Version 1.0: D³ is ready for your daily training. This last round makes correct
 - **Autodarts link.** The link to Autodarts under About now opens autodarts.com, its new address.
 - **Performance settings further up.** In the settings, Performance (how many results each comparison uses) now sits right next to Playing, instead of near the bottom.
 
+### Security
+- **Restoring a file from elsewhere.** When you restore a file that isn't one of D³'s own backups, D³ now only takes that one file, never a second file lying next to it. A crafted pair of files could otherwise have made the database engine show leftover memory. Your exports are single files, so restoring them works as before.
+
 ## [0.9.8] - 2026-11-08
 
 See how precisely you throw, restore a backup in the app and share your routines. The JDC Challenge now follows its real rules.
