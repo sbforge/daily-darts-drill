@@ -99,9 +99,21 @@ fn schema_version(db: &Path) -> Result<Option<i64>, StageError> {
         .map_err(io)
 }
 
-/// Copies `source` (and its `-wal` file, if there is one) into `restore-pending/` and checks the copy: a SQLite file
-/// with D³'s migrations, none newer than `known` (the newest migration of this version). The copy is opened, not the
-/// source, so a backup is never changed. A failed check removes the copy again.
+/// Whether `source` lies in D³'s own backup folder, i.e. D³ wrote it (and its `-wal` file) itself.
+fn in_backups(config: &Path, source: &Path) -> bool {
+    match (fs::canonicalize(backups_dir(config)), fs::canonicalize(source)) {
+        (Ok(dir), Ok(file)) => file.starts_with(dir),
+        _ => false,
+    }
+}
+
+/// Copies `source` into `restore-pending/` and checks the copy: a SQLite file with D³'s migrations, none newer than
+/// `known` (the newest migration of this version). The copy is opened, not the source, so a backup is never changed.
+/// A failed check removes the copy again.
+///
+/// The `-wal` file next to it comes along only for D³'s own backups (a daily backup copies both). A file from anywhere
+/// else is opened on its own: an export is always a single file (`VACUUM INTO`), and SQLite before 3.54 can return
+/// stale memory for a crafted database with a crafted `-wal` (RUSTSEC-2026-0459), so an outside pair is never opened.
 pub fn stage(config: &Path, source: &Path, known: i64) -> Result<(), StageError> {
     let mut header = [0u8; 16];
     {
@@ -117,7 +129,7 @@ pub fn stage(config: &Path, source: &Path, known: i64) -> Result<(), StageError>
     let result = (|| {
         fs::copy(source, pending.join(DB_FILE)).map_err(io)?;
         let wal = PathBuf::from(format!("{}-wal", source.display()));
-        if wal.exists() {
+        if wal.exists() && in_backups(config, source) {
             fs::copy(&wal, pending.join(format!("{DB_FILE}-wal"))).map_err(io)?;
         }
         match schema_version(&pending.join(DB_FILE))? {
@@ -209,6 +221,24 @@ mod tests {
         assert!(!pending_dir(&config).exists());
         assert_eq!(apply_pending(&config).unwrap(), None, "only once");
         assert_eq!(list(&config).iter().filter(|e| e.kind == "restore").count(), 1);
+    }
+
+    #[test]
+    fn takes_the_wal_file_only_from_its_own_backups() {
+        let config = temp("wal");
+        let outside = config.join("from-a-friend.db");
+        make_db(&outside, 1, "outside");
+        fs::write(config.join("from-a-friend.db-wal"), b"not ours").unwrap();
+        stage(&config, &outside, 1).unwrap();
+        assert!(!pending_dir(&config).join(format!("{DB_FILE}-wal")).exists(), "an outside -wal stays where it is");
+        discard(&config);
+
+        let daily = backups_dir(&config).join("2026-11-10");
+        fs::create_dir_all(&daily).unwrap();
+        make_db(&daily.join(DB_FILE), 1, "daily");
+        fs::write(daily.join(format!("{DB_FILE}-wal")), b"").unwrap();
+        stage(&config, &daily.join(DB_FILE), 1).unwrap();
+        assert!(pending_dir(&config).join(format!("{DB_FILE}-wal")).exists(), "a backup keeps its -wal");
     }
 
     #[test]

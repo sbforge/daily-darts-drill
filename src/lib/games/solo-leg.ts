@@ -114,7 +114,7 @@ export const soloLeg: GameDef = {
       lines: [
         // The panel while playing: both averages side by side, then the best leg and the highest finish.
         { key: "average", label: t("solo.matchAverage"), value: num(avg, 1), hero: true },
-        { key: "legAverage", label: t("solo.legAverage"), value: legAvg === null ? t("game.noneYet") : num(legAvg, 1), hero: true, liveOnly: true },
+        { key: "legAverage", label: t("solo.legAverage"), value: num(legAvg ?? 0, 1), hero: true, liveOnly: true },
         { key: "bestLeg", label: t("solo.bestLeg"), value: bestLeg ? String(bestLeg) : t("game.noneYet") },
         { key: "highestCheckout", label: t("solo.highestFinish"), value: highest ? String(highest) : t("game.noneYet") },
         // Saved and in the result screen, but not on the panel while playing.

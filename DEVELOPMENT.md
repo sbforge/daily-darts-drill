@@ -15,6 +15,40 @@ Built with Tauri 2, Svelte 5, TypeScript and Rust. Runs on Windows, macOS and Li
 
 The app must run inside Tauri (`npm run tauri dev`): the database only exists there.
 
+### A fresh Linux machine without root
+
+`scripts/setup-dev.sh` sets up a bare Debian or Ubuntu machine (a cloud session, say) without sudo: Node 22, Rust, the
+libraries Tauri links against, fonts, and Playwright with Chromium, all under `~/.local` and `~/.cargo`. Run it once,
+then `. ~/.d3-dev-env` in every new shell. After that the whole CI check runs (`npm test`, `npm run check`,
+`npm run build`, `cargo test`), and `npx tauri build --no-bundle` builds the binary. Running it again skips what is
+already there.
+
+### The app in a browser
+
+`npm run dev:browser` serves the frontend for a normal browser (port 1420): `tools/preview/mock.js` stands in for
+Tauri inside the page, with the same sql.js database as below, kept in the browser's localStorage (open the page
+with `?reset` to start empty). Good for clicking through screens; without a board the status stays on
+"Connecting…", and what only Tauri can do (backups, file dialogs, updates) does nothing. The mock is only injected by
+that dev server, never into a build.
+
+### The README screenshots
+
+`node tools/screenshot/readme.mjs generate` builds six weeks of training in a fresh database (`screenshots/demo.db`,
+about 20 minutes): a simulated player (`player.mjs`) throws at a fake Autodarts client (`tools/preview/fake-board.mjs`,
+websocket and REST on port 3180) through the app's own screens, aims at what the app highlights, finds its own
+checkouts and gets a little better every week. Playwright's clock puts each session on its own day.
+`D3_VERSION=1.0.0 node tools/screenshot/readme.mjs shoot` then takes every picture in `docs/screenshots` from that
+database, showing the version you pass. Both are seeded, so a run gives the same pictures again.
+
+### Screenshots without the app
+
+`node tools/screenshot/shoot.mjs [out dir] [--lang de-DE] [--scale 2] [--db file.db]` starts a Vite dev server, opens
+the frontend in headless Chromium and saves one screenshot per tab (default: `screenshots/`, ignored by git). A fake
+Tauri backend (`tools/screenshot/d3mock.mjs`) stands in for the real one: the database is sql.js with the real
+migrations, so `db.ts` runs unchanged; `--db` starts from a copy of a saved database instead of an empty one. For other
+screens or seeded data, use `openApp()` from `d3mock.mjs` in a script of your own. Not covered: the Autodarts board
+(the status stays on "Connecting…") and WebKitGTK's own rendering, so check the real app before a release.
+
 ## Where things live
 
 - `src/App.svelte`: the screens (training, history, statistics, settings, about)

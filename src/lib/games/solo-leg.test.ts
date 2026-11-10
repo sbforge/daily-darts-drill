@@ -77,9 +77,9 @@ describe("Solo Leg", () => {
     expect(line(r, "legAverage")).toBe("60.0");
     expect(r.values.average).toBeCloseTo(((501 + 60) / 12) * 3);
     expect(r.values.bestLegAverage).toBeCloseTo(167);
-    // During the Game shot the leg just won is shown; after the takeout the new leg has none yet.
+    // During the Game shot the leg just won is shown; after the takeout the new leg starts at 0.0.
     expect(line(play(NINE, {}, true), "legAverage")).toBe("167.0");
-    expect(line(play(NINE), "legAverage")).not.toMatch(/\d/);
+    expect(line(play(NINE), "legAverage")).toBe("0.0");
   });
   it("a bust counts its darts but no points in the leg average", () => {
     const r = play("T20 T20 T20 | T20 T20 T20 | T20 T20 T20 | S1", {}, true);

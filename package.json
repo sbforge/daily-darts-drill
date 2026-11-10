@@ -1,10 +1,11 @@
 {
   "name": "dart-trainer",
   "private": true,
-  "version": "0.9.8",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:browser": "vite --config tools/preview/vite.config.ts",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
