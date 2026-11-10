@@ -1714,6 +1714,16 @@
           <p class="hint">{t("settings.countingHint")}</p>
         </section>
 
+        <!-- Next to Playing: used often, so it sits high up. -->
+        <section class="group" aria-labelledby="stats-title">
+          <h3 id="stats-title">{t("settings.statsTitle")}</h3>
+          <label>
+            {t("settings.sample")}
+            <input class="short" type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
+          </label>
+          <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
+        </section>
+
         <section class="group wide" aria-labelledby="updates-title">
           <h3 id="updates-title">{t("updates.title")}</h3>
           <p>
@@ -1768,15 +1778,6 @@
             <button class="ghost" onclick={restoreBuiltins}>{t("builtin.restore")}</button>
           </div>
           {#if restoreNote}<p class="hint" role="status">{restoreNote}</p>{/if}
-        </section>
-
-        <section class="group" aria-labelledby="stats-title">
-          <h3 id="stats-title">{t("settings.statsTitle")}</h3>
-          <label>
-            {t("settings.sample")}
-            <input class="short" type="number" min="1" max={MAX_SAMPLE} value={statsSample} oninput={changeSample} />
-          </label>
-          <p class="hint">{t("settings.sampleHint", { n: statsSample })}</p>
         </section>
 
         <!-- Always the last group: the one button that can't be taken back. -->
