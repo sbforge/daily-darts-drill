@@ -23,6 +23,14 @@ then `. ~/.d3-dev-env` in every new shell. After that the whole CI check runs (`
 `npm run build`, `cargo test`), and `npx tauri build --no-bundle` builds the binary. Running it again skips what is
 already there.
 
+### The app in a browser
+
+`npm run dev:browser` serves the frontend for a normal browser (port 1420): `tools/preview/mock.js` stands in for
+Tauri inside the page, with the same sql.js database as below, kept in the browser's localStorage (open the page
+with `?reset` to start empty). Good for clicking through screens; without a board the status stays on
+"Connecting…", and what only Tauri can do (backups, file dialogs, updates) does nothing. The mock is only injected by
+that dev server, never into a build.
+
 ### Screenshots without the app
 
 `node tools/screenshot/shoot.mjs [out dir] [--lang de-DE] [--scale 2] [--db file.db]` starts a Vite dev server, opens

@@ -9,6 +9,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { defaultCommands, sqlCommand } from "../preview/commands.js";
 
 export const REPO = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -28,21 +29,7 @@ function load(name) {
 const { chromium } = load("playwright");
 const initSqlJs = load("sql.js");
 
-const version = () => JSON.parse(readFileSync(join(REPO, "package.json"), "utf8")).version;
-
-/** Answers for commands the app calls at startup; anything not listed resolves to null. Override via `commands`. */
-const DEFAULT_COMMANDS = {
-  startup_report: () => ({}),
-  list_backups: () => [],
-  discover_boards: () => [],
-  log_tail: () => [],
-  "plugin:app|version": version,
-  "plugin:app|name": () => "D³",
-  "plugin:app|tauri_version": () => "2",
-  "plugin:event|listen": () => 1,
-  "plugin:event|unlisten": () => null,
-  "plugin:window|is_fullscreen": () => false,
-};
+const DEFAULT_COMMANDS = defaultCommands(JSON.parse(readFileSync(join(REPO, "package.json"), "utf8")).version);
 
 /** A database with every migration applied, or a copy of a saved SQLite file (e.g. a backup of real data). */
 export async function openDb(file) {
@@ -54,31 +41,11 @@ export async function openDb(file) {
   return db;
 }
 
-// plugin-sql uses $1, $2 …; bound by name, so their order in the query doesn't matter.
-const params = (values) =>
-  Object.fromEntries((values ?? []).map((v, i) => [`$${i + 1}`, typeof v === "boolean" ? Number(v) : v]));
-
-function sqlCommand(db, cmd, args) {
-  if (cmd === "plugin:sql|load") return args.db;
-  if (cmd === "plugin:sql|close") return true;
-  if (cmd === "plugin:sql|execute") {
-    db.run(args.query, params(args.values));
-    return [db.getRowsModified(), db.exec("SELECT last_insert_rowid()")[0].values[0][0]];
-  }
-  if (cmd === "plugin:sql|select") {
-    const st = db.prepare(args.query);
-    st.bind(params(args.values));
-    const rows = [];
-    while (st.step()) rows.push(st.getAsObject());
-    st.free();
-    return rows;
-  }
-}
-
 /**
  * Opens the app at `url` and waits until the loading screen is gone. Returns { page, db, browser, unknown, close }.
  * opts: viewport, scale (deviceScaleFactor), lang ("en-US", "de-DE"), dbFile (start from a saved SQLite file),
- *       seed(db) (fill the fresh database), commands ({ name: (args) => result }), log (false: stay quiet).
+ *       seed(db) (fill the fresh database), commands ({ name: (args) => result }), log (false: stay quiet),
+ *       time (a Date the app's clock starts at), hosts ({ name: ip } for the browser's name lookup).
  */
 export async function openApp(url, opts = {}) {
   const db = await openDb(opts.dbFile);
@@ -86,7 +53,9 @@ export async function openApp(url, opts = {}) {
   const commands = { ...DEFAULT_COMMANDS, ...opts.commands };
   const unknown = new Set();
 
-  const browser = await chromium.launch();
+  // `hosts`: { "autodarts.local": "127.0.0.1" }, so the app can show a realistic board address.
+  const rules = Object.entries(opts.hosts ?? {}).map(([from, to]) => `MAP ${from} ${to}`);
+  const browser = await chromium.launch({ args: rules.length ? [`--host-resolver-rules=${rules.join(",")}`] : [] });
   const page = await browser.newPage({
     viewport: opts.viewport ?? { width: 1280, height: 800 },
     deviceScaleFactor: opts.scale ?? 1,
@@ -139,7 +108,10 @@ export async function openApp(url, opts = {}) {
     };
   });
 
+  // `time`: the app's clock starts there (Playwright's fake clock, moved on with page.clock.fastForward/setSystemTime).
+  if (opts.time) await page.clock.install({ time: opts.time });
   await page.goto(url);
-  await page.waitForSelector(".splash", { state: "detached", timeout: 20000 });
+  // `waitReady: false` returns while the loading screen is still up.
+  if (opts.waitReady !== false) await page.waitForSelector(".splash", { state: "detached", timeout: 20000 });
   return { page, db, browser, unknown, close: () => browser.close() };
 }
